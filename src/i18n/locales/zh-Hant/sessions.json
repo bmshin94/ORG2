@@ -2177,9 +2177,7 @@
       "activeMembers": "活躍成員",
       "inFlightTurns": "進行中的回合",
       "openTasks": "未完成任務",
-      "blockingInbox": "阻塞中的收件匣",
-      "blockersTitle": "仍在阻礙完成的項目",
-      "unknownBlocker": "未知系統阻塞項"
+      "blockingInbox": "阻塞中的收件匣"
     },
     "agentOrgIntervention": {
       "directTitle": "直接交給 {{member}} 工作",

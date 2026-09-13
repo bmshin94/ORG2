@@ -2196,9 +2196,7 @@
       "activeMembers": "Aktywni członkowie",
       "inFlightTurns": "Trwające tury",
       "openTasks": "Otwarte zadania",
-      "blockingInbox": "Blokująca skrzynka odbiorcza",
-      "blockersTitle": "Co nadal blokuje ukończenie",
-      "unknownBlocker": "Nieznana blokada systemowa"
+      "blockingInbox": "Blokująca skrzynka odbiorcza"
     },
     "agentOrgIntervention": {
       "directTitle": "Bezpośrednia praca z {{member}}",

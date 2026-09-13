@@ -2177,9 +2177,7 @@
       "activeMembers": "활성 구성원",
       "inFlightTurns": "진행 중인 턴",
       "openTasks": "열린 작업",
-      "blockingInbox": "차단 중인 받은 편지함",
-      "blockersTitle": "완료를 계속 차단하는 항목",
-      "unknownBlocker": "알 수 없는 시스템 차단 요소"
+      "blockingInbox": "차단 중인 받은 편지함"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}}에게 직접 작업",

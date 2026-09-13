@@ -2177,9 +2177,7 @@
       "activeMembers": "Aktif üyeler",
       "inFlightTurns": "Devam eden turlar",
       "openTasks": "Açık görevler",
-      "blockingInbox": "Engelleyen gelen kutusu",
-      "blockersTitle": "Tamamlanmayı hâlâ engelleyenler",
-      "unknownBlocker": "Bilinmeyen sistem engeli"
+      "blockingInbox": "Engelleyen gelen kutusu"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}} ile doğrudan çalışma",

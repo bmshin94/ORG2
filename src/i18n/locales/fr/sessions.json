@@ -2177,9 +2177,7 @@
       "activeMembers": "Membres actifs",
       "inFlightTurns": "Tours en cours",
       "openTasks": "Tâches ouvertes",
-      "blockingInbox": "Boîte de réception bloquante",
-      "blockersTitle": "Ce qui bloque encore la finalisation",
-      "unknownBlocker": "Blocage système inconnu"
+      "blockingInbox": "Boîte de réception bloquante"
     },
     "agentOrgIntervention": {
       "directTitle": "Travail direct avec {{member}}",

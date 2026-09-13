@@ -2177,9 +2177,7 @@
       "activeMembers": "アクティブなメンバー",
       "inFlightTurns": "実行中のターン",
       "openTasks": "未完了のタスク",
-      "blockingInbox": "ブロック中の受信メッセージ",
-      "blockersTitle": "完了を妨げている項目",
-      "unknownBlocker": "不明なシステムブロッカー"
+      "blockingInbox": "ブロック中の受信メッセージ"
     },
     "agentOrgIntervention": {
       "directTitle": "{{member}} への直接作業",

@@ -2196,9 +2196,7 @@
       "activeMembers": "Active members",
       "inFlightTurns": "In-flight turns",
       "openTasks": "Open tasks",
-      "blockingInbox": "Blocking inbox",
-      "blockersTitle": "What is still blocking completion",
-      "unknownBlocker": "Unknown system blocker"
+      "blockingInbox": "Blocking inbox"
     },
     "agentOrgIntervention": {
       "directTitle": "Direct work with {{member}}",
