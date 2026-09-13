@@ -2102,7 +2102,7 @@
         "cancelled": "Cancelado",
         "failed": "Fallido"
       },
-      "title": "Vista general del Equipo Agent",
+      "title": "Vista general del equipo",
       "summary": "{{active}} activos · {{pending}} pendientes",
       "loadFailed": "No se pudo cargar la vista general del equipo",
       "tasks": "Tareas",
@@ -2342,7 +2342,6 @@
     },
     "triggerLabel": "Chat grupal",
     "userMessageOutcomeUnknown": "Se desconoce el resultado de la entrega. Reintenta la entrega original.",
-    "coordinatorLabel": "Coordinador",
     "youLabel": "Tú",
     "retry": "Reintentar",
     "memberCount_one": "{{count}} miembro",

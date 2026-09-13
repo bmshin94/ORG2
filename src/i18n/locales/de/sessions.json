@@ -2102,7 +2102,7 @@
         "cancelled": "Abgebrochen",
         "failed": "Fehlgeschlagen"
       },
-      "title": "Agent-Team-Übersicht",
+      "title": "Teamübersicht",
       "summary": "{{active}} aktiv · {{pending}} ausstehend",
       "loadFailed": "Team-Übersicht konnte nicht geladen werden",
       "tasks": "Aufgaben",
@@ -2342,7 +2342,6 @@
     },
     "triggerLabel": "Gruppenchat",
     "userMessageOutcomeUnknown": "Das Zustellungsergebnis ist unbekannt. Wiederhole die ursprüngliche Zustellung.",
-    "coordinatorLabel": "Koordinator",
     "youLabel": "Du",
     "retry": "Erneut versuchen",
     "memberCount_one": "{{count}} Mitglied",

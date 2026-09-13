@@ -2102,7 +2102,7 @@
         "cancelled": "キャンセル済み",
         "failed": "失敗"
       },
-      "title": "Agent チーム概要",
+      "title": "チーム概要",
       "summary": "稼働中 {{active}} · 要対応 {{pending}}",
       "loadFailed": "チーム概要を読み込めませんでした",
       "tasks": "タスク",
@@ -2342,7 +2342,6 @@
     },
     "triggerLabel": "グループチャット",
     "userMessageOutcomeUnknown": "配信結果は不明です。元の配信を再試行してください。",
-    "coordinatorLabel": "コーディネーター",
     "youLabel": "あなた",
     "retry": "再試行",
     "memberCount_one": "{{count}} 人のメンバー",

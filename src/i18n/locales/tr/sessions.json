@@ -2102,7 +2102,7 @@
         "cancelled": "İptal edildi",
         "failed": "Başarısız"
       },
-      "title": "Agent Ekibi genel görünümü",
+      "title": "Ekip genel görünümü",
       "summary": "{{active}} aktif · {{pending}} bekleyen",
       "loadFailed": "Ekip genel görünümü yüklenemedi",
       "tasks": "Görevler",
@@ -2342,7 +2342,6 @@
     },
     "triggerLabel": "Grup sohbeti",
     "userMessageOutcomeUnknown": "Teslimat sonucu bilinmiyor. Özgün teslimatı yeniden deneyin.",
-    "coordinatorLabel": "Koordinatör",
     "youLabel": "Siz",
     "retry": "Yeniden dene",
     "memberCount_one": "{{count}} üye",

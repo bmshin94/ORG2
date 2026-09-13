@@ -2102,7 +2102,7 @@
         "cancelled": "已取消",
         "failed": "失敗"
       },
-      "title": "Agent 團隊概覽",
+      "title": "團隊概覽",
       "summary": "{{active}} 個活躍 · {{pending}} 則待處理",
       "loadFailed": "團隊概覽載入失敗",
       "tasks": "任務",
@@ -2342,7 +2342,6 @@
     },
     "triggerLabel": "群聊",
     "userMessageOutcomeUnknown": "訊息提交結果未知，請使用原請求重試。",
-    "coordinatorLabel": "協調者",
     "youLabel": "你",
     "retry": "重試",
     "memberCount_one": "{{count}} 位成員",
