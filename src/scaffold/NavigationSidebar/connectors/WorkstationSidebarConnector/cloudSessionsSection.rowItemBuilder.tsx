@@ -239,20 +239,9 @@ export function useCloudSessionRowItemBuilder({
         row.orgId,
         row.id
       );
-      const pinIndicator = isPinned ? (
-        <HugeiconsIcon
-          icon={PinIcon}
-          data-icon="pin"
-          size={11}
-          strokeWidth={2}
-          className="shrink-0 text-text-3"
-          aria-label="Pinned"
-        />
-      ) : null;
       const trailingElement =
-        pinIndicator || busyIndicator || viewerChips || commentsBadge ? (
+        busyIndicator || viewerChips || commentsBadge ? (
           <span className="inline-flex items-center gap-1">
-            {pinIndicator}
             {busyIndicator}
             {viewerChips}
             {commentsBadge}
