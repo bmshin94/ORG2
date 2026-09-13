@@ -16,9 +16,9 @@ import {
   DROPDOWN_WIDTHS,
 } from "@src/components/Dropdown/tokens";
 import { ProcessStopButton } from "@src/components/ProcessStopButton";
-import { REFRESH_ICON_TOKENS } from "@src/components/RefreshIcon/tokens";
 import { useDropdownEngine } from "@src/hooks/dropdown";
 import { createLogger } from "@src/hooks/logger";
+import { useRefreshSpin } from "@src/hooks/ui/useRefreshSpin";
 import {
   Copy01Icon,
   HugeiconsIcon,
@@ -241,6 +241,11 @@ export const PortsStatusMenu: React.FC = memo(() => {
     });
   }, [folders]);
 
+  const { spinClass, handleClick: handleRescan } = useRefreshSpin(
+    runScan,
+    refreshing
+  );
+
   const toggleWorkspaceSection = useCallback(() => {
     setWorkspaceExpanded((value) => !value);
   }, []);
@@ -441,7 +446,7 @@ export const PortsStatusMenu: React.FC = memo(() => {
                   DROPDOWN_CLASSES.menuActionItem,
                   "min-w-0 flex-1 disabled:cursor-default disabled:text-text-3"
                 )}
-                onClick={runScan}
+                onClick={handleRescan}
                 disabled={refreshing}
                 title={t("workstation.ports.rescanTooltip")}
                 data-testid="ports-menu-rescan"
@@ -450,7 +455,7 @@ export const PortsStatusMenu: React.FC = memo(() => {
                   icon={Refresh04Icon}
                   data-icon="refresh-cw"
                   size={MENU_ICON_SIZE}
-                  className={refreshing ? REFRESH_ICON_TOKENS.spin : undefined}
+                  className={spinClass}
                   aria-hidden
                 />
                 <span className="truncate">
