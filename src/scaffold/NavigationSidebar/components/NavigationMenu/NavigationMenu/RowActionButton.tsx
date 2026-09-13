@@ -38,7 +38,7 @@ export function NavigationMenuRowActionButton({
       aria-pressed={active}
       title={label}
       data-testid={dataTestId}
-      className="focus:outline-none"
+      className="focus:outline-none focus-visible:bg-sidebar-selected! enabled:hover:bg-sidebar-selected! aria-pressed:bg-sidebar-selected!"
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();

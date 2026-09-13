@@ -331,7 +331,7 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = React.memo(
                           {section.title}
                         </span>
                         <span
-                          className={`${isSectionCollapsed ? "inline-flex" : "hidden"} shrink-0 items-center leading-none text-text-2 group-hover/section-title:inline-flex`}
+                          className={`${isSectionCollapsed ? "inline-flex" : "hidden"} -ml-1 shrink-0 items-center leading-none text-text-2 group-hover/section-title:inline-flex`}
                         >
                           <NavigationMenuRowActionButton
                             icon={
@@ -411,7 +411,7 @@ const NavigationSidebar: React.FC<NavigationSidebarProps> = React.memo(
                           {section.title}
                         </span>
                         <span
-                          className={`${isSectionCollapsed ? "inline-flex" : "hidden"} shrink-0 items-center leading-none text-text-2 group-hover/section-title:inline-flex`}
+                          className={`${isSectionCollapsed ? "inline-flex" : "hidden"} -ml-1 shrink-0 items-center leading-none text-text-2 group-hover/section-title:inline-flex`}
                         >
                           <NavigationMenuRowActionButton
                             icon={
