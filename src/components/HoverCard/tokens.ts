@@ -6,7 +6,7 @@ export const HOVER_CARD = {
   feedbackStrokeWidth: 2,
   text: "text-[13px] leading-5",
   title:
-    "mb-2 block max-w-full overflow-hidden font-medium text-ellipsis whitespace-nowrap text-text-1",
+    "mb-2 block max-w-full whitespace-normal break-words font-medium text-text-1",
   surface: "rounded-xl border border-border-2 bg-bg-2 p-3 shadow-dropdown",
   rows: "space-y-2",
   row: "grid grid-cols-[16px_minmax(0,1fr)] items-start gap-2 text-text-2",
