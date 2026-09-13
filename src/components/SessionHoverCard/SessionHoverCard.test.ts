@@ -4,8 +4,9 @@ import { type Root, createRoot } from "react-dom/client";
 import { jsx } from "react/jsx-runtime";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { dismissHoverCard } from "@src/components/HoverCard/singletonStore";
+
 import SessionHoverCard from "./index";
-import { dismissHoverCard } from "./singletonStore";
 
 const mocks = vi.hoisted(() => ({
   load: vi.fn(),

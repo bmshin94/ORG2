@@ -1,6 +1,6 @@
 import { type MouseEvent, useCallback } from "react";
 
-import { dismissHoverCard } from "@src/components/SessionHoverCard/singletonStore";
+import { dismissHoverCard } from "@src/components/HoverCard/singletonStore";
 import { createLogger } from "@src/hooks/logger";
 import type { NavigationMenuItem } from "@src/scaffold/NavigationSidebar/components/NavigationMenu/config";
 import type { Session } from "@src/store/session";

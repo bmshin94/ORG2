@@ -13,6 +13,9 @@ import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { StashEntry } from "@src/api/http/git/types";
+import HoverCard from "@src/components/HoverCard";
+import { HoverCardPanel } from "@src/components/HoverCard/HoverCardBase";
+import { HoverCardMetadataRow } from "@src/components/HoverCard/HoverCardMetadataRow";
 import {
   TREE_ROW_INSET_CLASS,
   TREE_ROW_ROUNDED_CLASS,
@@ -36,6 +39,7 @@ import {
   HugeiconsIcon,
   Loading03Icon,
   PackageIcon,
+  WorkflowCircle05Icon,
 } from "@src/icons";
 import {
   type SourceControlHistorySelection,
@@ -199,100 +203,117 @@ const StashItem: React.FC<StashItemProps> = memo(
     );
 
     return (
-      <TreeRowBase
-        node={treeNode}
-        depth={0}
-        isSelected={isSelected}
-        onClick={handleOpenDetail}
+      <HoverCard
+        cardId={`git-stash:${getStashIdentity(stash)}`}
+        position="right-start"
+        content={
+          <HoverCardPanel title={`stash@{${stash.index}}`}>
+            <HoverCardMetadataRow icon={PackageIcon}>
+              <div className="break-words whitespace-pre-wrap">
+                {shortMessage}
+              </div>
+            </HoverCardMetadataRow>
+            {stash.branch && (
+              <HoverCardMetadataRow icon={WorkflowCircle05Icon}>
+                <div className="break-words">{stash.branch}</div>
+              </HoverCardMetadataRow>
+            )}
+          </HoverCardPanel>
+        }
       >
-        {/* Index badge */}
-        <span className="shrink-0 text-[11px] text-text-3">{stash.index}</span>
-
-        {/* Branch name if available */}
-        {stash.branch && (
-          <span className="shrink-0 text-[11px] text-text-4">
-            ({stash.branch})
-          </span>
-        )}
-
-        {/* Action buttons - show on hover, no space when hidden */}
-        <div className="hidden items-center gap-0.5 group-hover/item:flex">
-          {/* Apply (keep stash) */}
-          <button
-            className={`${HEADER_BUTTON.actionTreeRow} disabled:opacity-50`}
-            onClick={handleApply}
-            disabled={isLoading}
-            title={t("tooltips.applyStash")}
+        <div>
+          <TreeRowBase
+            node={treeNode}
+            showNativeTitle={false}
+            depth={0}
+            isSelected={isSelected}
+            onClick={handleOpenDetail}
           >
-            {actionLoading === "apply" ? (
-              <HugeiconsIcon
-                icon={Loading03Icon}
-                data-icon="loader-2"
-                size={SPINNER_TOKENS.small}
-                className="animate-spin text-text-3"
-              />
-            ) : (
-              <HugeiconsIcon
-                icon={ArrowDownToLineIcon}
-                data-icon="arrow-down-to-line"
-                size={12}
-                strokeWidth={1.75}
-                className="text-text-2"
-              />
-            )}
-          </button>
+            {/* Index badge */}
+            <span className="shrink-0 text-[11px] text-text-3">
+              {stash.index}
+            </span>
 
-          {/* Pop (apply and remove) */}
-          <button
-            className={`${HEADER_BUTTON.actionTreeRow} disabled:opacity-50`}
-            onClick={handlePop}
-            disabled={isLoading}
-            title={t("tooltips.popStash")}
-          >
-            {actionLoading === "pop" ? (
-              <HugeiconsIcon
-                icon={Loading03Icon}
-                data-icon="loader-2"
-                size={SPINNER_TOKENS.small}
-                className="animate-spin text-text-3"
-              />
-            ) : (
-              <HugeiconsIcon
-                icon={ArchiveArrowUpIcon}
-                data-icon="archive-restore"
-                size={12}
-                strokeWidth={1.75}
-                className="text-success-6"
-              />
-            )}
-          </button>
+            {/* Action buttons - show on hover, no space when hidden */}
+            <div className="hidden items-center gap-0.5 group-hover/item:flex">
+              {/* Apply (keep stash) */}
+              <button
+                className={`${HEADER_BUTTON.actionTreeRow} disabled:opacity-50`}
+                onClick={handleApply}
+                disabled={isLoading}
+                title={t("tooltips.applyStash")}
+              >
+                {actionLoading === "apply" ? (
+                  <HugeiconsIcon
+                    icon={Loading03Icon}
+                    data-icon="loader-2"
+                    size={SPINNER_TOKENS.small}
+                    className="animate-spin text-text-3"
+                  />
+                ) : (
+                  <HugeiconsIcon
+                    icon={ArrowDownToLineIcon}
+                    data-icon="arrow-down-to-line"
+                    size={12}
+                    strokeWidth={1.75}
+                    className="text-text-2"
+                  />
+                )}
+              </button>
 
-          {/* Drop (delete) */}
-          <button
-            className={`${HEADER_BUTTON.danger} disabled:opacity-50`}
-            onClick={handleDrop}
-            disabled={isLoading}
-            title={t("tooltips.dropStash")}
-          >
-            {actionLoading === "drop" ? (
-              <HugeiconsIcon
-                icon={Loading03Icon}
-                data-icon="loader-2"
-                size={SPINNER_TOKENS.small}
-                className="animate-spin text-text-3"
-              />
-            ) : (
-              <HugeiconsIcon
-                icon={Delete02Icon}
-                data-icon="trash-2"
-                size={12}
-                strokeWidth={1.75}
-                className="text-danger-6"
-              />
-            )}
-          </button>
+              {/* Pop (apply and remove) */}
+              <button
+                className={`${HEADER_BUTTON.actionTreeRow} disabled:opacity-50`}
+                onClick={handlePop}
+                disabled={isLoading}
+                title={t("tooltips.popStash")}
+              >
+                {actionLoading === "pop" ? (
+                  <HugeiconsIcon
+                    icon={Loading03Icon}
+                    data-icon="loader-2"
+                    size={SPINNER_TOKENS.small}
+                    className="animate-spin text-text-3"
+                  />
+                ) : (
+                  <HugeiconsIcon
+                    icon={ArchiveArrowUpIcon}
+                    data-icon="archive-restore"
+                    size={12}
+                    strokeWidth={1.75}
+                    className="text-success-6"
+                  />
+                )}
+              </button>
+
+              {/* Drop (delete) */}
+              <button
+                className={`${HEADER_BUTTON.danger} disabled:opacity-50`}
+                onClick={handleDrop}
+                disabled={isLoading}
+                title={t("tooltips.dropStash")}
+              >
+                {actionLoading === "drop" ? (
+                  <HugeiconsIcon
+                    icon={Loading03Icon}
+                    data-icon="loader-2"
+                    size={SPINNER_TOKENS.small}
+                    className="animate-spin text-text-3"
+                  />
+                ) : (
+                  <HugeiconsIcon
+                    icon={Delete02Icon}
+                    data-icon="trash-2"
+                    size={12}
+                    strokeWidth={1.75}
+                    className="text-danger-6"
+                  />
+                )}
+              </button>
+            </div>
+          </TreeRowBase>
         </div>
-      </TreeRowBase>
+      </HoverCard>
     );
   }
 );

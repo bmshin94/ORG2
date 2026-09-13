@@ -4,7 +4,7 @@ import { act, createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { dismissHoverCard } from "@src/components/SessionHoverCard/singletonStore";
+import { dismissHoverCard } from "@src/components/HoverCard/singletonStore";
 
 import { SpotlightItemRow } from "./SpotlightItemRow";
 

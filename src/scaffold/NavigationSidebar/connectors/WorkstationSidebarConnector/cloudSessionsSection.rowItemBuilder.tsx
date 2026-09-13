@@ -9,8 +9,8 @@ import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
 import { useCallback } from "react";
 
+import { dismissHoverCard } from "@src/components/HoverCard/singletonStore";
 import PersonAvatar from "@src/components/PersonAvatar";
-import { dismissHoverCard } from "@src/components/SessionHoverCard/singletonStore";
 import { resolveAgentIcon } from "@src/config/agentIcons";
 import {
   discussionSeenCountsAtom,

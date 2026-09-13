@@ -16,7 +16,7 @@ describe("SessionHoverCard loading boundary", () => {
       )
     ).toEqual([]);
     expect(
-      reachableFilesMatching(graph, /SessionHoverCard\/HoverCardBase\.tsx$/)
-    ).toEqual(["components/SessionHoverCard/HoverCardBase.tsx"]);
+      reachableFilesMatching(graph, /HoverCard\/HoverCardBase\.tsx$/)
+    ).toEqual(["components/HoverCard/HoverCardBase.tsx"]);
   });
 });

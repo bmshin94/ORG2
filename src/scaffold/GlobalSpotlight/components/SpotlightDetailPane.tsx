@@ -3,7 +3,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 
 import AnyIcon from "@src/components/AnyIcon";
-import HoverCardBase from "@src/components/SessionHoverCard/HoverCardBase";
+import HoverCardBase from "@src/components/HoverCard/HoverCardBase";
 import { createLogger } from "@src/hooks/logger";
 import { FolderClosedIcon, FolderOpenIcon } from "@src/icons";
 

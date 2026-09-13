@@ -1,10 +1,10 @@
 import React from "react";
 
 import { createLogger } from "@src/hooks/logger";
-import { HugeiconsIcon, InternetIcon } from "@src/icons";
+import { InternetIcon } from "@src/icons";
 import { openExternalLink } from "@src/util/platform/ipcRenderer";
 
-import { HoverCardRow } from "./HoverCardBase";
+import { HoverCardMetadataRow } from "./HoverCardMetadataRow";
 
 const logger = createLogger("HoverCardUrlRow");
 
@@ -42,16 +42,7 @@ export const HoverCardUrlRow: React.FC<HoverCardUrlRowProps> = ({ url }) => {
   const label = formatCompactUrl(url);
 
   return (
-    <HoverCardRow
-      icon={
-        <HugeiconsIcon
-          icon={InternetIcon}
-          data-icon="globe"
-          size={13}
-          strokeWidth={1.75}
-        />
-      }
-    >
+    <HoverCardMetadataRow icon={InternetIcon} dataIcon="globe">
       <button
         type="button"
         className={HOVER_CARD_LINK_ROW_CLASS_NAME}
@@ -60,7 +51,7 @@ export const HoverCardUrlRow: React.FC<HoverCardUrlRowProps> = ({ url }) => {
       >
         {label}
       </button>
-    </HoverCardRow>
+    </HoverCardMetadataRow>
   );
 };
 

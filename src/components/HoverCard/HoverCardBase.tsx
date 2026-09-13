@@ -20,6 +20,7 @@ import {
   scheduleClose,
   useHoverCardState,
 } from "./singletonStore";
+import { HOVER_CARD } from "./tokens";
 
 export type HoverCardPosition =
   | "bottom-start"
@@ -378,20 +379,17 @@ export const HoverCardPanel: React.FC<HoverCardPanelProps> = ({
   width = "default",
 }) => (
   <div
-    className={`${width === "wide" ? "w-96 max-w-[calc(100vw-16px)]" : "w-[280px]"} rounded-xl border border-border-2 bg-bg-2 p-3 shadow-dropdown ${
+    className={`${width === "wide" ? "w-96 max-w-[calc(100vw-16px)]" : "w-[280px]"} ${HOVER_CARD.surface} ${
       allowOverflow ? "overflow-visible" : "overflow-y-auto"
     }`}
     style={{ maxHeight: `calc(100vh - ${VIEWPORT_PADDING_PX * 2}px)` }}
   >
     {title && (
-      <div
-        className="mb-2 block max-w-full overflow-hidden text-[13px] font-medium text-ellipsis whitespace-nowrap text-text-1"
-        title={title}
-      >
+      <div className={`${HOVER_CARD.title} ${HOVER_CARD.text}`} title={title}>
         {title}
       </div>
     )}
-    <div className="space-y-2">{children}</div>
+    <div className={HOVER_CARD.rows}>{children}</div>
   </div>
 );
 
@@ -400,12 +398,8 @@ export const HoverCardRow: React.FC<HoverCardRowProps> = ({
   children,
   iconClassName = "text-text-3",
 }) => (
-  <div className="grid grid-cols-[16px_minmax(0,1fr)] items-start gap-2 text-[13px] leading-5 text-text-2">
-    <span
-      className={`mt-0.5 flex h-4 w-4 items-center justify-center ${iconClassName}`}
-    >
-      {icon}
-    </span>
+  <div className={`${HOVER_CARD.row} ${HOVER_CARD.text}`}>
+    <span className={`${HOVER_CARD.iconSlot} ${iconClassName}`}>{icon}</span>
     <div className="min-w-0">{children}</div>
   </div>
 );

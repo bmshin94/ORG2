@@ -11,6 +11,12 @@ import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
 } from "@src/components/Dropdown/tokens";
+import HoverCard from "@src/components/HoverCard";
+import { HoverCardPanel } from "@src/components/HoverCard/HoverCardBase";
+import {
+  HoverCardMetadataRow,
+  HoverCardMetadataValue,
+} from "@src/components/HoverCard/HoverCardMetadataRow";
 import type { GanttMarker } from "@src/features/GanttChart";
 import {
   Clock01Icon,
@@ -28,26 +34,6 @@ import {
 } from "./diaryPanelUtils";
 
 // ============================================================================
-// DiaryCommitHoverCardRow
-// ============================================================================
-
-interface DiaryCommitHoverCardRowProps {
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}
-
-export const DiaryCommitHoverCardRow: React.FC<
-  DiaryCommitHoverCardRowProps
-> = ({ icon, children }) => (
-  <div className="grid grid-cols-[16px_minmax(0,1fr)] items-start gap-2 text-[13px] leading-5 text-text-2">
-    <span className="mt-0.5 flex h-4 w-4 items-center justify-center text-text-3">
-      {icon}
-    </span>
-    <div className="min-w-0">{children}</div>
-  </div>
-);
-
-// ============================================================================
 // DiaryCommitHoverCardContent
 // ============================================================================
 
@@ -63,85 +49,44 @@ export const DiaryCommitHoverCardContent: React.FC<
   const title = commit.summary || commit.short_sha;
 
   return (
-    <div className="rounded-xl border border-border-2 bg-bg-2 p-3 shadow-dropdown">
-      <div
-        className="mb-2 block max-w-full overflow-hidden text-[13px] font-medium text-ellipsis whitespace-nowrap text-text-1"
-        title={title}
+    <HoverCardPanel title={title}>
+      <HoverCardMetadataRow
+        icon={GitCommitHorizontalIcon}
+        dataIcon="git-commit-horizontal"
       >
-        {title}
-      </div>
-      <div className="space-y-2">
-        <DiaryCommitHoverCardRow
-          icon={
-            <HugeiconsIcon
-              icon={GitCommitHorizontalIcon}
-              data-icon="git-commit-horizontal"
-              size={DROPDOWN_ITEM.iconSize}
-              strokeWidth={1.75}
-            />
-          }
+        <div className="truncate text-text-2" title={commit.sha}>
+          <HoverCardMetadataValue label={t("gitDashboard.commits")}>
+            {commit.short_sha}
+          </HoverCardMetadataValue>
+        </div>
+      </HoverCardMetadataRow>
+      <HoverCardMetadataRow icon={Clock01Icon} dataIcon="clock">
+        <div
+          className="truncate text-text-2"
+          title={marker.timestamp.toISOString()}
         >
-          <div className="truncate text-text-2" title={commit.sha}>
-            <span className="text-text-3">{t("gitDashboard.commits")}</span>
-            <span className="mx-1 text-text-4">·</span>
-            <span>{commit.short_sha}</span>
+          <HoverCardMetadataValue label={t("common.time")}>
+            {formatDateTime(marker.timestamp)}
+          </HoverCardMetadataValue>
+        </div>
+      </HoverCardMetadataRow>
+      <HoverCardMetadataRow icon={UserCircleIcon} dataIcon="user-round">
+        <div className="truncate text-text-2" title={commit.author.email}>
+          <HoverCardMetadataValue label={t("gitDashboard.author")}>
+            {commit.author.name}
+          </HoverCardMetadataValue>
+        </div>
+      </HoverCardMetadataRow>
+      {marker.task && (
+        <HoverCardMetadataRow icon={HashtagIcon} dataIcon="hash">
+          <div className="truncate text-text-2" title={marker.task.title}>
+            <HoverCardMetadataValue label={t("terminology.session")}>
+              {marker.task.title}
+            </HoverCardMetadataValue>
           </div>
-        </DiaryCommitHoverCardRow>
-        <DiaryCommitHoverCardRow
-          icon={
-            <HugeiconsIcon
-              icon={Clock01Icon}
-              data-icon="clock"
-              size={DROPDOWN_ITEM.iconSize}
-              strokeWidth={1.75}
-            />
-          }
-        >
-          <div
-            className="truncate text-text-2"
-            title={marker.timestamp.toISOString()}
-          >
-            <span className="text-text-3">{t("common.time")}</span>
-            <span className="mx-1 text-text-4">·</span>
-            <span>{formatDateTime(marker.timestamp)}</span>
-          </div>
-        </DiaryCommitHoverCardRow>
-        <DiaryCommitHoverCardRow
-          icon={
-            <HugeiconsIcon
-              icon={UserCircleIcon}
-              data-icon="user-round"
-              size={DROPDOWN_ITEM.iconSize}
-              strokeWidth={1.75}
-            />
-          }
-        >
-          <div className="truncate text-text-2" title={commit.author.email}>
-            <span className="text-text-3">{t("gitDashboard.author")}</span>
-            <span className="mx-1 text-text-4">·</span>
-            <span>{commit.author.name}</span>
-          </div>
-        </DiaryCommitHoverCardRow>
-        {marker.task && (
-          <DiaryCommitHoverCardRow
-            icon={
-              <HugeiconsIcon
-                icon={HashtagIcon}
-                data-icon="hash"
-                size={DROPDOWN_ITEM.iconSize}
-                strokeWidth={1.75}
-              />
-            }
-          >
-            <div className="truncate text-text-2" title={marker.task.title}>
-              <span className="text-text-3">{t("terminology.session")}</span>
-              <span className="mx-1 text-text-4">·</span>
-              <span>{marker.task.title}</span>
-            </div>
-          </DiaryCommitHoverCardRow>
-        )}
-      </div>
-    </div>
+        </HoverCardMetadataRow>
+      )}
+    </HoverCardPanel>
   );
 };
 
@@ -160,17 +105,14 @@ export const DiaryCommitDetailsDropdown: React.FC<
   const { t } = useTranslation("common");
 
   return (
-    <Dropdown
-      trigger="hover"
-      hoverCloseDelayMs={0}
+    <HoverCard
+      cardId={`diary-commit:${marker.commit.sha}`}
+      mouseLeaveDelay={0}
       position="right-start"
-      droplist={<DiaryCommitHoverCardContent marker={marker} t={t} />}
-      getPopupContainer={() => document.body}
-      className="w-[280px]"
-      avoidViewportOverflow
+      content={<DiaryCommitHoverCardContent marker={marker} t={t} />}
     >
       {children}
-    </Dropdown>
+    </HoverCard>
   );
 };
 

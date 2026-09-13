@@ -1,38 +1,31 @@
-import React, { useCallback } from "react";
+import React from "react";
+
+import HoverCard, {
+  type HoverCardTriggerProps,
+} from "@src/components/HoverCard";
 
 import { DeferredSessionHoverCardContent } from "./DeferredSessionHoverCardContent";
-import HoverCardBase, { type HoverCardPosition } from "./HoverCardBase";
 
-interface SessionHoverCardProps {
+interface SessionHoverCardProps extends HoverCardTriggerProps {
   sessionId?: string | null;
-  children: React.ReactElement;
-  position?: HoverCardPosition;
-  mouseEnterDelay?: number;
-  mouseLeaveDelay?: number;
 }
 
 const SessionHoverCard: React.FC<SessionHoverCardProps> = ({
   sessionId,
-  children,
   position,
-  mouseEnterDelay,
-  mouseLeaveDelay,
+  ...triggerProps
 }) => {
-  const renderContent = useCallback(
-    (cardId: string) => <DeferredSessionHoverCardContent sessionId={cardId} />,
-    []
-  );
-
   return (
-    <HoverCardBase
+    <HoverCard
+      {...triggerProps}
       cardId={sessionId}
       position={position}
-      mouseEnterDelay={mouseEnterDelay}
-      mouseLeaveDelay={mouseLeaveDelay}
-      renderContent={renderContent}
-    >
-      {children}
-    </HoverCardBase>
+      content={
+        sessionId ? (
+          <DeferredSessionHoverCardContent sessionId={sessionId} />
+        ) : null
+      }
+    />
   );
 };
 
