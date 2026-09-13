@@ -17,7 +17,8 @@ export type ButtonAppearance =
   | "outline"
   | "dashed"
   | "ghost"
-  | "soft";
+  | "soft"
+  | "soft-no-drop";
 export type ButtonSize = "sidebar" | "mini" | "small" | "default" | "large";
 export type ButtonShape = "square" | "round" | "circle";
 
@@ -53,10 +54,12 @@ function getButtonStyleClasses(
   variant: ButtonVariant,
   appearance: ButtonAppearance
 ) {
-  if (appearance === "soft") {
+  if (appearance === "soft" || appearance === "soft-no-drop") {
     const colors =
       variant === "tertiary" || variant === "secondary"
-        ? BUTTON_VARIANT.default
+        ? appearance === "soft-no-drop"
+          ? "text-text-2 enabled:hover:bg-button-hover-no-drop enabled:hover:text-text-1 focus-visible:bg-button-hover-no-drop focus-visible:text-text-1"
+          : BUTTON_VARIANT.default
         : variant === "warning"
           ? "text-warning-6 enabled:hover:bg-warning-3 focus-visible:bg-warning-3"
           : variant === "merged"

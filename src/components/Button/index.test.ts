@@ -132,7 +132,31 @@ describe("compact shared actions", () => {
     expect(markup).toContain("border-radius:8px");
     expect(markup).toContain("action-icon");
     expect(markup).toContain("enabled:hover:bg-button-hover");
+    expect(markup).not.toContain("bg-button-hover-no-drop");
     expect(markup).not.toContain("enabled:hover:bg-primary-3");
+  });
+
+  it("opts transparent controls into fill-2 without changing sidebar hover", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(Button, {
+        variant: "tertiary",
+        appearance: "soft-no-drop",
+        size: "mini",
+        iconOnly: true,
+        icon: React.createElement("svg"),
+      })
+    );
+    expect(markup).toContain("enabled:hover:bg-button-hover-no-drop");
+    expect(markup).toContain("focus-visible:bg-button-hover-no-drop");
+    const theme = readFileSync(resolve("src/tailwind.css"), "utf8");
+    expect(theme).toContain(
+      "--color-button-hover-no-drop: var(--color-fill-2)"
+    );
+    for (const skin of ["orgii_main.css", "orgii_dark.css"]) {
+      expect(readFileSync(resolve("public", skin), "utf8")).toContain(
+        "--color-button-hover: var(--color-fill-3)"
+      );
+    }
   });
 
   it("keeps compact non-sidebar actions at 24px", () => {

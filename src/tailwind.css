@@ -29,6 +29,8 @@
   --color-chat-container: var(--color-chat-container);
 
   --color-button-hover: var(--color-button-hover);
+  /* Transparent button layer: neutral hover fill follows the active skin. */
+  --color-button-hover-no-drop: var(--color-fill-2);
 
   --color-surface-hover: var(--color-surface-hover);
   --color-surface-selected: var(--color-surface-selected);

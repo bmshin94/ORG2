@@ -176,7 +176,7 @@ const CheckRow: React.FC<CheckRowProps> = memo(({ item, onOpenDetails }) => {
         {item.detailsUrl && (
           <button
             type="button"
-            className="inline-flex h-6 w-6 items-center justify-center rounded text-text-3 transition-colors hover:bg-fill-2 hover:text-text-1"
+            className="inline-flex h-6 w-6 items-center justify-center rounded text-text-3 transition-colors hover:bg-button-hover-no-drop hover:text-text-1"
             title={t("workstation.ci.viewDetails")}
             aria-label={t("workstation.ci.viewDetails")}
             onClick={(event) => {

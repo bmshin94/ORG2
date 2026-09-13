@@ -17,6 +17,7 @@
  *                 "outline" = bordered, transparent fill
  *                 "dashed"  = dashed border (typically for add/upload)
  *                 "soft"    = neutral or semantic hover fill for compact actions
+ *                 "soft-no-drop" = neutral hover for a transparent button layer
  *                 "ghost"   = no border, no background — hover changes
  *                            only the text color
  *

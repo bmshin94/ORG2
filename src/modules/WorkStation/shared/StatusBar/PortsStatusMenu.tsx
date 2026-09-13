@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import type { WorkspacePort } from "@src/api/tauri/workspacePorts";
+import Button from "@src/components/Button";
 import DropdownCollapsibleSectionHeader from "@src/components/Dropdown/DropdownCollapsibleSectionHeader";
 import DropdownSearch from "@src/components/Dropdown/DropdownSearch";
 import {
@@ -129,41 +130,49 @@ const PortRow: React.FC<PortRowProps> = memo(
           jitter on hover in Chromium.
         */}
         <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            className="inline-flex h-6 w-6 items-center justify-center rounded text-text-3 transition-colors hover:bg-fill-2 hover:text-text-1"
+          <Button
+            variant="tertiary"
+            appearance="soft-no-drop"
+            size="mini"
+            iconOnly
             title={t("workstation.ports.openInBrowser")}
             aria-label={t("workstation.ports.openInBrowser")}
             onClick={(event) => {
               event.stopPropagation();
               onOpen(port);
             }}
-          >
-            <HugeiconsIcon
-              icon={InternetIcon}
-              data-icon="chrome"
-              size={MENU_ICON_SIZE}
-              aria-hidden
-            />
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-6 w-6 items-center justify-center rounded text-text-3 transition-colors hover:bg-fill-2 hover:text-text-1"
+            icon={
+              <HugeiconsIcon
+                icon={InternetIcon}
+                data-icon="chrome"
+                size={MENU_ICON_SIZE}
+                aria-hidden
+              />
+            }
+          />
+          <Button
+            variant="tertiary"
+            appearance="soft-no-drop"
+            size="mini"
+            iconOnly
             title={t("workstation.ports.copyAddress")}
             aria-label={t("workstation.ports.copyAddress")}
             onClick={(event) => {
               event.stopPropagation();
               onCopy(port);
             }}
-          >
-            <HugeiconsIcon
-              icon={Copy01Icon}
-              data-icon="copy"
-              size={MENU_ICON_SIZE}
-            />
-          </button>
+            icon={
+              <HugeiconsIcon
+                icon={Copy01Icon}
+                data-icon="copy"
+                size={MENU_ICON_SIZE}
+                aria-hidden
+              />
+            }
+          />
           {canStop && (
             <ProcessStopButton
+              className="focus-visible:bg-button-hover-no-drop! enabled:hover:bg-button-hover-no-drop!"
               label={t("workstation.ports.stopProcess")}
               loading={stopping}
               onClick={() => onStop(port)}
