@@ -66,10 +66,10 @@ const CONTROL_CARDS: &[ControlCard] = &[
         ],
     },
     ControlCard {
-        id: "workstation.openSourceControlTab",
-        kind: "action",
+        id: "ui.tab.open",
+        kind: "public-command",
         summary: "Open the Workstation Source Control / Git sidebar tab.",
-        call: r#"control_orgii({ "action": "workstation.openSourceControlTab", "params": {} })"#,
+        call: r#"Use the shared app rulebook and uiRequest with command=ui.tab.open, params={"kind":"source-control"}. Read control_orgii({"action":"ui.docs","params":{"topic":"native"}}) for target discovery and the request format."#,
         terms: &["source control", "scm", "git panel", "git sidebar", "changes", "staged", "unstaged"],
     },
     ControlCard {

@@ -59,6 +59,9 @@ pub(crate) fn handle_window_close_and_destroy(
     // refcounted correctly — neither leaked until process exit nor
     // still attributed to a dead window.
     if let tauri::WindowEvent::Destroyed = _event {
+        if _window.label() == "main" {
+            app_ui::broker().disconnect();
+        }
         system_services::power::release_sleep_inhibitor_for_window_label(_window.label());
         notify_main_of_station_window_closed(_window);
     }
@@ -124,6 +127,7 @@ pub(crate) fn handle_page_load(
         }
     }
     if webview.label() == "main" && matches!(payload.event(), PageLoadEvent::Started) {
+        app_ui::broker().disconnect();
         let app = webview.app_handle().clone();
         match browser::inline::close_all_inline_webviews(app) {
             Ok(closed) if !closed.is_empty() => {

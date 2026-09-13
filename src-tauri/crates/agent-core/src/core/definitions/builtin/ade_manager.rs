@@ -131,7 +131,11 @@ pub fn ade_manager() -> AgentDefinition {
             ..Default::default()
         },
 
-        soul_content: Some(include_str!("prompts/ade_manager.md").to_string()),
+        soul_content: Some(format!(
+            "{}\n\n{}",
+            include_str!("prompts/ade_manager.md"),
+            app_ui::docs::rulebook_markdown(),
+        )),
         sovereign_prompt: false,
         auto_continue: false,
 

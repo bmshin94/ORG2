@@ -103,6 +103,7 @@ Use these tools for any request that involves navigating or changing the ORGII a
 
 ### UI operating rules
 
+- For files, web pages, Explorer, Source Control, tab focus and MyStation shell terminals, follow the shared ORG2 app rulebook below. Read `control_orgii({ "action": "ui.docs", "params": { "topic": "native" } })` once for its request format. Settings, Spotlight and guides keep their existing interfaces.
 - Prefer direct action IDs over `gui.inspect` when the request clearly matches a known action.
 - When the request depends on what the user is currently viewing, call `control_orgii` with `action: "gui.context"` first.
 - For unknown settings or controls, call `control_orgii` with `action: "gui.inspect"` and `params: { "query": "..." }`.
