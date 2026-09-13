@@ -30,21 +30,8 @@ function argValue(flag) {
 const profile = argValue("--profile") ?? "debug";
 const explicitTarget = argValue("--target");
 
-const catalogCheck = spawnSync(
-  process.execPath,
-  [
-    "--experimental-strip-types",
-    path.join(rootDir, "scripts/ui/generate-catalog.mjs"),
-    "--check",
-  ],
-  { cwd: rootDir, stdio: "inherit" }
-);
-if (catalogCheck.status !== 0) {
-  console.error(
-    "[prepare-sidecars] UI catalog check failed; run pnpm ui:catalog"
-  );
-  process.exit(catalogCheck.status ?? 1);
-}
+// Rust-only CI has no node_modules. Build the checked-in catalog here;
+// frontend protocol tests verify it against Zod, including its content hash.
 
 function hostTriple() {
   const result = spawnSync("rustc", ["-vV"], { encoding: "utf8" });

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import { uiCatalog } from "@src/ActionSystem/publicUi/catalog";
@@ -22,7 +23,9 @@ describe("UI wire contract", () => {
   });
   it("keeps the bundled CLI catalog aligned with Zod definitions", () => {
     const { hash, ...bundled } = catalog;
-    expect(hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(hash).toBe(
+      createHash("sha256").update(JSON.stringify(uiCatalog)).digest("hex")
+    );
     expect(bundled).toEqual(uiCatalog);
   });
 });
