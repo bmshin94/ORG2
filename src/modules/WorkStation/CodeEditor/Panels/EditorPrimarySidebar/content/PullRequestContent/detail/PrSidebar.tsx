@@ -20,10 +20,7 @@ import type {
   PullRequestMergeMethod,
 } from "@src/api/tauri/github";
 import Dropdown from "@src/components/Dropdown";
-import {
-  DROPDOWN_CLASSES,
-  DROPDOWN_WIDTHS,
-} from "@src/components/Dropdown/tokens";
+import { DROPDOWN_CLASSES } from "@src/components/Dropdown/tokens";
 import PersonAvatar from "@src/components/PersonAvatar";
 import { WORKSTATION_TRAIL_CONTENT } from "@src/config/workstation/tokens";
 import {
@@ -387,7 +384,8 @@ export const PrSidebar: React.FC<PrSidebarProps> = ({
       // The trigger sits at the section's right edge, so the panel hangs from
       // that edge rather than running off the rail.
       position="bottom-end"
-      className={`${DROPDOWN_CLASSES.panelAnimated} ${DROPDOWN_WIDTHS.fileTreeClass}`}
+      className={DROPDOWN_CLASSES.panelAnimated}
+      style={{ width: 230, minWidth: 230 }}
       onSelect={(value) => {
         const next = Array.isArray(value) ? value.map(String) : [String(value)];
         setOpenPicker(null);
