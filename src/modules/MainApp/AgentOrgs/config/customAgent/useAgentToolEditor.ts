@@ -124,8 +124,11 @@ export function useAgentToolEditor(agentId: string): AgentToolEditorState {
           }
         }
       }
-      writing.current = false;
-    })();
+    })()
+      .finally(() => {
+        writing.current = false;
+      })
+      .catch((error) => log.error("Tool write queue failed", error));
   }, [apply]);
 
   useEffect(() => {
