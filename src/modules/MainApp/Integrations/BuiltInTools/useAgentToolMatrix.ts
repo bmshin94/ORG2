@@ -143,7 +143,9 @@ export function useAgentToolMatrix() {
         setResolved(new Map(cache.current));
       }
     };
-    void Promise.all(Array.from({ length: Math.min(4, queue.length) }, worker));
+    void Promise.all(
+      Array.from({ length: Math.min(4, queue.length) }, worker)
+    ).catch(() => undefined);
     return () => {
       cancelled = true;
     };
