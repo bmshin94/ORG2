@@ -519,16 +519,49 @@ pub(crate) mod tests {
         let mut old = fixture();
         old.state = state.clone();
         assert_eq!(
-            enrollment.store_authorized(old, "test"),
+            enrollment.store_authorized(old, "test", || panic!("retired attempt must not write index")),
             Err("connection_attempt_retired")
         );
         enrollment.begin(fixture().selection()).unwrap();
         let mut old = fixture();
         old.state = state;
         assert_eq!(
-            enrollment.store_authorized(old, "test"),
+            enrollment.store_authorized(old, "test", || panic!("retired attempt must not write index")),
             Err("connection_attempt_retired")
         );
+    }
+    #[test]
+    fn authorization_commit_never_persists_an_undiscoverable_grant() {
+        use std::cell::Cell;
+        for failed_stage in 0..2 {
+            for after_write in [false, true] {
+                let indexed = Cell::new(false);
+                let stored = Cell::new(false);
+                let grant = fixture();
+                let mut enrollment = crate::Enrollment::default();
+                enrollment.exchanging = Some(grant.state.clone());
+                let result = enrollment.commit_authorized(grant, || {
+                    if failed_stage == 0 && !after_write { return Err("index failed"); }
+                    indexed.set(true);
+                    if failed_stage == 0 { return Err("index failed"); }
+                    Ok(())
+                }, |_| {
+                    assert!(indexed.get(), "credential write requires durable index first");
+                    if failed_stage == 1 && !after_write { return Err("store failed"); }
+                    stored.set(true);
+                    Err("store failed")
+                });
+                assert!(result.is_err());
+                assert!(enrollment.exchanging.is_none());
+                assert!(!stored.get() || indexed.get());
+                assert_eq!(indexed.get(), failed_stage == 1 || after_write);
+            }
+        }
+        let mut enrollment = crate::Enrollment::default();
+        let grant = fixture();
+        enrollment.exchanging = Some(grant.state.clone());
+        let expected = grant.metadata();
+        assert_eq!(enrollment.commit_authorized(grant, || Ok(()), |_| Ok(())), Ok(expected));
     }
     fn current_fixture() -> Grant {
         let now = chrono::Utc::now();

@@ -189,12 +189,25 @@ impl Enrollment {
         &mut self,
         grant: Grant,
         instance_scope: &str,
+        persist_index: impl FnOnce() -> Result<(), &'static str>,
+    ) -> Result<ConnectionMetadata, &'static str> {
+        self.commit_authorized(grant, persist_index, |grant| grant.store(instance_scope).map(|_| ()))
+    }
+    fn commit_authorized(
+        &mut self,
+        grant: Grant,
+        persist_index: impl FnOnce() -> Result<(), &'static str>,
+        persist_grant: impl FnOnce(&Grant) -> Result<(), &'static str>,
     ) -> Result<ConnectionMetadata, &'static str> {
         if self.exchanging.as_deref() != Some(grant.enrollment_state()) {
             return Err("connection_attempt_retired");
         }
         self.exchanging = None;
-        grant.store(instance_scope)?;
+        // Publish discoverable, non-secret metadata before the OS-store write.
+        // A failed/interrupted grant write leaves an entry that status can show
+        // as requiring authorization and disconnect can safely remove.
+        persist_index()?;
+        persist_grant(&grant)?;
         Ok(grant.metadata())
     }
     /// The host serializes access. Take before HTTP so duplicate callbacks cannot

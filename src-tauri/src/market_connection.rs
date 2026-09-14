@@ -259,14 +259,15 @@ mod enabled {
                 return Err("market_connection_limit".into());
             }
             let scope = app_paths::orgii_root().to_string_lossy().into_owned();
-            let metadata = enrollment.store_authorized(grant, &scope)?;
             if existing.is_none() {
                 records.push(metadata.clone());
             }
             let bytes =
                 serde_json::to_vec(&records).map_err(|_| "market_connection_index_invalid")?;
-            agent_cli::managed_config::write_cli_profile_file_atomic(&index_path(), &bytes)
-                .map_err(|_| "market_connection_index_unavailable")?;
+            let metadata = enrollment.store_authorized(grant, &scope, || {
+                agent_cli::managed_config::write_cli_profile_file_atomic(&index_path(), &bytes)
+                    .map_err(|_| "market_connection_index_unavailable")
+            })?;
             Ok(view(metadata, "authorization_saved"))
         })
         .await
