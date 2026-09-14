@@ -89,7 +89,11 @@ function enqueueImportedTurnLoad(
     };
     pendingBatches.set(sessionId, batch);
     queueMicrotask(() => {
-      void flushPendingBatch(sessionId, batch);
+      void flushPendingBatch(sessionId, batch).catch((error: unknown) => {
+        for (const waiter of batch.waiters.splice(0)) waiter.reject(error);
+        if (pendingBatches.get(sessionId) === batch)
+          pendingBatches.delete(sessionId);
+      });
     });
   });
 }

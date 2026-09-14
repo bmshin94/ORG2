@@ -23,7 +23,7 @@ function deferred() {
   return { promise, resolve };
 }
 let root: ReturnType<typeof createSmokeRoot>;
-let onLoaded: ReturnType<typeof vi.fn>;
+let onLoaded = vi.fn<(body: string) => void>();
 function output(id: string) {
   return createElement(BlockOutput, {
     output: `preview-${id}`,
@@ -56,7 +56,7 @@ beforeEach(() => {
   );
   clearLoadedPayloads();
   vi.resetAllMocks();
-  onLoaded = vi.fn();
+  onLoaded = vi.fn<(body: string) => void>();
   root = createSmokeRoot();
 });
 afterEach(async () => {
