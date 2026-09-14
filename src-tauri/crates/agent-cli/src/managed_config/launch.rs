@@ -6,7 +6,10 @@ use super::{
     recover_pending_transaction_unlocked, target_lock, CliConfigMode,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -98,6 +101,42 @@ fn owned_hash_matches(owned: &OwnedConfig, hash: &str) -> bool {
     owned.hash == hash || owned.pending_hash.as_deref() == Some(hash)
 }
 
+// Codex records project trust in its own config during normal startup. Only
+// that narrow runtime-owned table is excluded from the connection fingerprint.
+fn connection_hash(filename: &str, content: &[u8]) -> Result<String, String> {
+    if filename != "config.toml" {
+        return Ok(file_io::sha256_bytes(content));
+    }
+    let text = std::str::from_utf8(content).map_err(|e| e.to_string())?;
+    let mut value: toml::Value = toml::from_str(text).map_err(|e| e.to_string())?;
+    let root = value.as_table_mut().ok_or("Invalid launch config")?;
+    if let Some(projects) = root.get("projects") {
+        let projects = projects.as_table().ok_or("Invalid project trust records")?;
+        for project in projects.values() {
+            let table = project.as_table().ok_or("Invalid project trust record")?;
+            if table.len() != 1
+                || !matches!(
+                    table.get("trust_level").and_then(toml::Value::as_str),
+                    Some("trusted" | "untrusted")
+                )
+            {
+                return Err("Unexpected project configuration changes".into());
+            }
+        }
+    }
+    root.remove("projects");
+    let canonical = toml::to_string_pretty(&value).map_err(|e| e.to_string())?;
+    Ok(file_io::sha256_bytes(canonical.as_bytes()))
+}
+
+fn current_connection_hash(path: &Path, filename: &str) -> Result<Option<String>, String> {
+    match std::fs::read(path) {
+        Ok(content) => connection_hash(filename, &content).map(Some),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 fn write_profile(
     agent: &str,
     model: &str,
@@ -106,7 +145,7 @@ fn write_profile(
     token: &str,
     restore: bool,
 ) -> Result<ManagedLaunchProfile, String> {
-    let (filename, content, env_name) = match agent {
+    let (filename, mut content, env_name) = match agent {
         "codex" => (
             "config.toml",
             generators::generate_codex_managed_config("", Some(model), url, token)?,
@@ -163,7 +202,7 @@ fn write_profile(
         {
             return Err("Launch configuration belongs to another client".into());
         }
-        let hash = file_io::file_hash(&config)?;
+        let hash = current_connection_hash(&config, filename)?;
         if let Some(hash) = &hash {
             if !marker
                 .as_ref()
@@ -176,6 +215,19 @@ fn write_profile(
     } else {
         None
     };
+    if restore && filename == "config.toml" && config.is_file() {
+        let existing: toml::Value =
+            toml::from_str(&std::fs::read_to_string(&config).map_err(|e| e.to_string())?)
+                .map_err(|e| e.to_string())?;
+        if let Some(projects) = existing.get("projects") {
+            let mut generated: toml::Value = toml::from_str(&content).map_err(|e| e.to_string())?;
+            generated
+                .as_table_mut()
+                .ok_or("Invalid generated config")?
+                .insert("projects".into(), projects.clone());
+            content = toml::to_string_pretty(&generated).map_err(|e| e.to_string())?;
+        }
+    }
     let result = (|| {
         #[cfg(unix)]
         {
@@ -183,7 +235,7 @@ fn write_profile(
             std::fs::set_permissions(&directory, std::fs::Permissions::from_mode(0o700))
                 .map_err(|e| e.to_string())?;
         }
-        let hash = file_io::sha256_bytes(content.as_bytes());
+        let hash = connection_hash(filename, content.as_bytes())?;
         // Publish both allowed hashes before replacing the config. A crash on
         // either side of the write is retryable without accepting external edits.
         {
@@ -241,7 +293,7 @@ pub fn release(session_id: &str) -> Result<(), String> {
         return Err("Invalid owned launch configuration".into());
     }
     let config = directory.join(&owned.filename);
-    if let Some(hash) = file_io::file_hash(&config)? {
+    if let Some(hash) = current_connection_hash(&config, &owned.filename)? {
         if !owned_hash_matches(&owned, &hash) {
             return Err("Launch configuration was externally modified".into());
         }
@@ -261,5 +313,38 @@ pub fn release(session_id: &str) -> Result<(), String> {
             Ok(())
         }
         Err(e) => Err(e.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod ownership_tests {
+    use super::*;
+    #[test]
+    fn codex_trust_records_do_not_change_connection_ownership() {
+        let original = generators::generate_codex_managed_config(
+            "",
+            Some("test"),
+            "http://127.0.0.1:9",
+            "test",
+        )
+        .unwrap();
+        let expected = connection_hash("config.toml", original.as_bytes()).unwrap();
+        assert_eq!(expected, file_io::sha256_bytes(original.as_bytes()));
+        let updated =
+            format!("{original}\n[projects.\"/tmp/project\"]\ntrust_level = \"trusted\"\n");
+        assert_eq!(
+            connection_hash("config.toml", updated.as_bytes()).unwrap(),
+            expected
+        );
+        let changed = updated.replace("127.0.0.1:9", "127.0.0.1:10");
+        assert_ne!(
+            connection_hash("config.toml", changed.as_bytes()).unwrap(),
+            expected
+        );
+        assert!(connection_hash(
+            "config.toml",
+            format!("{updated}command = \"unexpected\"\n").as_bytes()
+        )
+        .is_err());
     }
 }

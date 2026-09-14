@@ -1173,3 +1173,31 @@ fn startup_recovery_preserves_unmatched_history_and_retries_conflicts() {
     assert_eq!(std::fs::read(&history).unwrap(), b"user-session-history");
     assert!(restore_managed_configs_matching(|_| Ok(true)).unwrap().restored_agents.is_empty());
 }
+
+#[test]
+fn managed_launch_preserves_codex_trust_across_token_rotation() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    let profile = launch::restore_with_proxy_token(CODEX_AGENT, "gpt-test", "cli_trust",
+        "http://127.0.0.1:43123", "session_first-token").unwrap();
+    let directory = PathBuf::from(profile.env.values().next().unwrap());
+    let config = directory.join("config.toml");
+    let original = std::fs::read_to_string(&config).unwrap();
+    std::fs::write(&config, format!("{original}\n[projects.\"/tmp/project\"]\ntrust_level = \"trusted\"\n")).unwrap();
+    std::fs::write(directory.join("history.jsonl"), b"retained").unwrap();
+    for token in ["session_second-token", "session_third-token"] {
+        launch::restore_with_proxy_token(CODEX_AGENT, "gpt-test", "cli_trust",
+            "http://127.0.0.1:43123", token).unwrap();
+        let content = std::fs::read_to_string(&config).unwrap();
+        assert!(content.contains(token));
+        let parsed: toml::Value = toml::from_str(&content).unwrap();
+        assert_eq!(parsed["projects"]["/tmp/project"]["trust_level"].as_str(), Some("trusted"));
+    }
+    let changed = std::fs::read_to_string(&config).unwrap().replace("43123", "43124");
+    std::fs::write(&config, &changed).unwrap();
+    assert!(launch::restore_with_proxy_token(CODEX_AGENT, "gpt-test", "cli_trust",
+        "http://127.0.0.1:43123", "session_fourth-token").is_err());
+    assert_eq!(std::fs::read_to_string(config).unwrap(), changed);
+    assert_eq!(std::fs::read(directory.join("history.jsonl")).unwrap(), b"retained");
+}
