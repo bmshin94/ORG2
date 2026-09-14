@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "noSavedWorkspaces": "Connectez un espace de travail depuis Market pour gérer son autorisation ici",
+    "moduleUnavailable": "Le module de connexion Market est indisponible dans cette version",
     "loadingPurchases": "Chargement des achats…",
     "purchasesFailed": "Impossible de charger les achats. Vous pouvez toujours déconnecter la connexion locale.",
     "retryPurchases": "Recharger les achats",

@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "noSavedWorkspaces": "Conecta un espacio de trabajo desde Market para gestionar su autorización aquí",
+    "moduleUnavailable": "El módulo de conexión de Market no está disponible en esta versión",
     "loadingPurchases": "Cargando compras…",
     "purchasesFailed": "No se pudieron cargar las compras. Aún puedes desconectar la conexión local.",
     "retryPurchases": "Volver a cargar compras",

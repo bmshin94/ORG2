@@ -25,7 +25,7 @@ export default function ConnectionSettings({
   const { t } = useTranslation("integrations");
   const [connections, setConnections] = useState<Saved[]>([]),
     [selectedId, setSelectedId] = useState(""),
-    [enabled, setEnabled] = useState(false),
+    [enabled, setEnabled] = useState<boolean | null>(null),
     [error, setError] = useState(false);
   useEffect(() => {
     let active = true;
@@ -36,8 +36,10 @@ export default function ConnectionSettings({
         .then((status) => {
           if (active && attempt === generation) {
             setEnabled(status.enabled);
-            const next = status.connections.filter(
-              (c) => agentFor(c) === agentName
+            const next = status.connections.filter((c) =>
+              agentName === "org2"
+                ? c.target === "org2"
+                : agentFor(c) === agentName
             );
             setConnections(next);
             setSelectedId((previous) =>
@@ -63,6 +65,26 @@ export default function ConnectionSettings({
       window.removeEventListener("market-connections-changed", reload);
     };
   }, [agentName]);
+  if (
+    agentName === "org2" &&
+    enabled !== null &&
+    !connections.length &&
+    !error
+  ) {
+    return (
+      <SectionContainer title="Market">
+        <SectionRow label={t("marketConnection.title")} layout="vertical">
+          <p className="text-text-2">
+            {t(
+              enabled
+                ? "marketConnection.noSavedWorkspaces"
+                : "marketConnection.moduleUnavailable"
+            )}
+          </p>
+        </SectionRow>
+      </SectionContainer>
+    );
+  }
   if ((!enabled || !connections.length) && !error) return null;
   const selected = connections.find((c) => connectionId(c) === selectedId);
   return (

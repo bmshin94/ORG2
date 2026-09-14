@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "noSavedWorkspaces": "Connect a workspace from Market to manage its authorization here",
+    "moduleUnavailable": "The Market connection module is not available in this build",
     "loadingPurchases": "Loading purchases…",
     "purchasesFailed": "Could not load purchases. Your local connection can still be disconnected.",
     "retryPurchases": "Retry loading purchases",

@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "noSavedWorkspaces": "Kết nối không gian làm việc từ Market để quản lý quyền truy cập tại đây",
+    "moduleUnavailable": "Mô-đun kết nối Market không khả dụng trong bản dựng này",
     "loadingPurchases": "Đang tải giao dịch mua…",
     "purchasesFailed": "Không thể tải giao dịch mua. Bạn vẫn có thể ngắt kết nối cục bộ.",
     "retryPurchases": "Tải lại giao dịch mua",

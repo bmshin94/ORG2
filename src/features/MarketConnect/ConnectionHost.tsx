@@ -4,6 +4,7 @@ import { type Connection, connectionSchema } from "./rpc";
 
 const SellerDialog = lazy(() => import("./SellerDialog"));
 const ConnectionDialog = lazy(() => import("./ConnectionDialog"));
+const Org2SessionDialog = lazy(() => import("./Org2SessionDialog"));
 export default function ConnectionHost() {
   const [connection, setConnection] = useState<Connection | null>(null);
   useEffect(() => {
@@ -18,6 +19,8 @@ export default function ConnectionHost() {
       window.removeEventListener("market-connection-open", open);
     };
   }, []);
+  const Dialog =
+    connection?.target === "org2" ? Org2SessionDialog : ConnectionDialog;
   return (
     <>
       {" "}
@@ -26,7 +29,7 @@ export default function ConnectionHost() {
       </Suspense>
       {connection ? (
         <Suspense fallback={null}>
-          <ConnectionDialog
+          <Dialog
             key={`${connection.identity_user_id}:${connection.workspace_id}:${connection.target}`}
             connection={connection}
             onClose={() => setConnection(null)}

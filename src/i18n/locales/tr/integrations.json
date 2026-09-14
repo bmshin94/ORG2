@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "noSavedWorkspaces": "Yetkilendirmesini buradan yönetmek için Market üzerinden bir çalışma alanı bağlayın",
+    "moduleUnavailable": "Market bağlantı modülü bu derlemede kullanılamıyor",
     "loadingPurchases": "Satın alımlar yükleniyor…",
     "purchasesFailed": "Satın alımlar yüklenemedi. Yerel bağlantıyı yine de kesebilirsiniz.",
     "retryPurchases": "Satın alımları yeniden yükle",

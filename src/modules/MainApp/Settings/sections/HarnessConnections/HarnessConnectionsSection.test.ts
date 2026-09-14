@@ -117,3 +117,65 @@ it("exposes separate Desktop and CLI selectors and mounts only the selected edit
     ).toBe(target);
   }
 });
+
+it("reopens ORG2 workspace authorization without displaying global client profile controls", async () => {
+  api.load.mockResolvedValue({
+    enabled: true,
+    connections: [
+      {
+        identity_user_id: "11111111-1111-4111-8111-111111111111",
+        workspace_id: "ws_org2",
+        target: "org2",
+        phase: "authorization_saved",
+      },
+    ],
+  });
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () => root!.render(createElement(HarnessConnectionsSection)));
+  const button = (label: string) =>
+    [...container!.querySelectorAll("button")].find(
+      (node) => node.textContent === label
+    )!;
+  await act(async () => button("ORG2").click());
+  expect(
+    container.querySelector('[data-testid="credential-import"]')
+  ).toBeNull();
+  expect(container.querySelector("[data-target]")).toBeNull();
+  const opened = vi.fn();
+  window.addEventListener("market-connection-open", opened);
+  try {
+    await act(async () => button("marketConnection.manage").click());
+    expect(opened).toHaveBeenCalledOnce();
+    expect((opened.mock.calls[0][0] as CustomEvent).detail).toMatchObject({
+      workspace_id: "ws_org2",
+      target: "org2",
+    });
+  } finally {
+    window.removeEventListener("market-connection-open", opened);
+  }
+});
+
+it.each([true, false])(
+  "shows an honest ORG2 empty state when module enabled=%s",
+  async (enabled) => {
+    api.load.mockResolvedValue({ enabled, connections: [] });
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () =>
+      root!.render(createElement(HarnessConnectionsSection))
+    );
+    const org2 = [...container.querySelectorAll("button")].find(
+      (node) => node.textContent === "ORG2"
+    )!;
+    await act(async () => org2.click());
+    expect(container.textContent).toContain(
+      enabled
+        ? "marketConnection.noSavedWorkspaces"
+        : "marketConnection.moduleUnavailable"
+    );
+    expect(container.textContent).not.toContain("marketConnection.manage");
+  }
+);

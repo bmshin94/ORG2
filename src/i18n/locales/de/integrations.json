@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "noSavedWorkspaces": "Verbinde einen Arbeitsbereich über Market, um seine Autorisierung hier zu verwalten",
+    "moduleUnavailable": "Das Market-Verbindungsmodul ist in diesem Build nicht verfügbar",
     "loadingPurchases": "Käufe werden geladen…",
     "purchasesFailed": "Käufe konnten nicht geladen werden. Die lokale Verbindung kann weiterhin getrennt werden.",
     "retryPurchases": "Käufe erneut laden",

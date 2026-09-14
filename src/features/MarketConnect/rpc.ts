@@ -90,3 +90,20 @@ export const applyConfig = (
 ) => typedInvoke(apply, { ...args(c), entitlementId, model, expectedHashes });
 export const disconnectConfig = (c: Connection) =>
   typedInvoke(disconnect, args(c));
+
+const prepareSession = defineProcedure("market_connection_prepare_session")
+  .input(
+    input.extend({
+      entitlementId: z.string(),
+      agent: z.enum(["claude_code", "codex"]),
+      model: z.string().min(1).max(256),
+    })
+  )
+  .output(z.string().startsWith("market:"))
+  .build();
+export const prepareSessionSource = (
+  c: Connection,
+  entitlementId: string,
+  agent: "claude_code" | "codex",
+  model: string
+) => typedInvoke(prepareSession, { ...args(c), entitlementId, agent, model });

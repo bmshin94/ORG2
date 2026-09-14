@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "noSavedWorkspaces": "Połącz obszar roboczy przez Market, aby zarządzać tutaj jego autoryzacją",
+    "moduleUnavailable": "Moduł połączenia Market jest niedostępny w tej wersji",
     "loadingPurchases": "Wczytywanie zakupów…",
     "purchasesFailed": "Nie udało się wczytać zakupów. Nadal możesz rozłączyć połączenie lokalne.",
     "retryPurchases": "Wczytaj zakupy ponownie",

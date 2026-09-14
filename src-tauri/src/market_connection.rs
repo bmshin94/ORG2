@@ -141,6 +141,46 @@ pub async fn market_connection_options(
     }
 }
 
+#[tauri::command(rename_all = "camelCase")]
+pub async fn market_connection_prepare_session(
+    identity_user_id: String,
+    workspace_id: String,
+    target: String,
+    entitlement_id: String,
+    agent: String,
+    model: String,
+) -> Result<String, String> {
+    #[cfg(feature = "market-connect")]
+    {
+        let target: market_connect::Target =
+            serde_json::from_value(serde_json::Value::String(target))
+                .map_err(|_| "Invalid Market target")?;
+        source::prepare_session(
+            market_connect::ConnectionMetadata {
+                identity_user_id,
+                workspace_id,
+                target,
+            },
+            entitlement_id,
+            agent,
+            model,
+        )
+        .await
+    }
+    #[cfg(not(feature = "market-connect"))]
+    {
+        let _ = (
+            identity_user_id,
+            workspace_id,
+            target,
+            entitlement_id,
+            agent,
+            model,
+        );
+        Err("market_module_disabled".into())
+    }
+}
+
 #[tauri::command]
 pub async fn market_connection_status() -> Result<ModuleStatus, String> {
     enabled::status().await

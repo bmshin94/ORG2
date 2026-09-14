@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "noSavedWorkspaces": "從 Market 連接工作區後，可在這裡管理授權",
+    "moduleUnavailable": "此版本未啟用 Market 連接模組",
     "loadingPurchases": "正在讀取購買記錄…",
     "purchasesFailed": "購買記錄讀取失敗，仍可中斷本機連線。",
     "retryPurchases": "重新讀取購買記錄",

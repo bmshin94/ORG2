@@ -1183,6 +1183,7 @@ crate::market_connection::market_connection_status,
 crate::market_connection::market_connection_apply,
 crate::market_connection::market_connection_disconnect,
 crate::market_connection::market_connection_options,
+crate::market_connection::market_connection_prepare_session,
 
 crate::market_connection::seller::market_seller_begin,
 crate::market_connection::seller::market_seller_complete,
