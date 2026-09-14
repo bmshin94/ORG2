@@ -76,7 +76,7 @@ mod catalog;
 mod slash;
 pub(crate) use catalog::{
     archive_thread, ensure_project, native_codex_app_server_command, register_thread,
-    synchronize_thread,
+    synchronize_thread, CatalogProfile,
 };
 
 /// How long to keep draining after `turn/interrupt` before giving up on a

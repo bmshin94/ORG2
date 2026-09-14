@@ -2125,6 +2125,7 @@ fn discard_cli_materialization(session_id: &str, native_id: &str) -> Result<bool
         "codex" => {
             if paths.native_path.is_file() {
                 codex_native_catalog::archive_thread(
+                    owner.catalog_profile(),
                     &owner.codex_home()?,
                     &paths.native_path,
                     native_id,
@@ -2211,6 +2212,7 @@ fn materialize_cli(
             };
             let codex_home = owner.codex_home()?;
             let registered = codex_native_catalog::register_thread(
+                owner.catalog_profile(),
                 &codex_home,
                 &cwd,
                 &title,
@@ -2230,6 +2232,7 @@ fn materialize_cli(
             .map_err(|err| format!("record pending Codex materialization: {err}"))?;
             if !staged {
                 let _ = codex_native_catalog::archive_thread(
+                    owner.catalog_profile(),
                     &codex_home,
                     &registered.path,
                     &registered.id,
@@ -2244,6 +2247,7 @@ fn materialize_cli(
                 Ok(paths) => paths,
                 Err(error) => {
                     let _ = codex_native_catalog::archive_thread(
+                        owner.catalog_profile(),
                         &codex_home,
                         &registered.path,
                         &registered.id,
@@ -2261,6 +2265,7 @@ fn materialize_cli(
             owner.cache_codex(&registered.id, &paths);
             if let Err(error) = replace_runner_link(&paths.native_path, &paths.runner_path) {
                 let _ = codex_native_catalog::archive_thread(
+                    owner.catalog_profile(),
                     &codex_home,
                     &paths.native_path,
                     &registered.id,
@@ -2439,6 +2444,7 @@ fn synchronize_cli(
             };
             if promoted_to_native_app || !append_items.is_empty() {
                 codex_native_catalog::synchronize_thread(
+                    owner.catalog_profile(),
                     &owner.codex_home()?,
                     &paths.native_path,
                     &native_id,
@@ -2476,6 +2482,7 @@ enum BoundNativeCatalogRefresh {
         branch: Option<String>,
     },
     Codex {
+        profile: codex_native_catalog::CatalogProfile,
         codex_home: PathBuf,
         receipt: persistence::NativeCatalogRefreshReceipt,
         cwd: PathBuf,
@@ -2594,6 +2601,7 @@ fn converge_bound_native_transcript(
             branch: session.branch,
         },
         "codex" => BoundNativeCatalogRefresh::Codex {
+            profile: owner.catalog_profile(),
             codex_home: owner.codex_home()?,
             receipt,
             cwd,
@@ -2678,6 +2686,7 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
             receipt
         }
         BoundNativeCatalogRefresh::Codex {
+            profile,
             codex_home,
             receipt,
             cwd,
@@ -2686,6 +2695,7 @@ fn refresh_bound_native_catalog(refresh: BoundNativeCatalogRefresh) -> Result<()
             title,
         } => {
             codex_native_catalog::synchronize_thread(
+                profile,
                 &codex_home,
                 &native_path,
                 &native_id,
@@ -2740,6 +2750,7 @@ fn prepare_pending_native_catalog_refresh(
             })?;
             ensure_durable_runner_alias(&paths, &native_id)?;
             Ok(BoundNativeCatalogRefresh::Codex {
+                profile: owner.catalog_profile(),
                 codex_home: owner.codex_home()?,
                 receipt: pending.receipt,
                 cwd,
@@ -3287,6 +3298,7 @@ mod tests {
             .find(|p| p.receipt.session_id == id)
             .unwrap();
         let BoundNativeCatalogRefresh::Codex {
+            profile,
             codex_home,
             native_path,
             ..
@@ -3295,6 +3307,7 @@ mod tests {
             panic!("Codex receipt required")
         };
         assert_eq!(codex_home, home);
+        assert_eq!(profile, codex_native_catalog::CatalogProfile::ManagedSession);
         assert_eq!(native_path, path);
         let mut mixed = session;
         mixed.account_id = Some("other-owner".into());

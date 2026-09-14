@@ -91,6 +91,14 @@ impl NativeStorageOwner {
         Ok((paths.native_path.is_file() || paths.runner_path.is_file()).then_some(paths))
     }
 
+    pub(super) fn catalog_profile(&self) -> codex_native_catalog::CatalogProfile {
+        if self.home.is_some() {
+            codex_native_catalog::CatalogProfile::ManagedSession
+        } else {
+            codex_native_catalog::CatalogProfile::NativeApp
+        }
+    }
+
     pub(super) fn codex_home(&self) -> Result<PathBuf, String> {
         if self.home.is_some() {
             self.managed_path(Path::new(""))
