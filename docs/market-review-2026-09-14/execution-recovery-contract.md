@@ -69,3 +69,7 @@ The normal CLI runner now consumes a durable source binding through an applicati
 ## Canonical episode identity progress
 
 Canonical targets and candidate matching now preserve the dynamic source separately from KeyVault identity. SessionService passes both source and selected CLI model into the launch bridge, which validates the source before creating the episode. Creation and source binding share a transaction, so a rejected binding cannot leave an unbound episode. Message dispatch continues using the immutable source on that episode's Session; it does not rebind the source per turn. Rendered picker behavior and native materialization into the managed home remain to be verified/integrated before real restart acceptance.
+
+## ChatPanel source projection progress
+
+The aggregate/list DTO, frontend Session and ChatPanel default/runtime target projection now carry the dynamic source, and override reconciliation includes it in identity. Ordinary explicit account picks remain available. The remaining native-storage work spans materialize/read/synchronize/discard and Claude/Codex catalog/index updates in native_materializer.rs; all must agree with the runner's managed home. Converter tests do not prove actual installed-app picker or recovery behavior.
