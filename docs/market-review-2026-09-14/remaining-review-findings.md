@@ -4,6 +4,8 @@
 
 **结论：原审计指出的问题成立。当前已有针对性修复，但不能将这些修复或局部测试等同于可发布的一键接入。保持不合并、不宣称全流程已验收。**
 
+本轮新增闭环（代码 `80d710936`）：Market 失败卡提供中文恢复入口；原生错误解析及历史导入会脱敏本地代理令牌；最终未签名桌面包重启后，旧 assistant 错误中的令牌已显示为占位符，重新授权按钮仍可见。91 项前端测试、42 项原生测试通过，另有 3 项 opt-in 客户端测试跳过；提交检查中的 TypeScript 与 Clippy（org2、terminal）通过。**真实重新授权后的续跑、独立失败重试及完整发布验收仍未完成。**
+
 ## 七项发现的当前状态
 
 | 发现                              | 当前实现及已有证据                                                                                                                                           | 仍需验证的边界                                                                                   |
@@ -355,3 +357,5 @@ Final frontend regression after malformed-source hardening: 91 passed. An invali
 Native computer use on the rebuilt bundle confirmed the Chinese Market recovery message and Reauthorize button on the existing failed session. A subsequent missing-grant request exposed a second path: provider-owned history replayed an older proxy failure as ordinary assistant content, bypassing the error-card presentation. The old capability was in the Codex-owned rollout; original native files are not rewritten by this work. The shared CLI history normalization boundary now redacts proxy-bearing string payloads before producing canonical events for paged reads/full exports. This preserves source history while preventing that capability from being re-exposed by ORG2 history projection. A producing-boundary regression covers replayed assistant error text. No history deletion or retrospective claim about provider-owned files is made.
 
 History verification: the new replayed-assistant-error projection regression passed (1 test), and the existing 128-turn managed native preview/older-body retrieval regression passed (1 test), both with zero ignored. The latter covers both native providers and verifies retained history/window behavior after the redaction pass. The new history boundary has not yet been rechecked in the rebuilt desktop app at this point in the record.
+
+Final native history acceptance: the final unsigned bundle rebuilt and restarted against the same disposable profile. Computer use reopened the existing session; the formerly raw assistant-message proxy URL now showed the shared redaction placeholder, and the Market failure card retained its Chinese guidance and Reauthorize action. The previous screenshot/UI state revealed the gap; this final state verifies the corrected native history path. No live authorization button was submitted for the synthetic workspace, and no real model/payment success is claimed. Repository commit checks passed TypeScript and scoped Clippy for org2 and terminal.
