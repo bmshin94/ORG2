@@ -20,7 +20,7 @@
 
 ## 仍然开放的问题
 
-1. **恢复执行链路**：已持久化并返回动态来源，普通启动器已接入会话配置重建及代理生命周期；原生配置和启动器回归见下文。桌面 canonical continuation 的来源选择、执行 episode 创建和消息传递尚未接通；imported-history materialization 仍需匹配原生目录。必须完成主应用关闭、重启、继续原会话和真实计量验收。
+1. **恢复执行链路**：已持久化并返回动态来源，普通启动器已接入会话配置重建及代理生命周期；原生配置和启动器回归见下文。canonical target 已保留来源并参与匹配，新执行 episode 原子绑定来源；尚需核对实际账户选择器和消息 UI，native history materialization 仍需匹配原生目录。必须完成主应用关闭、重启、继续原会话和真实计量验收。
 2. **跨工作区阻塞**：凭据请求与购买列表现已按身份/workspace/target 使用独立锁，索引表锁不跨 I/O；断开和重新授权仍独占授权变更屏障。锁边界、同授权串行、清空旧缓存和上限回收测试已通过；真实多工作区网络与桌面 CPU/RSS 尚未测量。
 3. **断开与撤销**：当前桌面断开只恢复配置、清理本地凭据和索引，不包含服务端撤销。不能把本地断开描述为服务端授权已撤销。
 4. **模块移除与残留目录**：module-off 编译和目录数量限制不能证明运行时配置恢复或崩溃残留处理。不得为清理目录再次删除原生会话数据。
@@ -202,3 +202,15 @@ Architecture covers Session authority, application-owned source resolution, prov
 The ordinary runner suite (`cargo test --lib agent_sessions::cli::session_runner::session::tests:: -- --nocapture`) passed 56 tests, zero ignored. The added process-command regression verifies inherited provider values are explicitly removed, runtime controls remain, and owned CODEX_HOME is applied afterward. It inspects the production Command environment; it does not launch a real provider binary.
 
 Strict `cargo clippy --lib -- -D warnings` passed for this runner integration. Real native execution, canonical materialization and rendered recovery remain unverified.
+
+## Canonical source identity and atomic episode creation
+
+Canonical CLI targets now carry a bounded `credentialSource` exclusively from `accountId`. Hydration reads the persisted source and rejects corrupt/mixed source ownership instead of turning it into ambient Claude. Candidate matching includes source identity, so another workspace or KeyVault account cannot reuse the same execution episode. New episode creation carries the source through SessionService, launch RPC and the application CLI bridge. The CLI branch also now preserves the selected model, which previously disappeared in SessionService's launch projection.
+
+The application validates the registered source/client/model before creation. Session creation and source binding now commit in a single SQLite transaction under the existing writer/retry owner. Binding failure rolls back the Session insert as well; no intermediate unbound Session is returned. This reuses the existing source table and adds only optional RPC fields. Old requests continue to create ordinary Sessions.
+
+Verification: the conversation type/continuation suites passed 71 tests. Added cases cover durable source roundtrip, bounds/mixed-owner rejection, source-aware candidate selection, malformed-source refusal and propagation into episode creation before a controlled timeline failure. `pnpm typecheck:fast` and strict `cargo clippy --lib -- -D warnings` passed. Initial failures included a mock status using workspaceRepoPath instead of repoPath, a rollback return-type mismatch in an abandoned two-step implementation, and persistence fixtures using the wrong creation wire name or assuming Serialize. Those runs are not passing evidence.
+
+This does not yet prove rendered account-picker preservation, native history materialization under the managed home, or complete create→resume→real-provider receipt behavior. Architecture coverage: canonical target identity, optional wire compatibility, application credential ownership and transaction lifecycle. No new polling, cache or per-turn IPC was introduced; source lookup stays in the existing status query. Added transaction latency and actual desktop CPU/RSS remain unmeasured. No deployment or production database changes occurred.
+
+Final persistence verification: `cargo test --lib agent_sessions::cli::persistence:: -- --nocapture` passed 25 tests, zero ignored. The new transaction regression proves successful local source creation and complete rollback for mixed-account ownership, wrong runner and empty source. Existing TUI binding, deletion and source readback tests also passed. This is database/application-boundary evidence, not a process-crash or installed-app test.

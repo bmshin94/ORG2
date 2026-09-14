@@ -65,3 +65,7 @@ The native Session DTO and status RPC now expose the persisted non-secret `crede
 ## Ordinary execution adapter progress
 
 The normal CLI runner now consumes a durable source binding through an application-owned execution-profile guard. Configuration, Codex native store/MCP home, provider environment and token release share the same execution lifetime. The guard releases its exact token generation. The canonical frontend still needs to carry dynamic source identity through target selection, episode creation and dispatch; this runner work alone does not close installed-app restart acceptance.
+
+## Canonical episode identity progress
+
+Canonical targets and candidate matching now preserve the dynamic source separately from KeyVault identity. SessionService passes both source and selected CLI model into the launch bridge, which validates the source before creating the episode. Creation and source binding share a transaction, so a rejected binding cannot leave an unbound episode. Message dispatch continues using the immutable source on that episode's Session; it does not rebind the source per turn. Rendered picker behavior and native materialization into the managed home remain to be verified/integrated before real restart acceptance.

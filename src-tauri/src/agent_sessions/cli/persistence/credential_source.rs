@@ -4,6 +4,30 @@
 use database::db::{get_connection, with_sessions_writer};
 use rusqlite::{params, Connection, OptionalExtension};
 
+pub(super) fn bind_for_runner(
+    conn: &Connection,
+    session: &str,
+    selection: &str,
+    agent: &str,
+    model: &str,
+    runner: &str,
+) -> rusqlite::Result<()> {
+    // Bind only the exact persisted launch choice, and never silently rebind an
+    // existing session to another billing source. Repeating the same bind is safe.
+    let changed = conn.execute(
+        "INSERT INTO code_session_credential_sources (session_id, selection)
+         SELECT session_id, ?2 FROM code_sessions
+         WHERE session_id=?1 AND runner=?5 AND cli_agent_type=?3 AND model=?4 AND account_id IS NULL AND COALESCE(key_source,'own_key')='own_key'
+         ON CONFLICT(session_id) DO UPDATE SET selection=excluded.selection
+         WHERE code_session_credential_sources.selection=excluded.selection",
+        params![session, selection, agent, model, runner],
+    )?;
+    if changed != 1 {
+        return Err(rusqlite::Error::QueryReturnedNoRows);
+    }
+    Ok(())
+}
+
 fn bind(
     conn: &Connection,
     session: &str,
@@ -11,20 +35,7 @@ fn bind(
     agent: &str,
     model: &str,
 ) -> rusqlite::Result<()> {
-    // Bind only the exact persisted launch choice, and never silently rebind an
-    // existing session to another billing source. Repeating the same bind is safe.
-    let changed = conn.execute(
-        "INSERT INTO code_session_credential_sources (session_id, selection)
-         SELECT session_id, ?2 FROM code_sessions
-         WHERE session_id=?1 AND runner='tui' AND cli_agent_type=?3 AND model=?4
-         ON CONFLICT(session_id) DO UPDATE SET selection=excluded.selection
-         WHERE code_session_credential_sources.selection=excluded.selection",
-        params![session, selection, agent, model],
-    )?;
-    if changed != 1 {
-        return Err(rusqlite::Error::QueryReturnedNoRows);
-    }
-    Ok(())
+    bind_for_runner(conn, session, selection, agent, model, "tui")
 }
 
 pub fn bind_credential_source(
@@ -94,13 +105,34 @@ mod tests {
             .is_err());
             assert!(bind(&conn, "session-b", "test:workspace-b", "codex", "model-a").is_err());
             assert!(bind(&conn, "missing", "test:workspace-a", "codex", "model-a").is_err());
+            bind_for_runner(
+                &conn,
+                "session-b",
+                "test:workspace-b",
+                "codex",
+                "model-a",
+                "local",
+            )
+            .unwrap();
+            assert!(bind_for_runner(
+                &conn,
+                "session-a",
+                "test:workspace-a",
+                "codex",
+                "model-a",
+                "local"
+            )
+            .is_err());
             drop(conn);
             let conn = open(&path, foreign_keys);
             assert_eq!(
                 load(&conn, "session-a").unwrap().as_deref(),
                 Some("test:workspace-a")
             );
-            assert_eq!(load(&conn, "session-b").unwrap(), None);
+            assert_eq!(
+                load(&conn, "session-b").unwrap().as_deref(),
+                Some("test:workspace-b")
+            );
             conn.execute("DELETE FROM code_sessions WHERE session_id='session-a'", [])
                 .unwrap();
             assert_eq!(load(&conn, "session-a").unwrap(), None);
