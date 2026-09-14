@@ -182,11 +182,13 @@ export function useWebviewCommands(
       })();
 
       createInFlightRef.current = operation;
-      void operation.finally(() => {
+      const releaseFlight = () => {
         if (createInFlightRef.current === operation) {
           createInFlightRef.current = null;
         }
-      });
+      };
+      // Observe both outcomes without creating a rejected finally promise.
+      void operation.then(releaseFlight, releaseFlight);
       return operation;
     },
     [
@@ -264,10 +266,12 @@ export function useWebviewCommands(
         }
       })();
       navigationInFlightRef.current = operation;
-      void operation.finally(() => {
+      const releaseFlight = () => {
         if (navigationInFlightRef.current === operation)
           navigationInFlightRef.current = null;
-      });
+      };
+      // Observe both outcomes without creating a rejected finally promise.
+      void operation.then(releaseFlight, releaseFlight);
       return operation;
     },
     [
