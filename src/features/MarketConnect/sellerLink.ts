@@ -72,7 +72,7 @@ export function handleSellerLink(raw: string, url: URL): boolean {
   )
     return true;
   busy = true;
-  void (async () => {
+  (async () => {
     try {
       if (url.pathname === "/seller/connect") {
         const destination = new URL(await typedInvoke(begin, { raw }));
@@ -111,6 +111,9 @@ export function handleSellerLink(raw: string, url: URL): boolean {
       queued = undefined;
       if (next) handleSellerLink(next, new URL(next));
     }
-  })();
+  })().catch(() => {
+    // Report unexpected UI failures without exposing authorization data.
+    console.error("Market connection UI update failed");
+  });
   return true;
 }

@@ -11,7 +11,9 @@ export default function SellerDialog() {
   const { t } = useTranslation("integrations");
   if (!phase) return null;
   const close = () => {
-    void closeSeller();
+    closeSeller().catch(() => {
+      console.error("Market seller dialog close failed");
+    });
   };
   return (
     <Modal

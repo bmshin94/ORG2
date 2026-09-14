@@ -44,7 +44,7 @@ export function handleMarketConnectionUrl(raw: string): boolean {
     return true;
   }
   busy = true;
-  void (async () => {
+  (async () => {
     try {
       if (url.pathname === "/connect") {
         const authorization = new URL(await typedInvoke(begin, { raw }));
@@ -83,6 +83,9 @@ export function handleMarketConnectionUrl(raw: string): boolean {
       queuedCallback = undefined;
       if (next) handleMarketConnectionUrl(next);
     }
-  })();
+  })().catch(() => {
+    // Report unexpected UI failures without exposing authorization data.
+    console.error("Market connection UI update failed");
+  });
   return true;
 }

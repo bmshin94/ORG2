@@ -26,3 +26,9 @@ ba03bb3e7af65c6e927169e8db506fe475757107:src/features/Org2Cloud/org2CloudOrgMana
 8304c2a1957cf318db95c5de2af87de6088bf6a0:src-tauri/crates/mobile-relay-server/tests/relay_lifecycle.rs:generic-api-key:29
 81e6c0da7caddd3d04bfc8cbc183dd3e2e7421eb:src/modules/MobileRemote/auth/MobileAuthGate.test.ts:generic-api-key:44
 099bd068673a9ffed77499d55eaed138027596af:src-tauri/src/api/mobile_bridge/auth.rs:generic-api-key:158
+
+# Reviewed Market unit-test fixtures: og2t.v1.fixture, og2ms.v1.fixture,
+# and og2ms.v1.rotated are synthetic tokens, never issued credentials.
+9df603d9cf7bc291984a904a074d255bf1dd6fc6:src-tauri/crates/market-connect/src/workspace.rs:generic-api-key:130
+9df603d9cf7bc291984a904a074d255bf1dd6fc6:src-tauri/crates/market-connect/src/client.rs:generic-api-key:444
+9df603d9cf7bc291984a904a074d255bf1dd6fc6:src-tauri/crates/market-connect/src/client.rs:generic-api-key:557
