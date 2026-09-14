@@ -213,3 +213,20 @@ when tab insertion fails. After tab ownership transfers, a navigation failure
 retains the profile. The six WorkspaceLaunch tests pass, including all three
 failure boundaries. This additional frontend change is newer than the acceptance
 bundle and has not yet been exercised in a rebuilt application.
+
+## Seller authorization receiver foundation
+
+The Market native crate now owns a loopback seller callback receiver for the
+existing fixed Claude/Codex authorization destinations. It validates provider
+origin, callback URI, PKCE challenge shape, deadline and state before listening;
+callbacks validate host, origin, path, state and unique code/error parameters.
+Responses contain no authorization code and disable caching/referrers. Callback
+receipt is one-shot; denial, timeout and cancellation close the listener.
+
+The crate suite passes 21 tests, including real loopback HTTP rejection/replay,
+denial, timeout, port contention and cancellation checks. Clippy passed before
+the final cancellation test was added. This adds the existing workspace Axum
+dependency to the Market crate; no new version or external service is introduced.
+The receiver is not yet wired to seller enrollment, browser authorization, or
+completion APIs. Seller GUI onboarding remains incomplete and the old Console
+CLI fallback has not been represented as fixed by this foundation alone.

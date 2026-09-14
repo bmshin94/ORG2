@@ -1,6 +1,8 @@
 //! ORG2 Market enrollment protocol. No Tauri, UI, KeyVault, billing or config
 //! writer dependency. The desktop host owns secure storage and client adapters.
 mod client;
+mod seller_callback;
+pub use seller_callback::{SellerAuthorization, SellerCallback, SellerProvider};
 mod workspace;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 pub use client::{AccessCredential, Connection, ConnectionMetadata, Grant};
