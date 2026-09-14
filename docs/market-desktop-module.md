@@ -36,3 +36,11 @@
 已将原生连接提交整合到最新上游 `cd08efbc4`，按新锁文件安装依赖，并接入统一导航接口；相关 50 项测试、全量 TypeScript 检查、Rust 检查和生产构建通过。完整进展与测试边界见 `architecture-audit-2026-09-13/MarketConnection.md`。
 
 新增：配置后可选择本机目录并通过 ORG2 内置终端启动 Claude Code/Codex。每次启动生成独立的原生配置副本，关闭终端时释放；已通过组件及原生文件隔离回归，尚未完成安装包内真实启动和请求验证。
+
+## 桌面发布与网站 rollout
+
+正式用户始终打开已安装的 ORG2 主应用。`ORG2 Market Acceptance` 仅为本地验收时临时构建的独立身份，不是第二个用户产品，也不进入下载入口。
+
+发布流程在 macOS、Windows 安装包上传成功后生成 `market-native-protocol.json`，记录版本 tag、源码提交与协议版本。生成器核对 tag 指向当前 checkout，且默认 Cargo feature 包含 Market；重跑发布只接受相同标记，不覆盖不同内容。Cloud infra 的本地 rollout 使用此标记核对桌面兼容性。
+
+该标记只说明协议兼容，不证明安装包已签名或真实连接验收通过。签名安装包与生产全流程仍须分别验证。本地 `node --test scripts/market-release/protocol.test.mjs` 的 5 项测试已通过，包含临时 Git/Cargo 项目上的真实生成命令；尚未触发新的 GitHub Release。
