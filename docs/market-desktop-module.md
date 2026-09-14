@@ -61,3 +61,11 @@ it is not recorded as a passing check. Native host compilation is checked separa
 Actual signed primary-app release, production migration/rollout, and real provider
 browser-to-binding acceptance remain pending. A dispatched link and passing unit
 tests are not evidence that the installed production version supports this flow.
+
+Computer-use follow-up: Chrome dispatched the seller entry into the rebuilt native
+application; the seller approval dialog rendered and Cancel dismissed it. The
+production Console opened its not-found page for `/seller/accounts/authorize`,
+confirming rollout is still required. No real provider authorization was submitted.
+The isolated app was stopped and URL handlers restored to installed primary ORG2.
+The release marker now includes sellerProtocol=1; Console rollout rejects a
+buyer-only release. Marker tests (5) and rollout tests (10) passed.

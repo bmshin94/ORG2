@@ -14,4 +14,7 @@ Changed surface: MarketConnect SellerDialog, ConnectionHost and sellerLink.
 
 Component tests cover invalid destination, duplicate callback, binding failure and
 cancellation. Native receiver tests cover timeout, invalid state, replay and drop.
-Native rendered modal and production provider round trip remain unverified.
+Chrome on macOS opened the isolated ORG2 acceptance build, rendered the seller
+approval modal, and cancellation dismissed it. The production approval page
+currently returns a not-found page, so the provider round trip remains unverified.
+The normal ORG2 URL handler was restored after acceptance.
