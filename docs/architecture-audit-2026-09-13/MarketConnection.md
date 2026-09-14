@@ -230,3 +230,13 @@ dependency to the Market crate; no new version or external service is introduced
 The receiver is not yet wired to seller enrollment, browser authorization, or
 completion APIs. Seller GUI onboarding remains incomplete and the old Console
 CLI fallback has not been represented as fixed by this foundation alone.
+
+## Native seller enrollment state machine
+
+Added strict `orgii://market/seller/connect` selection parsing and a native-only
+PKCE/state owner targeting the fixed `/seller/accounts/authorize` Console page.
+Only provider and region enter the selection link. Duplicate callbacks, unknown
+parameters, competing attempts and expired approvals are rejected; cancellation
+retires late completion. The Market crate passes 25 tests. This owner is not yet
+registered in the application deep-link dispatcher and its Console page is still
+to be implemented, so no seller connection button is advertised as working.
