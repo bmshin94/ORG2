@@ -94,7 +94,10 @@ describe("Org2CloudSyncEngine session publishing", () => {
   });
 
   it("publishes live CLI sessions from the native transcript when the events cache is empty", async () => {
-    eventStoreMock.getPersistedEvents.mockResolvedValueOnce([]);
+    eventStoreMock.getPersistedEvents.mockResolvedValue([]);
+    const mutationSpy = vi
+      .spyOn(rpc.cli, "historyMutation")
+      .mockResolvedValue(null);
     const chunks = [{ id: "cli-chunk" }] as never;
     const chunksSpy = vi.spyOn(rpc.cli, "chunks").mockResolvedValue(chunks);
     const converted = [makeEvent("cli-event")];
@@ -115,12 +118,24 @@ describe("Org2CloudSyncEngine session publishing", () => {
       "cliagent-123-native"
     );
     chunksSpy.mockRestore();
+    mutationSpy.mockRestore();
   });
 
-  it("prefers the persisted event cache for CLI sessions when it is populated", async () => {
+  it("ignores a populated synthetic cache for CLI sessions", async () => {
     const persisted = [makeEvent("persisted-cli-event")];
-    eventStoreMock.getPersistedEvents.mockResolvedValueOnce(persisted);
-    const chunksSpy = vi.spyOn(rpc.cli, "chunks");
+    eventStoreMock.getPersistedEvents.mockResolvedValue(persisted);
+    const mutationSpy = vi
+      .spyOn(rpc.cli, "historyMutation")
+      .mockResolvedValue(null);
+    const chunksSpy = vi
+      .spyOn(rpc.cli, "chunks")
+      .mockResolvedValue([{ id: "native" }] as never);
+    const complete = [
+      makeEvent("user"),
+      makeEvent("assistant"),
+      makeEvent("tool"),
+    ];
+    processChunksRustMock.mockResolvedValueOnce(complete);
 
     const events = await (
       engine as unknown as {
@@ -128,9 +143,10 @@ describe("Org2CloudSyncEngine session publishing", () => {
       }
     ).loadPushEvents("cliagent-123-native");
 
-    expect(events).toEqual(persisted);
-    expect(chunksSpy).not.toHaveBeenCalled();
+    expect(events).toEqual(complete);
+    expect(chunksSpy).toHaveBeenCalled();
     chunksSpy.mockRestore();
+    mutationSpy.mockRestore();
   });
   it("pushes only scope-matched own sessions (metadata + epoch-1 rewrite)", async () => {
     store.set(sessionsAtom, [
@@ -291,7 +307,11 @@ describe("Org2CloudSyncEngine session publishing", () => {
       "jwt-1",
       "corg-1",
       "session-guest-fork",
-      expect.any(Object)
+      expect.any(Object),
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
   });
 
@@ -510,7 +530,7 @@ describe("Org2CloudSyncEngine session publishing", () => {
       "jwt-1",
       "corg-1",
       "session-1",
-      { afterSeq: 2_147_483_647 }
+      expect.objectContaining({ afterSeq: 2_147_483_647 })
     );
     expect(client.rewriteSessionEvents).toHaveBeenCalledTimes(2);
     const [, reanchor] = client.rewriteSessionEvents.mock.calls[1];
@@ -754,7 +774,11 @@ describe("Org2CloudSyncEngine session publishing", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "session-1"
+      "session-1",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
     expect(store.get(sessionOrgTagsAtom)).toEqual({});
   });
@@ -2020,7 +2044,11 @@ describe("Org2CloudSyncEngine session publishing", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "session-1"
+      "session-1",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
     expect(
       store.get(org2CloudPushCursorsAtom)["corg-1:session-1"]
@@ -2074,7 +2102,11 @@ describe("Org2CloudSyncEngine session publishing", () => {
     expect(client.deleteSession).toHaveBeenCalledWith(
       "jwt-1",
       "corg-1",
-      "session-1"
+      "session-1",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        assertCurrent: expect.any(Function),
+      })
     );
     expect(
       store.get(org2CloudPushedMetadataAtom)["corg-1:session-1"]
