@@ -69,6 +69,9 @@ pub(super) fn reserve(session: &str, agent: &str, context: ProxyContext) -> Resu
 pub(super) fn resolve(agent: &str, token: &str) -> Result<Option<ProxyContext>, String> {
     routes()?.resolve(agent, token)
 }
+pub(super) fn release_token(token: &str) -> Result<bool, String> {
+    Ok(routes()?.entries.remove(token).is_some())
+}
 pub(super) fn release(session: &str) -> Result<(), String> {
     routes()?.release(session);
     Ok(())

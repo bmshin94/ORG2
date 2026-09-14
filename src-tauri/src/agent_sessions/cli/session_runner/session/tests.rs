@@ -1287,3 +1287,28 @@ fn native_codex_store_uses_catalog_binary_and_index_without_changing_auth_home()
         .iter()
         .any(|arg| arg.contains("CODEX_HOME") || arg.contains("auth")));
 }
+
+
+#[test]
+fn managed_execution_removes_ambient_routing_without_removing_runtime_controls() {
+    let mut command = Command::new("client");
+    command.env("CODEX_SANDBOX_NETWORK_DISABLED", "1");
+    command.env("PATH", "/test/bin");
+    clear_managed_routing_environment(&mut command, [
+        "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_REFRESH_TOKEN",
+        "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL", "CLAUDE_CODE_OAUTH_TOKEN",
+        "CODEX_HOME", "CLAUDE_CONFIG_DIR", "CODEX_SANDBOX_NETWORK_DISABLED", "PATH"
+    ].into_iter().map(std::ffi::OsString::from));
+    let env: std::collections::BTreeMap<_, _> = command.as_std().get_envs().collect();
+    for key in ["OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_REFRESH_TOKEN",
+        "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL", "CLAUDE_CODE_OAUTH_TOKEN",
+        "CODEX_HOME", "CLAUDE_CONFIG_DIR"] {
+        assert_eq!(env.get(std::ffi::OsStr::new(key)), Some(&None));
+    }
+    assert_eq!(env.get(std::ffi::OsStr::new("CODEX_SANDBOX_NETWORK_DISABLED")), Some(&Some(std::ffi::OsStr::new("1"))));
+    assert_eq!(env.get(std::ffi::OsStr::new("PATH")), Some(&Some(std::ffi::OsStr::new("/test/bin"))));
+    // The selected profile is applied after inherited routing is removed.
+    command.env("CODEX_HOME", "/owned/session");
+    assert_eq!(command.as_std().get_envs().find(|(key, _)| *key == "CODEX_HOME").unwrap().1,
+        Some(std::ffi::OsStr::new("/owned/session")));
+}

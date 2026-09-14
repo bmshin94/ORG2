@@ -64,6 +64,21 @@ const CLAUDE_ACCOUNT_ENV_KEYS: &[&str] = &[
     "CLAUDE_CONFIG_DIR",
 ];
 
+fn managed_routing_env_key(key: &str) -> bool {
+    key.starts_with("ANTHROPIC_") || key.starts_with("OPENAI_")
+        || key.starts_with("CLAUDE_CODE_OAUTH") || key == "CLAUDE_CODE_REFRESH_TOKEN"
+        || key == "CODEX_HOME" || key == "CODEX_API_KEY" || key == "CLAUDE_CONFIG_DIR"
+}
+
+fn clear_managed_routing_environment(
+    command: &mut Command,
+    keys: impl Iterator<Item = std::ffi::OsString>,
+) {
+    for key in keys {
+        if managed_routing_env_key(&key.to_string_lossy()) { command.env_remove(key); }
+    }
+}
+
 fn merge_launch_profile_environment(
     agent: &ModelType,
     has_explicit_account: bool,
@@ -483,6 +498,8 @@ pub(crate) async fn run_session_with_ide_context(
     // and reject provider-specific values passed to --model. Other compatible
     // agents retain the user's selected model; their generated provider profile
     // handles the routing.
+    // Keep dynamic-source ownership alive through spawn, retries and finalization.
+    let managed_execution = crate::cli_managed_proxy::prepare_execution_profile(&session).await?;
     let mut selected_key = session
         .account_id
         .as_deref()
@@ -721,8 +738,11 @@ pub(crate) async fn run_session_with_ide_context(
     // name in argv. The guard stays alive through every transport retry and
     // finalization, then removes the profile on return/cancellation.
     let codex_mcp_profile = if matches!(agent, ModelType::Codex) && !use_codex_app_server {
-        let codex_home =
-            super::env_setup::codex_home_for_session(&session, account_id, &session_id)?;
+        let codex_home = if let Some(execution) = &managed_execution {
+            std::path::PathBuf::from(execution.profile.env.get("CODEX_HOME").ok_or("Managed Codex home missing")?)
+        } else {
+            super::env_setup::codex_home_for_session(&session, account_id, &session_id)?
+        };
         session_mcp
             .write_codex_mcp_profile(&codex_home)
             .map_err(|err| {
@@ -756,6 +776,10 @@ pub(crate) async fn run_session_with_ide_context(
             .map(|profile| profile.profile_name()),
     });
 
+    if let Some(execution) = &managed_execution {
+        cmd_parts.splice(1..1, execution.profile.args.clone());
+    }
+
     if use_codex_app_server {
         // Native rollouts and their pagination index belong to the same store.
         // Keep CODEX_HOME account-scoped for auth/config, but use the native
@@ -764,7 +788,9 @@ pub(crate) async fn run_session_with_ide_context(
         scope_native_codex_store(
             &mut cmd_parts,
             &super::super::parsers::codex_app_server::native_codex_app_server_command(),
-            &app_paths::native_transcript_home_dir().join(".codex"),
+            &managed_execution.as_ref().and_then(|e| e.profile.env.get("CODEX_HOME"))
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|| app_paths::native_transcript_home_dir().join(".codex")),
         );
     }
 
@@ -797,7 +823,9 @@ pub(crate) async fn run_session_with_ide_context(
     let snapshot_working_dir = working_dir.to_string();
 
     // ── Build environment variables ──
-    let mut env_vars = if session.key_source == KeySource::HostedKey {
+    let mut env_vars = if let Some(execution) = &managed_execution {
+        execution.profile.env.clone().into_iter().collect()
+    } else if session.key_source == KeySource::HostedKey {
         let proxy_token = session
             .proxy_token
             .as_deref()
@@ -818,11 +846,15 @@ pub(crate) async fn run_session_with_ide_context(
         &mut env_vars,
     );
 
+    let mut runtime_environment = launch_profile_env(&launch_profile);
+    if managed_execution.is_some() {
+        runtime_environment.retain(|key, _| !managed_routing_env_key(key));
+    }
     merge_launch_profile_environment(
         &agent,
         account_id.is_some(),
         &mut env_vars,
-        launch_profile_env(&launch_profile),
+        runtime_environment,
     );
 
     // Inherited by the CLI child and, transitively, by its hook subprocesses:
@@ -862,15 +894,17 @@ pub(crate) async fn run_session_with_ide_context(
         super::env_setup::start_session_mitm_proxy(&session, &session_id, &mut env_vars).await?;
     }
 
-    super::env_setup::configure_agent_profile(
-        &agent,
-        &session,
-        account_id,
-        selected_key.as_ref(),
-        &session_id,
-        cli_resume_id.as_deref(),
-        &mut env_vars,
-    )?;
+    if managed_execution.is_none() {
+        super::env_setup::configure_agent_profile(
+            &agent,
+            &session,
+            account_id,
+            selected_key.as_ref(),
+            &session_id,
+            cli_resume_id.as_deref(),
+            &mut env_vars,
+        )?;
+    }
 
     super::env_setup::apply_system_proxy_passthrough(&mut env_vars);
 
@@ -1016,6 +1050,9 @@ pub(crate) async fn run_session_with_ide_context(
         stderr_lines = attempt_stderr.lines();
         let mut spawn_cmd = Command::new(program);
         spawn_cmd.args(args);
+        if managed_execution.is_some() {
+            clear_managed_routing_environment(&mut spawn_cmd, std::env::vars_os().map(|(key, _)| key));
+        }
         apply_child_environment(
             &mut spawn_cmd,
             &agent,

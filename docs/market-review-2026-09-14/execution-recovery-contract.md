@@ -61,3 +61,7 @@ This is durable ownership, not completed restart execution. Regenerating a nativ
 ## Recovery read-model progress
 
 The native Session DTO and status RPC now expose the persisted non-secret `credentialSource`, separate from KeyVault `accountId`. Single and paged reads use the same indexed SQL projection; ordinary legacy rows remain compatible. The launch adapter consumes it when reconstructing a same-source native profile. Canonical execution-target selection and the standard runner still need explicit dynamic-source handling; a readable source is not yet a runnable restored conversation.
+
+## Ordinary execution adapter progress
+
+The normal CLI runner now consumes a durable source binding through an application-owned execution-profile guard. Configuration, Codex native store/MCP home, provider environment and token release share the same execution lifetime. The guard releases its exact token generation. The canonical frontend still needs to carry dynamic source identity through target selection, episode creation and dispatch; this runner work alone does not close installed-app restart acceptance.

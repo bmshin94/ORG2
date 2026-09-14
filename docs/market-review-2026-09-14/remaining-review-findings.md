@@ -16,11 +16,11 @@
 | P2 Settings 删除后选择越界        | 改为身份/workspace/target 稳定选择；删除及重排渲染测试通过                                                                                                   | 真实 Settings 多连接操作                                                                         |
 | P2 PowerShell 环境赋值            | RHS 始终单引号字符串并转义单引号；在 macOS PowerShell 7.6.6 实际执行生成命令，验证字面量原值                                                                 | Windows 实机路径、客户端启动及完整请求                                                           |
 
-以上测试为此前修复阶段的已记录结果。本次仅复核当前源码、远端 PR head 和报告一致性，没有重新运行这些测试，也没有新增真实 provider 请求。
+以上表格汇总原七项发现。后续恢复链路的代码和测试进展见本报告各 follow-up；真实 provider、主应用及 Windows 验收仍未完成。
 
 ## 仍然开放的问题
 
-1. **恢复执行链路**：`CliResumePlan` 没有原始 CODEX_HOME 字段；当前桌面 imported-history adapter 只取 cwd 进入通用 continuation。保留文件和索引不能证明最终执行恢复原会话或沿用 Market 计费。需要继续追踪执行边界并完成真实恢复。
+1. **恢复执行链路**：已持久化并返回动态来源，普通启动器已接入会话配置重建及代理生命周期；原生配置和启动器回归见下文。桌面 canonical continuation 的来源选择、执行 episode 创建和消息传递尚未接通；imported-history materialization 仍需匹配原生目录。必须完成主应用关闭、重启、继续原会话和真实计量验收。
 2. **跨工作区阻塞**：凭据请求与购买列表现已按身份/workspace/target 使用独立锁，索引表锁不跨 I/O；断开和重新授权仍独占授权变更屏障。锁边界、同授权串行、清空旧缓存和上限回收测试已通过；真实多工作区网络与桌面 CPU/RSS 尚未测量。
 3. **断开与撤销**：当前桌面断开只恢复配置、清理本地凭据和索引，不包含服务端撤销。不能把本地断开描述为服务端授权已撤销。
 4. **模块移除与残留目录**：module-off 编译和目录数量限制不能证明运行时配置恢复或崩溃残留处理。不得为清理目录再次删除原生会话数据。
@@ -31,9 +31,10 @@
 
 本次已能读取配套后端 PR 元数据，因此原审计“无法访问 #75”不再是当前取证阻碍；**能读取 PR 不代表其跨仓库契约已验收**。
 
-- [ORG2 #1761](https://github.com/org2AI/ORG2/pull/1761)：OPEN，代码 head `3734a65d1`，base `codex/search-input-renderer-types`
+- [ORG2 #1761](https://github.com/org2AI/ORG2/pull/1761)：OPEN，base `codex/search-input-renderer-types`；最新提交以 PR 为准
 - [Cloud infra #75](https://github.com/org2AI/ORGII-cloud-infra/pull/75)：OPEN，head `d05755d85d6a3b26ce189dffb86ff3d1613860ad`
-- [Cloud infra #76](https://github.com/org2AI/ORGII-cloud-infra/pull/76)：OPEN，head `c9cd0fa9df861a6ac5b30ef1fbd2d2d02e2d35c1`
+- [Cloud infra #76](https://github.com/org2AI/ORGII-cloud-infra/pull/76)：OPEN，head `57031e98e7134ab1f2843f844ae0c8d368cf6eb1`
+- [Cloud infra #77](https://github.com/org2AI/ORGII-cloud-infra/pull/77)：OPEN，head `ac1e15502a662d4435d4dc54842512b01a4a1f93`
 
 未合并、未由本次报告修改触发部署，也未将 CI queued/completed（无 conclusion）记为通过。以下为历史修复与测试记录，早期的 pending 以本报告上面的状态表为准。
 
@@ -187,3 +188,17 @@ Verification: `cargo test --lib agent_sessions::cli::persistence:: -- --nocaptur
 Architecture coverage: persistence ownership, read projection, RPC compatibility and launch consumption. Frontend canonical target selection and normal runner integration remain outstanding. Performance: no new timers, workers, locks or per-row IPC; an indexed scalar lookup is added per returned row. Large-list query latency and actual desktop CPU/RSS are unmeasured, so this is not runtime performance acceptance. No production database or application was touched.
 
 Strict `cargo clippy --lib -- -D warnings` passed for the source projection and its launch consumer. No rendered UI or installed-app behavior is claimed by these checks.
+
+## Ordinary runner consumes the durable dynamic source
+
+The ordinary CLI runner now prepares a session-owned execution profile when the Session contains `credentialSource`. Conflicting KeyVault/hosted ownership is rejected. Preparation validates the registered dynamic source, waits for the local proxy, reserves a fresh generation, rechecks the persisted source/client/model, and reconstructs the native home. Its lifetime guard revokes only its exact token and releases owned configuration on return/cancellation. A stale guard cannot remove a replacement generation. Blocking preparation retains ownership even if its awaiting future is dropped.
+
+The runner uses this same home for Codex config/MCP materialization and its app-server native store. Claude receives the owned settings arguments. Managed execution bypasses KeyVault auth/profile rewriting and filters ambient/runtime-profile provider routing variables before applying its own configuration. Runtime controls such as PATH and CODEX_SANDBOX_NETWORK_DISABLED remain intact. Provider secrets still resolve through the existing dynamic source on requests; none are added to Session rows.
+
+Verification so far: `cargo test --lib cli_managed_proxy:: -- --nocapture` passed 15 tests, zero ignored, including the new sandbox SQLite/profile lifecycle regression for both clients, same-home reconstruction, duplicate rejection, release, stale-generation safety and rejected-source retry. Existing local Router tests remain separate synthetic-upstream coverage. This does not exercise a real child CLI, installed-app cancellation, grant rotation or receipts. Canonical frontend target/dispatch propagation and native history materialization still require integration and app acceptance.
+
+Architecture covers Session authority, application-owned source resolution, provider-neutral configuration and execution lifecycle. Performance: demand-driven preparation, bounded existing route registry and readiness wait; no recurring polling or worker. Drop performs small synchronous owned-file cleanup, whose desktop latency/CPU/RSS and cross-process behavior have not been measured. No production changes or deployment were made.
+
+The ordinary runner suite (`cargo test --lib agent_sessions::cli::session_runner::session::tests:: -- --nocapture`) passed 56 tests, zero ignored. The added process-command regression verifies inherited provider values are explicitly removed, runtime controls remain, and owned CODEX_HOME is applied afterward. It inspects the production Command environment; it does not launch a real provider binary.
+
+Strict `cargo clippy --lib -- -D warnings` passed for this runner integration. Real native execution, canonical materialization and rendered recovery remain unverified.
