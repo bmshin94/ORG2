@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "manage": "Zarządzaj połączeniem",
+    "reauthorize": "Autoryzuj ponownie",
     "platformUnavailable": "Połączenia kupującego Market są niedostępne na tej platformie, ponieważ nie obsługuje ona bezpiecznego przechowywania danych uwierzytelniających",
     "authorizationSaved": "Zapisano autoryzację Market; klient nadal wymaga konfiguracji",
     "failed": "Nie udało się połączyć z Market. Otwórz ponownie połączenie obszaru roboczego.",

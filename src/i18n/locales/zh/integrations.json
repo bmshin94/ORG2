@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "manage": "管理连接",
+    "reauthorize": "重新授权",
     "platformUnavailable": "当前平台不支持安全保存凭据，暂时无法连接 Market 买家工作区",
     "authorizationSaved": "Market 授权已保存，客户端配置尚未完成",
     "failed": "Market 连接未完成，请重新打开工作区连接",

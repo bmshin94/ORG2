@@ -12,7 +12,11 @@ export default function ConnectionHost() {
       if (value.success) setConnection(value.data);
     };
     window.addEventListener("market-authorization-saved", open);
-    return () => window.removeEventListener("market-authorization-saved", open);
+    window.addEventListener("market-connection-open", open);
+    return () => {
+      window.removeEventListener("market-authorization-saved", open);
+      window.removeEventListener("market-connection-open", open);
+    };
   }, []);
   return (
     <>

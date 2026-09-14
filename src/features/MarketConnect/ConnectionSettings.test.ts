@@ -76,7 +76,7 @@ it("retains the selected identity on reorder and falls back to the remaining con
   });
   expect(container.querySelector("select")).toBeNull();
   const observed = vi.fn();
-  window.addEventListener("market-authorization-saved", observed);
+  window.addEventListener("market-connection-open", observed);
   try {
     await act(async () => container!.querySelector("button")!.click());
     expect(observed).toHaveBeenCalledOnce();
@@ -84,6 +84,6 @@ it("retains the selected identity on reorder and falls back to the remaining con
       "ws_a"
     );
   } finally {
-    window.removeEventListener("market-authorization-saved", observed);
+    window.removeEventListener("market-connection-open", observed);
   }
 });

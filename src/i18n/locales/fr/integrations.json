@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "manage": "Gérer la connexion",
+    "reauthorize": "Autoriser à nouveau",
     "platformUnavailable": "Les connexions acheteur Market ne sont pas disponibles sur cette plateforme, car le stockage sécurisé des identifiants n’est pas pris en charge",
     "authorizationSaved": "Autorisation Market enregistrée ; le client reste à configurer",
     "failed": "La connexion à Market a échoué. Rouvrez la connexion de l’espace de travail.",

@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "manage": "Bağlantıyı yönet",
+    "reauthorize": "Yeniden yetkilendir",
     "platformUnavailable": "Bu platform güvenli kimlik bilgisi depolamayı desteklemediği için Market alıcı bağlantıları kullanılamıyor",
     "authorizationSaved": "Market yetkilendirmesi kaydedildi; istemci kurulumu hâlâ gerekli",
     "failed": "Market bağlantısı tamamlanamadı. Çalışma alanı bağlantısını yeniden açın.",

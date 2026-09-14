@@ -80,22 +80,30 @@ export default function ConnectionSettings({
           />
         )}
         {selected && (
-          <Button
-            onClick={() => {
-              if (selected.phase === "reauthorization_required")
-                handleMarketConnectionUrl(
-                  `orgii://market/connect?workspace_id=${encodeURIComponent(selected.workspace_id)}&target=${selected.target}`
-                );
-              else
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() =>
                 window.dispatchEvent(
-                  new CustomEvent("market-authorization-saved", {
+                  new CustomEvent("market-connection-open", {
                     detail: selected,
                   })
-                );
-            }}
-          >
-            {t("marketConnection.title")}
-          </Button>
+                )
+              }
+            >
+              {t("marketConnection.manage")}
+            </Button>
+            {selected.phase === "reauthorization_required" && (
+              <Button
+                onClick={() =>
+                  handleMarketConnectionUrl(
+                    `orgii://market/connect?workspace_id=${encodeURIComponent(selected.workspace_id)}&target=${selected.target}`
+                  )
+                }
+              >
+                {t("marketConnection.reauthorize")}
+              </Button>
+            )}
+          </div>
         )}
         {error && <p role="alert">{t("marketConnection.failed")}</p>}
       </SectionRow>

@@ -69,22 +69,22 @@ it("makes saved Market recovery reachable from current app settings and switches
       (b) => b.textContent === text
     )!;
   const observed = vi.fn();
-  window.addEventListener("market-authorization-saved", observed);
+  window.addEventListener("market-connection-open", observed);
   try {
-    expect(button("marketConnection.title")).toBeDefined();
-    await act(async () => button("marketConnection.title").click());
+    expect(button("marketConnection.manage")).toBeDefined();
+    await act(async () => button("marketConnection.manage").click());
     expect((observed.mock.calls[0][0] as CustomEvent).detail.workspace_id).toBe(
       "ws_claude"
     );
     await act(async () => button("Codex").click());
-    await act(async () => button("marketConnection.title").click());
+    await act(async () => button("marketConnection.manage").click());
     expect((observed.mock.calls[1][0] as CustomEvent).detail.workspace_id).toBe(
       "ws_codex"
     );
     await act(async () => button("Claude Desktop").click());
-    expect(button("marketConnection.title")).toBeUndefined();
+    expect(button("marketConnection.manage")).toBeUndefined();
   } finally {
-    window.removeEventListener("market-authorization-saved", observed);
+    window.removeEventListener("market-connection-open", observed);
   }
 });
 

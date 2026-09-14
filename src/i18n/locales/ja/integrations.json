@@ -1,5 +1,7 @@
 {
   "marketConnection": {
+    "manage": "接続を管理",
+    "reauthorize": "再認証",
     "platformUnavailable": "このプラットフォームは認証情報の安全な保存に対応していないため、Market の購入者ワークスペースには接続できません",
     "authorizationSaved": "Market の認可を保存しました。クライアントの設定は未完了です",
     "failed": "Market に接続できませんでした。ワークスペースの接続をもう一度開いてください。",
