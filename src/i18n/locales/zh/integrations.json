@@ -1683,5 +1683,14 @@
     "sharedToOrg": "技能已共享到组织",
     "shareToOrgHint": "组织成员会收到该技能当前的快照；编辑后再次共享即发布更新。",
     "shareOrgPlaceholder": "组织"
+  },
+  "marketSeller": {
+    "title": "接入卖家账户",
+    "approval": "请在浏览器中批准接入，然后返回 ORG2。",
+    "connecting": "请在浏览器中完成供应商授权，ORG2 会自动绑定账户。",
+    "completed": "账户已接入。返回市场账户页即可查看。",
+    "failed": "未能确认接入结果。请先返回市场账户页检查，再决定是否重试。",
+    "cancelling": "正在取消接入…",
+    "cancel": "取消"
   }
 }

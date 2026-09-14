@@ -1683,5 +1683,14 @@
     "sharedToOrg": "Skill을 조직에 공유했습니다",
     "shareToOrgHint": "조직 멤버는 이 Skill의 현재 스냅샷을 받습니다. 편집 후 업데이트를 게시하려면 다시 공유하세요.",
     "shareOrgPlaceholder": "조직"
+  },
+  "marketSeller": {
+    "title": "판매자 계정 연결",
+    "approval": "브라우저에서 연결을 승인한 후 ORG2로 돌아오세요.",
+    "connecting": "브라우저에서 공급자 인증을 완료하세요. ORG2가 계정을 자동으로 연결합니다.",
+    "completed": "계정이 연결되었습니다. Market 계정 페이지에서 확인하세요.",
+    "failed": "연결 결과를 확인하지 못했습니다. 다시 시도하기 전에 Market 계정 페이지를 확인하세요.",
+    "cancelling": "연결 취소 중…",
+    "cancel": "취소"
   }
 }

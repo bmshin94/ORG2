@@ -1683,5 +1683,14 @@
     "sharedToOrg": "Skill shared with the organization",
     "shareToOrgHint": "Members of the organization receive this skill's current snapshot; share again after editing to publish an update.",
     "shareOrgPlaceholder": "Organization"
+  },
+  "marketSeller": {
+    "title": "Connect seller account",
+    "approval": "Approve the connection in your browser, then return to ORG2.",
+    "connecting": "Approve the provider sign-in in your browser. ORG2 will bind the account automatically.",
+    "completed": "Account connected. Return to Market Accounts to see it.",
+    "failed": "Connection could not be confirmed. Return to Market Accounts to check before trying again.",
+    "cancelling": "Cancelling the connection…",
+    "cancel": "Cancel"
   }
 }

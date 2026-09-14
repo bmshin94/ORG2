@@ -5,6 +5,8 @@ import { defineProcedure, typedInvoke } from "@src/api/tauri/rpc/invoke";
 import Message from "@src/components/Message";
 import i18n from "@src/i18n";
 
+import { handleSellerLink } from "./sellerLink";
+
 const rawInput = z.object({ raw: z.string().max(2048) });
 const begin = defineProcedure("market_connection_begin")
   .input(rawInput)
@@ -35,6 +37,7 @@ export function handleMarketConnectionUrl(raw: string): boolean {
     return false;
   }
   if (url.protocol !== "orgii:" || url.hostname !== "market") return false;
+  if (handleSellerLink(raw, url)) return true;
   if (busy) {
     if (raw.length <= 2048 && url.pathname === "/authorized")
       queuedCallback ??= raw;

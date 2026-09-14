@@ -1683,5 +1683,14 @@
     "sharedToOrg": "Skill を組織に共有しました",
     "shareToOrgHint": "組織のメンバーはこの Skill の現在のスナップショットを受け取ります。編集後に再度共有すると更新が公開されます。",
     "shareOrgPlaceholder": "組織"
+  },
+  "marketSeller": {
+    "title": "販売者アカウントを接続",
+    "approval": "ブラウザで接続を承認し、ORG2 に戻ってください。",
+    "connecting": "ブラウザでプロバイダーの認証を完了してください。ORG2 がアカウントを自動接続します。",
+    "completed": "接続しました。Market のアカウントページで確認できます。",
+    "failed": "接続を確認できませんでした。再試行する前に Market のアカウントページを確認してください。",
+    "cancelling": "接続をキャンセル中…",
+    "cancel": "キャンセル"
   }
 }

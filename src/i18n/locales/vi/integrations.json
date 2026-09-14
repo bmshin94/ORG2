@@ -1683,5 +1683,14 @@
     "sharedToOrg": "Đã chia sẻ Skill với tổ chức",
     "shareToOrgHint": "Thành viên của tổ chức nhận được ảnh chụp hiện tại của skill này; hãy chia sẻ lại sau khi chỉnh sửa để phát hành bản cập nhật.",
     "shareOrgPlaceholder": "Tổ chức"
+  },
+  "marketSeller": {
+    "title": "Kết nối tài khoản người bán",
+    "approval": "Chấp thuận kết nối trong trình duyệt rồi quay lại ORG2.",
+    "connecting": "Chấp thuận đăng nhập nhà cung cấp trong trình duyệt. ORG2 sẽ tự động liên kết tài khoản.",
+    "completed": "Đã kết nối tài khoản. Xem tại trang tài khoản Market.",
+    "failed": "Chưa xác nhận được kết nối. Kiểm tra tài khoản Market trước khi thử lại.",
+    "cancelling": "Đang hủy kết nối…",
+    "cancel": "Hủy"
   }
 }

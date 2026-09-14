@@ -1683,5 +1683,14 @@
     "sharedToOrg": "Skill mit der Organisation geteilt",
     "shareToOrgHint": "Mitglieder der Organisation erhalten den aktuellen Snapshot dieses Skills; teile ihn nach dem Bearbeiten erneut, um ein Update zu veröffentlichen.",
     "shareOrgPlaceholder": "Organisation"
+  },
+  "marketSeller": {
+    "title": "Verkäuferkonto verbinden",
+    "approval": "Bestätigen Sie die Verbindung im Browser und kehren Sie zu ORG2 zurück.",
+    "connecting": "Bestätigen Sie die Anbieteranmeldung im Browser. ORG2 verknüpft das Konto automatisch.",
+    "completed": "Konto verbunden. Es erscheint unter Market-Konten.",
+    "failed": "Verbindung nicht bestätigt. Prüfen Sie vor einem neuen Versuch Ihre Market-Konten.",
+    "cancelling": "Verbindung wird abgebrochen…",
+    "cancel": "Abbrechen"
   }
 }

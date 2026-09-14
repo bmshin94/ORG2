@@ -5,7 +5,7 @@ mod seller_callback;
 mod seller_client;
 mod seller_enrollment;
 pub use seller_callback::{SellerAuthorization, SellerCallback, SellerProvider};
-pub use seller_client::SellerConnection;
+pub use seller_client::{SellerBinding, SellerConnection};
 pub use seller_enrollment::{
     parse_seller_selection, SellerEnrollment, SellerRedemption, SellerSelection,
 };

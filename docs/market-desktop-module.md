@@ -44,3 +44,20 @@
 发布流程在 macOS、Windows 安装包上传成功后生成 `market-native-protocol.json`，记录版本 tag、源码提交与协议版本。生成器核对 tag 指向当前 checkout，且默认 Cargo feature 包含 Market；重跑发布只接受相同标记，不覆盖不同内容。Cloud infra 的本地 rollout 使用此标记核对桌面兼容性。
 
 该标记只说明协议兼容，不证明安装包已签名或真实连接验收通过。签名安装包与生产全流程仍须分别验证。本地 `node --test scripts/market-release/protocol.test.mjs` 的 5 项测试已通过，包含临时 Git/Cargo 项目上的真实生成命令；尚未触发新的 GitHub Release。
+
+### Seller native connection follow-up (2026-09-13)
+
+The seller entry now dispatches `orgii://market/seller/connect` through the
+existing main-window deep-link owner. ORG2 owns browser approval, the fixed
+loopback receiver, and the short-lived restricted Market credential. Credentials
+and callback URLs do not cross frontend IPC. Completion displays only the
+backend-confirmed binding receipt. One task owns cancellation and listener cleanup;
+an ambiguous completion is read back, never blindly resubmitted. No CLI or login
+file is part of the seller UI. Thirteen locales cover the native dialog.
+
+Validation: native module 29 tests; frontend dispatch 9 tests; TypeScript Go
+checker and webpack build passed. Standard `tsc` exhausted its default Node heap;
+it is not recorded as a passing check. Native host compilation is checked separately.
+Actual signed primary-app release, production migration/rollout, and real provider
+browser-to-binding acceptance remain pending. A dispatched link and passing unit
+tests are not evidence that the installed production version supports this flow.

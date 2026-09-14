@@ -17,6 +17,7 @@ test("emits the Console rollout wire contract for the tagged default build", () 
   assert.deepEqual(protocolMarker(input), {
     release: "v1.4.0",
     protocol: 1,
+    sellerProtocol: 1,
     commit,
   });
   assert.equal(

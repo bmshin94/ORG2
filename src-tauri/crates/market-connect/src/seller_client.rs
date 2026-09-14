@@ -3,7 +3,7 @@ use crate::{
     client::{bounded_response, valid_identity},
     SellerRedemption, CONSOLE,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 const MARKET: &str = "https://org2-market.fly.dev:8443";
 
@@ -25,7 +25,114 @@ pub struct SellerConnection {
     grant: WireGrant,
     expires_at: i64,
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProviderStart {
+    session_id: String,
+    url: String,
+    expires_at: String,
+}
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct SellerBinding {
+    pub binding_id: String,
+    pub auth_id: String,
+}
+impl SellerBinding {
+    fn validate(self) -> Result<Self, &'static str> {
+        if [&self.binding_id, &self.auth_id].iter().any(|s| {
+            s.is_empty()
+                || s.len() > 256
+                || !s
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+        }) {
+            return Err("invalid_seller_binding");
+        }
+        Ok(self)
+    }
+}
 impl SellerConnection {
+    async fn operation(
+        &self,
+        operation: &str,
+        body: serde_json::Value,
+    ) -> Result<Vec<u8>, &'static str> {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(15))
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|_| "seller_transport_unavailable")?;
+        let response = client
+            .post(format!("{MARKET}/v1/console/capacity/native/{operation}"))
+            .bearer_auth(self.bearer()?)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|_| "seller_operation_uncertain")?;
+        bounded_response(response)
+            .await
+            .map_err(|_| "seller_operation_failed")
+    }
+    pub async fn start(&self) -> Result<crate::SellerAuthorization, &'static str> {
+        let raw = self.operation("start", serde_json::json!({})).await?;
+        let start: ProviderStart =
+            serde_json::from_slice(&raw).map_err(|_| "invalid_seller_start")?;
+        if start.session_id.is_empty() || start.session_id.len() > 256 {
+            return Err("invalid_seller_start");
+        }
+        let provider = match self.provider() {
+            "claude" => crate::SellerProvider::Claude,
+            "codex" => crate::SellerProvider::Codex,
+            _ => return Err("invalid_seller_provider"),
+        };
+        crate::SellerAuthorization::parse(provider, &start.url, &start.expires_at)
+    }
+    pub async fn complete(&self, redirect_url: &str) -> Result<SellerBinding, &'static str> {
+        // The validated local receiver supplies this URL; never accept it via frontend IPC.
+        let result = self
+            .operation("complete", serde_json::json!({"redirect_url":redirect_url}))
+            .await;
+        match result {
+            Ok(raw) => serde_json::from_slice::<SellerBinding>(&raw)
+                .map_err(|_| "invalid_seller_binding")?
+                .validate(),
+            Err(_) => {
+                // Read back an ambiguous response; never blindly resubmit completion.
+                let raw = self.operation("status", serde_json::json!({})).await?;
+                #[derive(Deserialize)]
+                #[serde(deny_unknown_fields)]
+                struct Status {
+                    status: String,
+                    result: Option<SellerBinding>,
+                }
+                let status: Status =
+                    serde_json::from_slice(&raw).map_err(|_| "invalid_seller_status")?;
+                if status.status != "completed" {
+                    return Err("seller_operation_uncertain");
+                }
+                status
+                    .result
+                    .ok_or("seller_operation_uncertain")?
+                    .validate()
+            }
+        }
+    }
+    pub async fn cancel(&self) -> Result<(), &'static str> {
+        let raw = self.operation("cancel", serde_json::json!({})).await?;
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Cancelled {
+            cancelled: bool,
+        }
+        if !serde_json::from_slice::<Cancelled>(&raw)
+            .map_err(|_| "invalid_seller_cancel")?
+            .cancelled
+        {
+            return Err("seller_operation_uncertain");
+        }
+        Ok(())
+    }
     pub fn identity_user_id(&self) -> &str {
         &self.grant.identity_user_id
     }
@@ -139,6 +246,33 @@ mod tests {
             .unwrap();
         let value = serde_json::json!({"token":format!("og2sn_{}","b".repeat(43)),"identity_user_id":"11111111-1111-4111-8111-111111111111","session_version":0,"connection_id":format!("seller_native_{}","c".repeat(32)),"provider":"claude","region":"sjc","state":state,"expires_at":(chrono::Utc::now()+chrono::Duration::minutes(5)).to_rfc3339(),"market_url":MARKET});
         (proof, value)
+    }
+    #[test]
+    fn binding_receipts_never_accept_credentials_or_empty_ids() {
+        for raw in [
+            r#"{"binding_id":"","auth_id":"auth_test"}"#,
+            r#"{"binding_id":"binding_test","auth_id":"auth_test","access_token":"secret"}"#,
+            r#"{"binding_id":"binding_test","auth_id":"https://example.test"}"#,
+        ] {
+            assert!(serde_json::from_str::<SellerBinding>(raw)
+                .map_err(|_| "invalid")
+                .and_then(SellerBinding::validate)
+                .is_err());
+        }
+        let receipt = serde_json::from_str::<SellerBinding>(
+            r#"{"binding_id":"binding_test","auth_id":"auth_test"}"#,
+        )
+        .unwrap()
+        .validate()
+        .unwrap();
+        assert_eq!(
+            serde_json::to_value(receipt)
+                .unwrap()
+                .as_object()
+                .unwrap()
+                .len(),
+            2
+        );
     }
     #[test]
     fn accepts_exact_approved_context_and_expires_without_refresh() {

@@ -1,6 +1,7 @@
 //! Composition boundary for the removable Market module. Common client
 //! configuration and credential crates do not depend on this module.
 use serde::Serialize;
+pub mod seller;
 #[cfg(feature = "market-connect")]
 mod source;
 

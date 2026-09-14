@@ -1683,5 +1683,14 @@
     "sharedToOrg": "Skill udostępniony organizacji",
     "shareToOrgHint": "Członkowie organizacji otrzymują bieżącą migawkę tego skilla; po edycji udostępnij ponownie, aby opublikować aktualizację.",
     "shareOrgPlaceholder": "Organizacja"
+  },
+  "marketSeller": {
+    "title": "Połącz konto sprzedawcy",
+    "approval": "Zatwierdź połączenie w przeglądarce i wróć do ORG2.",
+    "connecting": "Zatwierdź logowanie dostawcy w przeglądarce. ORG2 automatycznie powiąże konto.",
+    "completed": "Konto połączone. Znajdziesz je na stronie kont Market.",
+    "failed": "Nie potwierdzono połączenia. Sprawdź konta Market przed ponowną próbą.",
+    "cancelling": "Anulowanie połączenia…",
+    "cancel": "Anuluj"
   }
 }

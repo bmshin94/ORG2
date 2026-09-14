@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 
 import { type Connection, connectionSchema } from "./rpc";
 
+const SellerDialog = lazy(() => import("./SellerDialog"));
 const ConnectionDialog = lazy(() => import("./ConnectionDialog"));
 export default function ConnectionHost() {
   const [connection, setConnection] = useState<Connection | null>(null);
@@ -13,13 +14,21 @@ export default function ConnectionHost() {
     window.addEventListener("market-authorization-saved", open);
     return () => window.removeEventListener("market-authorization-saved", open);
   }, []);
-  return connection ? (
-    <Suspense fallback={null}>
-      <ConnectionDialog
-        key={`${connection.identity_user_id}:${connection.workspace_id}:${connection.target}`}
-        connection={connection}
-        onClose={() => setConnection(null)}
-      />
-    </Suspense>
-  ) : null;
+  return (
+    <>
+      {" "}
+      <Suspense fallback={null}>
+        <SellerDialog />
+      </Suspense>
+      {connection ? (
+        <Suspense fallback={null}>
+          <ConnectionDialog
+            key={`${connection.identity_user_id}:${connection.workspace_id}:${connection.target}`}
+            connection={connection}
+            onClose={() => setConnection(null)}
+          />
+        </Suspense>
+      ) : null}
+    </>
+  );
 }

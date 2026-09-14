@@ -1683,5 +1683,14 @@
     "sharedToOrg": "Skill organizasyonla paylaşıldı",
     "shareToOrgHint": "Organizasyon üyeleri bu Skill'in geçerli anlık görüntüsünü alır; düzenledikten sonra güncelleme yayınlamak için yeniden paylaşın.",
     "shareOrgPlaceholder": "Organizasyon"
+  },
+  "marketSeller": {
+    "title": "Satıcı hesabını bağla",
+    "approval": "Tarayıcıda bağlantıyı onaylayıp ORG2’ye dönün.",
+    "connecting": "Tarayıcıda sağlayıcı girişini onaylayın. ORG2 hesabı otomatik bağlayacaktır.",
+    "completed": "Hesap bağlandı. Market hesapları sayfasından görebilirsiniz.",
+    "failed": "Bağlantı doğrulanamadı. Yeniden denemeden önce Market hesaplarını kontrol edin.",
+    "cancelling": "Bağlantı iptal ediliyor…",
+    "cancel": "İptal"
   }
 }

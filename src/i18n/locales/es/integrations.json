@@ -1683,5 +1683,14 @@
     "sharedToOrg": "Skill compartida con la organización",
     "shareToOrgHint": "Los miembros de la organización reciben la instantánea actual de esta Skill; vuelve a compartirla después de editarla para publicar una actualización.",
     "shareOrgPlaceholder": "Organización"
+  },
+  "marketSeller": {
+    "title": "Conectar cuenta de vendedor",
+    "approval": "Autoriza la conexión en el navegador y vuelve a ORG2.",
+    "connecting": "Autoriza el acceso al proveedor en el navegador. ORG2 vinculará la cuenta automáticamente.",
+    "completed": "Cuenta conectada. Puedes verla en las cuentas de Market.",
+    "failed": "No se pudo confirmar la conexión. Revisa las cuentas de Market antes de reintentar.",
+    "cancelling": "Cancelando la conexión…",
+    "cancel": "Cancelar"
   }
 }
