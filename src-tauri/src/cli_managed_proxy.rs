@@ -1,3 +1,4 @@
+use crate::dynamic_credentials::Authentication;
 use axum::{
     body::{to_bytes, Body},
     extract::Path,
@@ -55,6 +56,7 @@ enum ProxyProtocol {
 
 #[derive(Debug, Clone)]
 struct ProxyContext {
+    authentication: Authentication,
     key_id: String,
     provider: String,
     model: String,
@@ -279,7 +281,7 @@ async fn proxy_agent_handler(
     path: String,
     request: Request<Body>,
 ) -> Response<Body> {
-    let context = match resolve_proxy_context(agent_name) {
+    let mut context = match resolve_proxy_context(agent_name) {
         Ok(context) => context,
         Err(err) => {
             return json_error(StatusCode::PRECONDITION_FAILED, err);
@@ -290,6 +292,19 @@ async fn proxy_agent_handler(
             StatusCode::UNAUTHORIZED,
             "Invalid ORG2 proxy token".to_string(),
         );
+    }
+    match crate::dynamic_credentials::source(&context.key_id) {
+        Ok(Some(source))=>match source.credential(&context.key_id,agent_name).await {
+            Ok(credential)=>{
+                context.authentication=credential.destination.authentication;
+                context.api_key=credential.secret;
+                context.provider=credential.destination.provider;
+                context.upstream_base_url=credential.destination.base_url;
+            },
+            Err(error)=>return json_error(StatusCode::PRECONDITION_FAILED,error),
+        },
+        Ok(None)=>{},
+        Err(error)=>return json_error(StatusCode::PRECONDITION_FAILED,error),
     }
     let query = forwarded_query(&context.protocol, request.uri().query());
     let path = match query {
@@ -390,6 +405,7 @@ async fn forward_request(
         &context.protocol,
         &context.provider,
         &context.api_key,
+        context.authentication,
     );
     if !incoming_headers.contains_key(CONTENT_TYPE) {
         builder = builder.header(CONTENT_TYPE.as_str(), "application/json");
@@ -561,7 +577,9 @@ fn apply_auth_header(
     protocol: &ProxyProtocol,
     provider: &str,
     api_key: &str,
+    authentication: Authentication,
 ) -> reqwest::RequestBuilder {
+    if matches!(authentication, Authentication::Bearer) {return builder.header("Authorization",format!("Bearer {api_key}"));}
     match protocol {
         ProxyProtocol::OpenAi if provider == "azure_openai_api" => {
             builder.header("api-key", api_key)
@@ -607,6 +625,14 @@ fn resolve_proxy_context_for_selection(
     proxy_token: String,
 ) -> Result<ProxyContext, String> {
     let descriptor = protocol_for_agent(agent_name)?;
+    if let Some(selection)=key_id {
+        if let Some(source)=crate::dynamic_credentials::source(selection)? {
+            let destination=source.destination(selection,agent_name)?;
+            let model=selected_model.filter(|m|!m.is_empty()).ok_or("No model selected")?;
+            return Ok(ProxyContext{authentication:destination.authentication,key_id:selection.into(),provider:destination.provider,model:model.into(),upstream_base_url:destination.base_url,api_key:String::new(),proxy_token,protocol:descriptor.protocol});
+        }
+    }
+
     if matches!(agent_name, "claude_code" | "codex") {
         let key_id = key_id
             .filter(|value| !value.trim().is_empty())
@@ -616,6 +642,7 @@ fn resolve_proxy_context_for_selection(
             .ok_or("Selected KeyVault key does not exist")?;
         let connection = key_vault::harness_connections::resolve(agent_name, &key, selected_model)?;
         return Ok(ProxyContext {
+            authentication: Authentication::ProtocolDefault,
             key_id: connection.key_id,
             provider: connection.provider,
             model: connection.model,
@@ -737,6 +764,7 @@ fn resolve_proxy_context_for_selection(
     };
 
     Ok(ProxyContext {
+        authentication: Authentication::ProtocolDefault,
         key_id: key_id.to_string(),
         provider,
         model,
@@ -776,6 +804,24 @@ fn compatible_key_ids_for_agent(agent_name: &str) -> Vec<String> {
         })
         .map(|key| key.id)
         .collect()
+}
+
+/// Application adapter for trusted dynamic sources; normal KeyVault selection
+/// still uses its endpoint/model test receipt path below.
+pub(crate) async fn enable_dynamic_managed(agent:String,key:String,model:String,expected_hashes:std::collections::BTreeMap<String,Option<String>>)->Result<agent_cli::managed_config::CliConfigManagedStatus,String>{
+    if !matches!(agent.as_str(),"claude_code"|"codex") || model.is_empty() || model.len()>256 {return Err("Unsupported dynamic client selection".into());}
+    let source=crate::dynamic_credentials::source(&key)?.ok_or("Dynamic credential source required")?;
+    source.credential(&key,&agent).await?;
+    start_cli_managed_proxy_thread();
+    for _ in 0..20 {
+        if PROXY_RUNNING.load(Ordering::SeqCst){break;}
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    tokio::task::spawn_blocking(move||{
+        if !PROXY_RUNNING.load(Ordering::SeqCst){return Err(proxy_unavailable_message());}
+        let context=resolve_proxy_context_for_selection(&agent,Some(&key),Some(&model),String::new())?;
+        agent_cli::managed_config::enable_orgii_managed_checked(&agent,Some(key),Some(context.provider),Some(model),false,Some(&expected_hashes))
+    }).await.map_err(|_|"Client configuration task failed")?
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -1014,4 +1060,52 @@ mod tests {
             Some("api-version=2026-01-01".to_string())
         );
     }
+    #[test]
+    fn protocol_default_preserves_static_provider_authentication() {
+        let _ = tokio_rustls::rustls::crypto::ring::default_provider().install_default();
+        let client = reqwest::Client::new();
+        for (protocol, provider, header, expected) in [
+            (ProxyProtocol::Anthropic, "anthropic", "x-api-key", "fixture-key"),
+            (ProxyProtocol::Anthropic, "azure_anthropic_api", "api-key", "fixture-key"),
+            (ProxyProtocol::OpenAi, "openai", "authorization", "Bearer fixture-key"),
+            (ProxyProtocol::OpenAi, "azure_openai_api", "api-key", "fixture-key"),
+        ] {
+            let request = apply_auth_header(client.post("https://gateway.example.test"),
+                &protocol, provider, "fixture-key", Authentication::ProtocolDefault)
+                .build().unwrap();
+            assert_eq!(request.headers().get(header).unwrap(), expected);
+            for other in ["authorization", "x-api-key", "api-key"] {
+                if other != header { assert!(!request.headers().contains_key(other)); }
+            }
+        }
+    }
+
+    #[test]
+    fn dynamic_source_declares_bearer_for_both_protocols(){
+        let _=tokio_rustls::rustls::crypto::ring::default_provider().install_default();
+        let client=reqwest::Client::new();
+        for protocol in [ProxyProtocol::Anthropic,ProxyProtocol::OpenAi]{
+            let request=apply_auth_header(client.post("https://gateway.example.test/w/ws_fixture/v1/messages"),&protocol,"test-source","synthetic-workspace-token",Authentication::Bearer).build().unwrap();
+            assert_eq!(request.headers().get("authorization").unwrap(),"Bearer synthetic-workspace-token");
+            assert!(!request.headers().contains_key("x-api-key"));
+            assert!(!request.headers().contains_key("api-key"));
+        }
+        assert_eq!(build_anthropic_upstream_url("https://gateway.example.test/w/ws_fixture","v1/messages").unwrap(),"https://gateway.example.test/w/ws_fixture/v1/messages");
+        assert_eq!(build_upstream_url("https://gateway.example.test/w/ws_fixture","v1/responses").unwrap(),"https://gateway.example.test/w/ws_fixture/v1/responses");
+    }
+
+}
+
+/// Freeze the current managed configuration for an already-created TUI session.
+#[tauri::command(rename_all = "camelCase")]
+pub async fn cli_config_prepare_launch(agent_name: String, selection: String, model: String,
+    session_id: String) -> Result<agent_cli::managed_config::launch::ManagedLaunchProfile, String> {
+    tokio::task::spawn_blocking(move || {
+        let session = crate::agent_sessions::cli::persistence::get_session(&session_id)
+            .map_err(|e| e.to_string())?.ok_or("Launch session is missing")?;
+        if session.runner != "tui" || session.cli_agent_type.as_deref() != Some(&agent_name) {
+            return Err("Launch session does not match the client".into());
+        }
+        agent_cli::managed_config::launch::prepare(&agent_name, &selection, &model, &session_id)
+    }).await.map_err(|_| "Launch profile task failed")?
 }

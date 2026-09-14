@@ -196,3 +196,22 @@ export async function cliAgentTuiRelease(sessionId: string): Promise<void> {
     // Best-effort — the session row simply keeps its last status.
   }
 }
+
+/** Apply launch-scoped environment after the shell's startup files have run. */
+export function withCliCommandEnvironment(
+  command: string,
+  env: Record<string, string>,
+  windows: boolean = isWindows()
+): string {
+  const entries = Object.entries(env);
+  if (entries.some(([name]) => !/^[A-Z_][A-Z0-9_]*$/.test(name)))
+    throw new Error("Invalid client environment name");
+  if (!entries.length) return command;
+  if (windows) {
+    const assignments = entries
+      .map(([name, value]) => `$env:${name}=${quoteShellArg(value, true)}`)
+      .join("; ");
+    return `& { ${assignments}; & ${command} }`;
+  }
+  return `env ${entries.map(([name, value]) => quoteShellArg(`${name}=${value}`, false)).join(" ")} ${command}`;
+}

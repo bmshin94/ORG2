@@ -1,4 +1,22 @@
 {
+  "marketConnection": {
+    "authorizationSaved": "Autorisation Market enregistrée ; le client reste à configurer",
+    "failed": "La connexion à Market a échoué. Rouvrez la connexion de l’espace de travail.",
+    "title": "Connecter l’espace de travail",
+    "close": "Fermer",
+    "disconnect": "Déconnecter",
+    "configure": "Configurer le client",
+    "adapterPending": "Cet adaptateur client n’est pas encore prêt",
+    "listing": "Offre",
+    "model": "Modèle",
+    "noPurchases": "Aucun achat actif dans cet espace de travail",
+    "conflict": "Configuration modifiée hors d’ORG2 ; vérifiez-la avant application",
+    "configured": "Configuration enregistrée ; une requête au modèle reste à vérifier",
+    "openWorkspace": "Choisir un dossier et ouvrir le client",
+    "launchNote": "ORG2 ouvre le client dans le dossier choisi. Aucune commande ni clé à copier.",
+    "clientMissing": "Installez ce client dans les paramètres ORG2, puis réessayez.",
+    "launchFailed": "Impossible d’ouvrir l’espace de travail. Vérifiez le dossier et reconnectez l’offre sélectionnée."
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Spécifique au repo",

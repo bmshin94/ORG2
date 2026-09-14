@@ -1,4 +1,22 @@
 {
+  "marketConnection": {
+    "authorizationSaved": "Market yetkilendirmesi kaydedildi; istemci kurulumu hâlâ gerekli",
+    "failed": "Market bağlantısı tamamlanamadı. Çalışma alanı bağlantısını yeniden açın.",
+    "title": "Çalışma alanını bağla",
+    "close": "Kapat",
+    "disconnect": "Bağlantıyı kes",
+    "configure": "İstemciyi yapılandır",
+    "adapterPending": "Bu istemci bağdaştırıcısı henüz hazır değil",
+    "listing": "İlan",
+    "model": "Model",
+    "noPurchases": "Bu çalışma alanında etkin satın alma yok",
+    "conflict": "Yapılandırma ORG2 dışında değiştirildi; uygulamadan önce kontrol edin",
+    "configured": "Yapılandırma kaydedildi; gerçek model isteği henüz doğrulanmadı",
+    "openWorkspace": "Klasör seç ve istemciyi aç",
+    "launchNote": "ORG2 istemciyi seçilen klasörde açar. Komut veya anahtar kopyalamanız gerekmez.",
+    "clientMissing": "Bu istemciyi ORG2 ayarlarından yükleyip tekrar deneyin.",
+    "launchFailed": "Çalışma alanı açılamadı. Klasörü kontrol edin ve seçilen ilana yeniden bağlanın."
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Repo-specific",

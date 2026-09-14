@@ -20,6 +20,7 @@ mod target_lock;
 pub use direct::DirectConnection;
 mod file_io;
 mod generators;
+pub mod launch;
 mod manifest;
 mod operations;
 mod proxy;
@@ -208,6 +209,26 @@ pub async fn cli_config_restore_default(
     })
     .await
     .map_err(|err| format!("Task join error: {err}"))?
+}
+
+/// Restore only a still-selected profile. The compare and restoration share
+/// the target lock, so disconnecting one source cannot undo a newer choice.
+pub fn restore_if_selected(
+    agent_name: &str,
+    expected_key: &str,
+) -> Result<CliConfigManagedStatus, String> {
+    let _guard = config_operation_guard()?;
+    let _target_lock = target_lock::lock_targets(agent_name)?;
+    recover_pending_transaction_unlocked(agent_name)?;
+    let selection = managed_selection_for_agent_unlocked(agent_name)?;
+    if selection
+        .as_ref()
+        .and_then(|s| s.selected_key_id.as_deref())
+        != Some(expected_key)
+    {
+        return Err("Client selection changed; refresh before disconnecting".into());
+    }
+    restore_agent_default_unlocked(agent_name, false)
 }
 
 /// Apply native credentials without starting or depending on the local proxy.

@@ -953,3 +953,84 @@ fn credential_profile_writes_are_owner_only_from_the_first_byte() {
         "staging files left behind: {leftovers:?}"
     );
 }
+
+#[test]
+fn source_disconnect_refuses_to_restore_a_newer_selection() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    let target_path = temp.path().join("config.toml");
+    let profile_root = temp.path().join("profiles");
+    let target = test_target("config", &target_path, &profile_root);
+    std::fs::write(&target_path, b"new-selected-configuration").unwrap();
+    let mut manifest = test_manifest(CODEX_AGENT, vec![target]);
+    manifest.mode = CliConfigMode::OrgiiManaged;
+    manifest.selected_key_id = Some("new-source".into());
+    write_manifest(&manifest).unwrap();
+    assert!(restore_if_selected(CODEX_AGENT, "old-source").is_err());
+    assert_eq!(
+        std::fs::read(&target_path).unwrap(),
+        b"new-selected-configuration"
+    );
+    assert_eq!(
+        read_manifest(CODEX_AGENT)
+            .unwrap()
+            .unwrap()
+            .selected_key_id
+            .as_deref(),
+        Some("new-source")
+    );
+}
+
+#[test]
+fn managed_launch_freezes_proxy_generation_and_releases_only_its_session() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    for agent in [CODEX_AGENT, "claude_code"] {
+        let target_path = temp.path().join(format!("{agent}.config"));
+        std::fs::write(&target_path, b"current config").unwrap();
+        let mut target = test_target("config", &target_path, &temp.path().join("profiles"));
+        target.last_applied_hash = file_hash(&target_path).unwrap();
+        let mut manifest = test_manifest(agent, vec![target]);
+        write_manifest(&manifest).unwrap();
+        let session_id = format!("cli_test_{agent}");
+        let profile = launch::prepare(agent, "key-1", "gpt-test", &session_id).unwrap();
+        let env_key = if agent == CODEX_AGENT { "CODEX_HOME" } else { "CLAUDE_CONFIG_DIR" };
+        let directory = PathBuf::from(profile.env.get(env_key).unwrap());
+        let config_path = directory.join(if agent == CODEX_AGENT { "config.toml" } else { "settings.json" });
+        let original = std::fs::read_to_string(&config_path).unwrap();
+        assert!(original.contains(TEST_PROXY_TOKEN));
+        assert!(!serde_json::to_string(&profile).unwrap().contains(TEST_PROXY_TOKEN));
+        #[cfg(unix)] {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(std::fs::metadata(&config_path).unwrap().permissions().mode() & 0o777, 0o600);
+        }
+        // A later global switch must never rewrite this session's profile.
+        manifest.selected_key_id = Some("key-2".into());
+        manifest.proxy_token = Some("new-proxy-generation".into());
+        write_manifest(&manifest).unwrap();
+        assert!(launch::prepare(agent, "key-1", "gpt-test", "cli_stale").is_err());
+        assert_eq!(std::fs::read_to_string(&config_path).unwrap(), original);
+        assert!(launch::release("../profiles").is_err());
+        launch::release(&session_id).unwrap();
+        launch::release(&session_id).unwrap();
+        assert!(!directory.exists());
+        assert_eq!(std::fs::read(&target_path).unwrap(), b"current config");
+    }
+}
+
+#[test]
+fn managed_launch_refuses_external_file_edits() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    let target_path = temp.path().join("config");
+    std::fs::write(&target_path, b"before").unwrap();
+    let mut target = test_target("config", &target_path, &temp.path().join("profiles"));
+    target.last_applied_hash = file_hash(&target_path).unwrap();
+    write_manifest(&test_manifest(CODEX_AGENT, vec![target])).unwrap();
+    std::fs::write(&target_path, b"external edit").unwrap();
+    assert!(launch::prepare(CODEX_AGENT, "key-1", "gpt-test", "cli_conflict").is_err());
+    assert!(!temp.path().join("orgii-home/managed-cli-launches/cli_conflict").exists());
+}

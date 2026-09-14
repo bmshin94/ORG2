@@ -54,6 +54,8 @@ pub mod app_update; // Channel-aware (stable/beta) app update checks
 pub mod native_menu; // Native popup resource-lock boundary
 pub mod cli_managed_proxy;
 pub mod harness_connections;
+pub mod market_connection;
+pub(crate) mod dynamic_credentials;
 pub mod infrastructure; // In-tree-only cross-cutting infrastructure (paths, platform, archive, housekeeping). Leaf pieces live in their own workspace crates.
 pub mod orgtrack;
 mod runtime_instance;

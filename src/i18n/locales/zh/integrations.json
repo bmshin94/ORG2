@@ -1,4 +1,22 @@
 {
+  "marketConnection": {
+    "authorizationSaved": "Market 授权已保存，客户端配置尚未完成",
+    "failed": "Market 连接未完成，请重新打开工作区连接",
+    "title": "连接工作区",
+    "close": "关闭",
+    "disconnect": "断开连接",
+    "configure": "配置客户端",
+    "adapterPending": "此客户端适配尚未完成",
+    "listing": "Listing",
+    "model": "模型",
+    "noPurchases": "此工作区没有有效购买项",
+    "conflict": "配置已在 ORG2 外被修改，请先检查",
+    "configured": "配置已保存，仍需验证实际模型请求",
+    "openWorkspace": "选择文件夹并打开客户端",
+    "launchNote": "ORG2 会在所选文件夹中打开客户端，无需复制命令或密钥。",
+    "clientMissing": "请先在 ORG2 设置中安装此客户端，然后重试。",
+    "launchFailed": "无法打开工作区。请检查文件夹，并重新连接所选 listing。"
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Repo-specific",

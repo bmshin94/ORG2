@@ -1,4 +1,22 @@
 {
+  "marketConnection": {
+    "authorizationSaved": "Market authorization saved; client setup is still required",
+    "failed": "Market connection could not be completed. Open the workspace connection again.",
+    "title": "Connect workspace",
+    "close": "Close",
+    "disconnect": "Disconnect",
+    "configure": "Configure client",
+    "adapterPending": "This client adapter is not ready yet",
+    "listing": "Listing",
+    "model": "Model",
+    "noPurchases": "No active purchases in this workspace",
+    "conflict": "Configuration changed outside ORG2; review it before applying",
+    "configured": "Configuration saved; a successful model request still needs verification",
+    "openWorkspace": "Choose folder and open client",
+    "launchNote": "ORG2 opens the client in your chosen folder. No command or key needs to be copied.",
+    "clientMissing": "Install this client in ORG2 Settings, then try again.",
+    "launchFailed": "Could not open the workspace. Check the folder and reconnect the selected listing."
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Repo-specific",

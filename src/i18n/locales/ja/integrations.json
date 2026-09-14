@@ -1,4 +1,22 @@
 {
+  "marketConnection": {
+    "authorizationSaved": "Market の認可を保存しました。クライアントの設定は未完了です",
+    "failed": "Market に接続できませんでした。ワークスペースの接続をもう一度開いてください。",
+    "title": "ワークスペースを接続",
+    "close": "閉じる",
+    "disconnect": "切断",
+    "configure": "クライアントを設定",
+    "adapterPending": "このクライアントへの対応はまだ完了していません",
+    "listing": "出品",
+    "model": "モデル",
+    "noPurchases": "このワークスペースに有効な購入はありません",
+    "conflict": "ORG2 外で設定が変更されています。適用前に確認してください",
+    "configured": "設定を保存しました。モデルへの実際のリクエストは未検証です",
+    "openWorkspace": "フォルダーを選んでクライアントを開く",
+    "launchNote": "ORG2 が選択したフォルダーでクライアントを開きます。コマンドやキーのコピーは不要です。",
+    "clientMissing": "ORG2 の設定でこのクライアントをインストールしてから再試行してください。",
+    "launchFailed": "ワークスペースを開けませんでした。フォルダーを確認し、選択した出品に再接続してください。"
+  },
   "scopeLabels": {
     "user": "User",
     "repoSpecific": "Repo-specific",

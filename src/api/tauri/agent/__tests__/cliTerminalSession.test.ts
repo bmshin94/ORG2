@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CliLaunchProfileView } from "@src/api/tauri/rpc/schemas/agentOrgs";
@@ -7,6 +8,7 @@ import {
   deriveExpectedProcess,
   formatCliTuiCommand,
   resolveCliTuiCommand,
+  withCliCommandEnvironment,
 } from "../cliTerminalSession";
 
 const { getLaunchProfile } = vi.hoisted(() => ({
@@ -237,5 +239,34 @@ describe("deriveExpectedProcess", () => {
 
   it("returns undefined for a blank command", () => {
     expect(deriveExpectedProcess("   ")).toBeUndefined();
+  });
+});
+
+describe("launch-scoped environment", () => {
+  it("overrides shell startup environment without interpreting directory contents", () => {
+    if (process.platform === "win32") return;
+    const folder = "/tmp/project's $(echo must-not-expand)";
+    const command = withCliCommandEnvironment(
+      "sh -c 'printf %s \"$CODEX_HOME\"'",
+      { CODEX_HOME: folder },
+      false
+    );
+    expect(
+      execFileSync("/bin/sh", ["-c", command], {
+        env: { PATH: process.env.PATH, CODEX_HOME: "/wrong/startup/profile" },
+      }).toString()
+    ).toBe(folder);
+  });
+  it("quotes Windows directory arguments and rejects environment-name injection", () => {
+    expect(
+      withCliCommandEnvironment(
+        "codex",
+        { CODEX_HOME: "C:/my project's" },
+        true
+      )
+    ).toBe("& { $env:CODEX_HOME='C:/my project''s'; & codex }");
+    expect(() =>
+      withCliCommandEnvironment("codex", { "HOME;echo": "bad" }, true)
+    ).toThrow();
   });
 });
