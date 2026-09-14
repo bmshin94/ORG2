@@ -152,7 +152,7 @@ pub(super) fn exec_patches(input: &str) -> Vec<String> {
     tool_invocations(input)
         .into_iter()
         .filter(|(name, _)| normalize_tool_name_key(name) == "apply_patch")
-        .filter_map(|(_, expression)| resolve_string_expression(input, &expression))
+        .filter_map(|(_, expression)| resolve_string_expression(input, expression))
         .collect()
 }
 
