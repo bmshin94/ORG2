@@ -245,6 +245,93 @@ pub(super) async fn retire_for_reauthorization() -> tokio::sync::OwnedRwLockWrit
     instance().retire().await
 }
 
+
+pub(super) async fn options(
+    metadata: ConnectionMetadata,
+) -> Result<Vec<market_connect::WorkspaceEntitlement>, String> {
+    let source = instance();
+    tokio::spawn(async move {
+        let (_authorization, entry) = source.acquire(&metadata, None).await?;
+        let mut state = entry.lock().await;
+        state
+            .restore(metadata)
+            .await?
+            .entitlements()
+            .await
+            .map_err(Into::into)
+    })
+    .await
+    .map_err(|_| "Market workspace request failed")?
+}
+
+/// Prepare a public session source from authoritative purchase capabilities.
+/// This does not change global client configuration or send a model request.
+pub(super) async fn prepare_session(
+    metadata: ConnectionMetadata,
+    entitlement_id: String,
+    agent: String,
+    model: String,
+) -> Result<String, String> {
+    if metadata.target != market_connect::Target::Org2 {
+        return Err("Market session requires ORG2 authorization".into());
+    }
+    let selection = Selection {
+        metadata,
+        entitlement_id,
+    };
+    let key = selection.key()?;
+    Selection::parse(&key, &agent)?;
+    let entries = options(selection.metadata.clone()).await?;
+    validate_session_purchase(
+        &entries,
+        &selection.entitlement_id,
+        &agent,
+        &model,
+        chrono::Utc::now().timestamp_millis(),
+    )?;
+    Ok(key)
+}
+
+fn validate_session_purchase(
+    entries: &[market_connect::WorkspaceEntitlement],
+    entitlement: &str,
+    agent: &str,
+    model: &str,
+    now: i64,
+) -> Result<(), String> {
+    let wire_agent = match agent {
+        "claude_code" => "claude",
+        "codex" => "codex",
+        _ => return Err("Unsupported Market session engine".into()),
+    };
+    if model.trim().is_empty()
+        || model.len() > 256
+        || !entries.iter().any(|entry| {
+            entry.entitlement_id == entitlement
+                && entry.status == "active"
+                && entry.expires_at.is_none_or(|expiry| expiry > now)
+                && entry
+                    .models_by_agent
+                    .get(wire_agent)
+                    .is_some_and(|models| models.iter().any(|m| m == model))
+        })
+    {
+        return Err("Market purchase or model is unavailable".into());
+    }
+    Ok(())
+}
+
+// The generic Codex router strips its local /v1 prefix. Dynamic sources
+// therefore supply a protocol base, rather than a workspace root.
+pub(crate) fn protocol_base_url(workspace_root: &str, agent: &str) -> String {
+    let root = workspace_root.trim_end_matches('/');
+    if agent == "codex" {
+        format!("{root}/v1")
+    } else {
+        root.to_owned()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -506,91 +593,5 @@ mod tests {
         assert!(source.acquire(&metadata, None).await.is_err());
         drop(source.retire().await);
         source.acquire(&metadata, Some("new")).await.unwrap();
-    }
-}
-
-pub(super) async fn options(
-    metadata: ConnectionMetadata,
-) -> Result<Vec<market_connect::WorkspaceEntitlement>, String> {
-    let source = instance();
-    tokio::spawn(async move {
-        let (_authorization, entry) = source.acquire(&metadata, None).await?;
-        let mut state = entry.lock().await;
-        state
-            .restore(metadata)
-            .await?
-            .entitlements()
-            .await
-            .map_err(Into::into)
-    })
-    .await
-    .map_err(|_| "Market workspace request failed")?
-}
-
-/// Prepare a public session source from authoritative purchase capabilities.
-/// This does not change global client configuration or send a model request.
-pub(super) async fn prepare_session(
-    metadata: ConnectionMetadata,
-    entitlement_id: String,
-    agent: String,
-    model: String,
-) -> Result<String, String> {
-    if metadata.target != market_connect::Target::Org2 {
-        return Err("Market session requires ORG2 authorization".into());
-    }
-    let selection = Selection {
-        metadata,
-        entitlement_id,
-    };
-    let key = selection.key()?;
-    Selection::parse(&key, &agent)?;
-    let entries = options(selection.metadata.clone()).await?;
-    validate_session_purchase(
-        &entries,
-        &selection.entitlement_id,
-        &agent,
-        &model,
-        chrono::Utc::now().timestamp_millis(),
-    )?;
-    Ok(key)
-}
-
-fn validate_session_purchase(
-    entries: &[market_connect::WorkspaceEntitlement],
-    entitlement: &str,
-    agent: &str,
-    model: &str,
-    now: i64,
-) -> Result<(), String> {
-    let wire_agent = match agent {
-        "claude_code" => "claude",
-        "codex" => "codex",
-        _ => return Err("Unsupported Market session engine".into()),
-    };
-    if model.trim().is_empty()
-        || model.len() > 256
-        || !entries.iter().any(|entry| {
-            entry.entitlement_id == entitlement
-                && entry.status == "active"
-                && entry.expires_at.is_none_or(|expiry| expiry > now)
-                && entry
-                    .models_by_agent
-                    .get(wire_agent)
-                    .is_some_and(|models| models.iter().any(|m| m == model))
-        })
-    {
-        return Err("Market purchase or model is unavailable".into());
-    }
-    Ok(())
-}
-
-// The generic Codex router strips its local /v1 prefix. Dynamic sources
-// therefore supply a protocol base, rather than a workspace root.
-pub(crate) fn protocol_base_url(workspace_root: &str, agent: &str) -> String {
-    let root = workspace_root.trim_end_matches('/');
-    if agent == "codex" {
-        format!("{root}/v1")
-    } else {
-        root.to_owned()
     }
 }

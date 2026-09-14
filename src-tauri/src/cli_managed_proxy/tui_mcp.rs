@@ -11,6 +11,44 @@ pub(super) enum Files {
     Codex { _file: CodexMcpProfileFile },
 }
 
+
+pub(super) fn prepare(
+    agent: &str,
+    working_dir: &str,
+    agent_definition: Option<&str>,
+    connection: McpServerConfig,
+    profile: &mut ManagedLaunchProfile,
+) -> Result<Files, String> {
+    if !Path::new(working_dir).is_dir() {
+        return Err("MCP workspace directory is unavailable".into());
+    }
+    let servers =
+        SessionMcpServers::resolve_with_connection(working_dir, agent_definition, Some(connection))
+            .map_err(|error| error.to_string())?;
+    match agent {
+        "claude_code" => {
+            let file = servers.write_claude_mcp_config()?;
+            profile.args.extend([
+                "--strict-mcp-config".into(),
+                "--mcp-config".into(),
+                file.path().to_string_lossy().into_owned(),
+            ]);
+            Ok(Files::Claude { _file: file })
+        }
+        "codex" => {
+            let home = profile.env.get("CODEX_HOME").ok_or("Missing Codex home")?;
+            let file = servers
+                .write_codex_mcp_profile(Path::new(home))?
+                .ok_or("Missing purchased MCP configuration")?;
+            profile
+                .args
+                .extend(["--profile".into(), file.profile_name().into()]);
+            Ok(Files::Codex { _file: file })
+        }
+        _ => Err("Unsupported MCP terminal client".into()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -99,42 +137,5 @@ mod tests {
             assert!(session_routes::attach_mcp(&token, files).is_err());
             assert!(!abandoned.exists());
         }
-    }
-}
-
-pub(super) fn prepare(
-    agent: &str,
-    working_dir: &str,
-    agent_definition: Option<&str>,
-    connection: McpServerConfig,
-    profile: &mut ManagedLaunchProfile,
-) -> Result<Files, String> {
-    if !Path::new(working_dir).is_dir() {
-        return Err("MCP workspace directory is unavailable".into());
-    }
-    let servers =
-        SessionMcpServers::resolve_with_connection(working_dir, agent_definition, Some(connection))
-            .map_err(|error| error.to_string())?;
-    match agent {
-        "claude_code" => {
-            let file = servers.write_claude_mcp_config()?;
-            profile.args.extend([
-                "--strict-mcp-config".into(),
-                "--mcp-config".into(),
-                file.path().to_string_lossy().into_owned(),
-            ]);
-            Ok(Files::Claude { _file: file })
-        }
-        "codex" => {
-            let home = profile.env.get("CODEX_HOME").ok_or("Missing Codex home")?;
-            let file = servers
-                .write_codex_mcp_profile(Path::new(home))?
-                .ok_or("Missing purchased MCP configuration")?;
-            profile
-                .args
-                .extend(["--profile".into(), file.profile_name().into()]);
-            Ok(Files::Codex { _file: file })
-        }
-        _ => Err("Unsupported MCP terminal client".into()),
     }
 }
