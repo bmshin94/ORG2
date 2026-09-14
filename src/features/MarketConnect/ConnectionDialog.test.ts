@@ -137,7 +137,7 @@ it("reopens a matching saved profile as configured and disconnects its exact ent
   );
   expect(document.body.textContent).toContain("marketConnection.configured");
   await act(async () => button("marketConnection.disconnect").click());
-  expect(api.disconnect).toHaveBeenCalledWith(connection, "ent_one");
+  expect(api.disconnect).toHaveBeenCalledWith(connection);
   expect(close).toHaveBeenCalledOnce();
 });
 
@@ -169,7 +169,27 @@ it.each(["offline", "pending", "expired"])(
     );
     expect(button("marketConnection.disconnect").disabled).toBe(false);
     await act(async () => button("marketConnection.disconnect").click());
-    expect(api.disconnect).toHaveBeenCalledWith(connection, "ent_one");
+    expect(api.disconnect).toHaveBeenCalledWith(connection);
     expect(api.apply).not.toHaveBeenCalled();
+  }
+);
+
+it.each(["claude-app", "org2"] as const)(
+  "allows local cleanup for %s even before its launch adapter is available",
+  async (target) => {
+    const saved = { ...connection, target };
+    const close = vi.fn();
+    await act(async () =>
+      root.render(
+        createElement(ConnectionDialog, { connection: saved, onClose: close })
+      )
+    );
+    expect(button("marketConnection.configure").disabled).toBe(true);
+    expect(button("marketConnection.disconnect").disabled).toBe(false);
+    await act(async () => button("marketConnection.disconnect").click());
+    expect(api.disconnect).toHaveBeenCalledWith(saved);
+    expect(api.config).not.toHaveBeenCalled();
+    expect(api.entries).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledOnce();
   }
 );

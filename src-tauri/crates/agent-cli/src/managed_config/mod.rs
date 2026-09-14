@@ -217,17 +217,24 @@ pub fn restore_if_selected(
     agent_name: &str,
     expected_key: &str,
 ) -> Result<CliConfigManagedStatus, String> {
+    restore_if_selected_matching(agent_name, |key| Ok(key == expected_key))
+}
+
+/// Evaluate source ownership and restore while holding the same target lock.
+/// The matcher must be local and must not re-enter configuration operations.
+pub fn restore_if_selected_matching(
+    agent_name: &str,
+    matches: impl FnOnce(&str) -> Result<bool, String>,
+) -> Result<CliConfigManagedStatus, String> {
     let _guard = config_operation_guard()?;
     let _target_lock = target_lock::lock_targets(agent_name)?;
     recover_pending_transaction_unlocked(agent_name)?;
     let selection = managed_selection_for_agent_unlocked(agent_name)?;
-    if selection
+    let selected_key = selection
         .as_ref()
-        .and_then(|s| s.selected_key_id.as_deref())
-        != Some(expected_key)
-    {
-        // Already restored or switched: never touch the newer configuration,
-        // but allow the caller to finish removing its old grant/index.
+        .and_then(|s| s.selected_key_id.as_deref());
+    if !selected_key.map(matches).transpose()?.unwrap_or(false) {
+        // Already restored or switched: preserve the newer configuration.
         return status_for_unlocked(agent_name);
     }
     restore_agent_default_unlocked(agent_name, false)

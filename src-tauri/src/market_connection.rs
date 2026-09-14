@@ -1,9 +1,9 @@
 //! Composition boundary for the removable Market module. Common client
 //! configuration and credential crates do not depend on this module.
 use serde::Serialize;
-pub mod seller;
 #[cfg(feature = "market-connect")]
 mod disconnect_steps;
+pub mod seller;
 #[cfg(feature = "market-connect")]
 pub(crate) mod source;
 
@@ -94,32 +94,23 @@ pub async fn market_connection_disconnect(
     identity_user_id: String,
     workspace_id: String,
     target: String,
-    entitlement_id: String,
 ) -> Result<(), String> {
     #[cfg(feature = "market-connect")]
     {
         let target: market_connect::Target =
             serde_json::from_value(serde_json::Value::String(target))
                 .map_err(|_| "Invalid Market target")?;
-        let agent = target
-            .harness_name()
-            .ok_or("Unsupported Market client")?
-            .to_string();
+        let agent = target.harness_name().map(str::to_string);
         let metadata = market_connect::ConnectionMetadata {
             identity_user_id,
             workspace_id,
             target,
         };
-        let key = source::Selection {
-            metadata: metadata.clone(),
-            entitlement_id,
-        }
-        .key()?;
-        enabled::disconnect(metadata, key, agent).await
+        enabled::disconnect(metadata, agent).await
     }
     #[cfg(not(feature = "market-connect"))]
     {
-        let _ = (identity_user_id, workspace_id, target, entitlement_id);
+        let _ = (identity_user_id, workspace_id, target);
         Err("market_module_disabled".into())
     }
 }
@@ -275,8 +266,7 @@ mod enabled {
     }
     pub async fn disconnect(
         metadata: ConnectionMetadata,
-        key: String,
-        agent: String,
+        agent: Option<String>,
     ) -> Result<(), String> {
         let source_guard = super::source::retire_for_reauthorization().await;
         tokio::task::spawn_blocking(move || {
@@ -287,14 +277,24 @@ mod enabled {
             let mut records = read_index()?;
             // Prepare the intended index before cleanup; retain unrelated entries.
             records.retain(|record| record != &metadata);
-            let bytes = serde_json::to_vec(&records)
-                .map_err(|_| "market_connection_index_invalid")?;
+            let bytes =
+                serde_json::to_vec(&records).map_err(|_| "market_connection_index_invalid")?;
             let scope = app_paths::orgii_root().to_string_lossy().into_owned();
             super::disconnect_steps::disconnect_steps(
-                || agent_cli::managed_config::restore_if_selected(&agent, &key).map(|_| ()),
+                || {
+                    let Some(agent) = agent.as_deref() else {
+                        return Ok(());
+                    };
+                    agent_cli::managed_config::restore_if_selected_matching(agent, |key| {
+                        super::source::belongs_to(key, agent, &metadata)
+                    })
+                    .map(|_| ())
+                },
                 || market_connect::Grant::remove(&scope, &metadata).map_err(String::from),
-                || agent_cli::managed_config::write_cli_profile_file_atomic(&index_path(), &bytes)
-                    .map_err(|_| "market_connection_index_unavailable".into()),
+                || {
+                    agent_cli::managed_config::write_cli_profile_file_atomic(&index_path(), &bytes)
+                        .map_err(|_| "market_connection_index_unavailable".into())
+                },
             )
         })
         .await

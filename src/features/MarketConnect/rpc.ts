@@ -57,7 +57,7 @@ const apply = defineProcedure("market_connection_apply")
   .output(CliConfigManagedStatusSchema)
   .build();
 const disconnect = defineProcedure("market_connection_disconnect")
-  .input(input.extend({ entitlementId: z.string() }))
+  .input(input)
   .build();
 const status = defineProcedure("cli_config_get_status")
   .input(z.object({ agentName: z.string() }))
@@ -88,5 +88,5 @@ export const applyConfig = (
   model: string,
   expectedHashes: Record<string, string | null>
 ) => typedInvoke(apply, { ...args(c), entitlementId, model, expectedHashes });
-export const disconnectConfig = (c: Connection, entitlementId: string) =>
-  typedInvoke(disconnect, { ...args(c), entitlementId });
+export const disconnectConfig = (c: Connection) =>
+  typedInvoke(disconnect, args(c));

@@ -1100,3 +1100,38 @@ fn managed_launch_restores_interrupted_owned_writes_and_rejects_unmarked_files()
         assert_eq!(std::fs::read(&history).unwrap(), b"original transcript");
     }
 }
+
+#[test]
+fn connection_matcher_restores_only_owned_unchanged_config_and_is_retryable() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    let target_path = temp.path().join("config.toml");
+    let profile_root = temp.path().join("profiles");
+    let mut target = test_target("config", &target_path, &profile_root);
+    let backup = PathBuf::from(&target.default_backup_path);
+    std::fs::create_dir_all(backup.parent().unwrap()).unwrap();
+    std::fs::write(&backup, b"original-config").unwrap();
+    std::fs::write(&target_path, b"managed-config").unwrap();
+    target.original_hash = Some(sha256_bytes(b"original-config"));
+    target.last_applied_hash = Some(sha256_bytes(b"managed-config"));
+    let mut manifest = test_manifest(CODEX_AGENT, vec![target]);
+    manifest.mode = CliConfigMode::OrgiiManaged;
+    manifest.selected_key_id = Some("connection-owned-key".into());
+    write_manifest(&manifest).unwrap();
+    assert!(restore_if_selected_matching(CODEX_AGENT, |_| Err("invalid-owner".into())).is_err());
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"managed-config");
+    restore_if_selected_matching(CODEX_AGENT, |_| Ok(false)).unwrap();
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"managed-config");
+    std::fs::write(&target_path, b"external-edit").unwrap();
+    assert!(restore_if_selected_matching(CODEX_AGENT, |_| Ok(true)).is_err());
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"external-edit");
+    std::fs::write(&target_path, b"managed-config").unwrap();
+    restore_if_selected_matching(CODEX_AGENT, |key| Ok(key == "connection-owned-key")).unwrap();
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"original-config");
+    restore_if_selected_matching(CODEX_AGENT, |_| {
+        panic!("already restored; no owner match needed")
+    })
+    .unwrap();
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"original-config");
+}

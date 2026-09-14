@@ -55,6 +55,18 @@ impl Selection {
         Ok(selection)
     }
 }
+/// Configuration ownership is connection-scoped, even when the purchased listing changed.
+pub(super) fn belongs_to(
+    key: &str,
+    agent: &str,
+    metadata: &ConnectionMetadata,
+) -> Result<bool, String> {
+    if !key.starts_with("market:") {
+        return Ok(false);
+    }
+    Ok(Selection::parse(key, agent)?.metadata == *metadata)
+}
+
 #[derive(Default)]
 struct ConnectionState {
     connection: Option<Arc<Connection>>,
@@ -212,6 +224,21 @@ mod tests {
             },
             entitlement_id: "ent_fixture".into(),
         }
+    }
+    #[test]
+    fn disconnect_matches_connection_identity_not_purchase_or_other_accounts() {
+        let original = selection();
+        let mut next = selection();
+        next.entitlement_id = "ent_other_listing".into();
+        assert!(belongs_to(&next.key().unwrap(), "codex", &original.metadata).unwrap());
+        assert!(!belongs_to("ordinary-account", "codex", &original.metadata).unwrap());
+        next.metadata.workspace_id = "ws_other".into();
+        assert!(!belongs_to(&next.key().unwrap(), "codex", &original.metadata).unwrap());
+        next.metadata = original.metadata.clone();
+        next.metadata.identity_user_id = "22222222-2222-4222-8222-222222222222".into();
+        assert!(!belongs_to(&next.key().unwrap(), "codex", &original.metadata).unwrap());
+        assert!(belongs_to("market:invalid", "codex", &original.metadata).is_err());
+        assert!(belongs_to(&original.key().unwrap(), "claude_code", &original.metadata).is_err());
     }
     #[test]
     fn managed_selection_is_metadata_only_and_agent_bound() {

@@ -122,19 +122,19 @@ export default function ConnectionDialog({
   }, [connection, supported]);
   const selected = entries.find((e) => e.entitlement_id === entry);
   const run = async (disconnect = false) => {
-    if (!entry || !config) return;
+    if (!disconnect && (!entry || !config)) return;
     const attempt = generation.current;
     const current = () => alive.current && generation.current === attempt;
     setBusy(true);
     setError(false);
     try {
       if (disconnect) {
-        await disconnectConfig(connection, entry);
+        await disconnectConfig(connection);
         window.dispatchEvent(new Event("market-connections-changed"));
         if (current()) onClose();
       } else {
         const hashes = Object.fromEntries(
-          config.targetFiles.map((file) => [file.id, file.currentHash ?? null])
+          config!.targetFiles.map((file) => [file.id, file.currentHash ?? null])
         );
         const result = await applyConfig(connection, entry, model, hashes);
         if (current()) {
@@ -163,15 +163,14 @@ export default function ConnectionDialog({
           <Button disabled={busy} onClick={onClose}>
             {tr("close")}
           </Button>
-          {configured ? (
-            <Button
-              variant="danger"
-              disabled={busy}
-              onClick={() => void run(true)}
-            >
-              {tr("disconnect")}
-            </Button>
-          ) : (
+          <Button
+            variant="danger"
+            disabled={busy}
+            onClick={() => void run(true)}
+          >
+            {tr("disconnect")}
+          </Button>
+          {!configured && (
             <Button
               variant="primary"
               loading={busy}

@@ -93,7 +93,7 @@ it("opens local recovery from a missing-grant settings row and disconnects offli
   expect(api.link).not.toHaveBeenCalled();
   api.load.mockResolvedValue({ enabled: true, connections: [] });
   await act(async () => button("marketConnection.disconnect")!.click());
-  expect(api.disconnect).toHaveBeenCalledWith(connection, "ent_saved");
+  expect(api.disconnect).toHaveBeenCalledWith(connection);
   expect(button("marketConnection.manage")).toBeUndefined();
   expect(button("marketConnection.disconnect")).toBeUndefined();
 });
@@ -105,4 +105,24 @@ it("starts browser authorization only when explicitly requested", async () => {
   );
   expect(api.entries).not.toHaveBeenCalled();
   expect(api.disconnect).not.toHaveBeenCalled();
+});
+
+it("removes an old connection after switching to an ordinary profile without remote purchases", async () => {
+  api.config.mockResolvedValue({
+    agentName: "codex",
+    supported: true,
+    mode: "orgii_managed",
+    selectedProvider: "ordinary",
+    selectedKeyId: "ordinary-account",
+    targetFiles: [],
+    conflict: false,
+  });
+  await render();
+  await act(async () => button("marketConnection.manage")!.click());
+  expect(button("marketConnection.disconnect")).toBeDefined();
+  api.load.mockResolvedValue({ enabled: true, connections: [] });
+  await act(async () => button("marketConnection.disconnect")!.click());
+  expect(api.disconnect).toHaveBeenCalledWith(connection);
+  expect(api.link).not.toHaveBeenCalled();
+  expect(button("marketConnection.manage")).toBeUndefined();
 });
