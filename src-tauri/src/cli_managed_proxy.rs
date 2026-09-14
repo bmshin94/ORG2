@@ -1232,9 +1232,20 @@ pub async fn cli_config_prepare_launch(agent_name: String, selection: String, mo
         if model.is_empty() || model.len() > 256 { return Err("Invalid launch model".into()); }
         crate::dynamic_credentials::source(&selection)?.ok_or("Dynamic credential source required")?;
         let context = resolve_proxy_context_for_selection(&agent_name, Some(&selection), Some(&model), String::new())?;
+        // Validate the source above before persisting its non-secret identity.
+        // Persist before exposing a local route; a failed profile write remains
+        // safely retryable under the same source, never a different account.
+        crate::agent_sessions::cli::persistence::bind_credential_source(&session_id, &selection, &agent_name, &model)?;
         let token = session_routes::reserve(&session_id, &agent_name, context)?;
-        let result = agent_cli::managed_config::launch::prepare_with_proxy_token(
-            &agent_name, &selection, &model, &session_id, Some(&token));
+        let result = (|| {
+            // Recheck after reservation, so deletion before reservation cannot
+            // leave a live route without a durable owner.
+            let saved = crate::agent_sessions::cli::persistence::credential_source(&session_id)?
+                .ok_or("Session credential source was not persisted")?;
+            if saved != selection { return Err("Session credential source changed".into()); }
+            agent_cli::managed_config::launch::prepare_with_proxy_token(
+                &agent_name, &selection, &model, &session_id, Some(&token))
+        })();
         if result.is_err() { session_routes::release(&session_id)?; }
         result
     }).await.map_err(|_| "Launch profile task failed")?

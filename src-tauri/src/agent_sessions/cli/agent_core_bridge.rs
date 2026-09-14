@@ -257,7 +257,12 @@ pub fn register() {
     session_bridge::register_delete_cli_session(|session_id| {
         crate::cli_managed_proxy::release_session_route(session_id)?;
         agent_cli::managed_config::launch::release(session_id)?;
-        persistence::delete_session(session_id).map_err(|err| format!("DB error: {err}"))
+        let deleted = persistence::delete_session(session_id).map_err(|err| format!("DB error: {err}"));
+        // This synchronous adapter cannot hold the async control guard. Revoke
+        // again after deletion; preparation checks its durable owner after
+        // reservation, closing both sides of the reserve/delete interleaving.
+        crate::cli_managed_proxy::release_session_route(session_id)?;
+        deleted
     });
     session_bridge::register_get_cli_tools_snapshot(tools_snapshot);
     session_bridge::register_respond_cli_plan_approval(respond_plan_approval);

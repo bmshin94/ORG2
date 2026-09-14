@@ -47,3 +47,13 @@ Profile creation still validates the selected global configuration and external-
 The registry is capped at 256 live sessions, rejects duplicate session reservations, has no timer/polling, and drops with the process. Production entries retain non-secret source metadata and a local token; provider credentials still resolve per request through the existing dynamic source. This does not yet persist source ownership or reconstruct routes after app restart. It also does not make the ordinary KeyVault-backed session runner understand dynamic source identities.
 
 Verification and remaining measurements are recorded in remaining-review-findings.md. This follow-up supersedes the old live-global-routing observation, not the entire acceptance matrix.
+
+## Durable source identity follow-up
+
+Launch preparation now persists the validated non-secret dynamic selection in `code_session_credential_sources`, owned by the existing `code_sessions` row. This uses the canonical CLI schema initializer, so existing databases receive an additive table without rewriting Session rows. The insert selects only a matching TUI/client/model row; repeating the same source is allowed and changing an existing binding is rejected. No provider credential, refresh grant or local proxy token is stored.
+
+The sessions connection configuration does not explicitly guarantee foreign-key enforcement. The current bundled SQLite defaults to enforcement on, which invalidated an initial test assumption. Cleanup therefore uses a database trigger as well as the foreign key, and the regression exercises enforcement both off and on. Source deletion is atomic with the owning row's successful deletion; a failed owner deletion leaves the binding intact.
+
+The live-route reservation is followed by a durable-owner recheck, with route rollback on failure. The synchronous agent-core deletion adapter revokes again after deleting the row to cover reservation concurrent with that adapter. Ordinary prepare/release/delete continue to use their shared control lock.
+
+This is durable ownership, not completed restart execution. Regenerating a native profile after restart, surfacing source identity through canonical execution targets, and resolving it in the normal runner remain pending. An older application can ignore the new table and must not be treated as supporting these bound sessions. The additive table may remain on rollback; do not erase it or claim old-client recovery is safe. No production migration or installed-app upgrade occurred here.
