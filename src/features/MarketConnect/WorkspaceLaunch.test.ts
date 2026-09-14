@@ -18,7 +18,9 @@ const api = vi.hoisted(() => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (s: string) => s }),
 }));
-vi.mock("react-router-dom", () => ({ useNavigate: () => api.navigate }));
+vi.mock("@src/hooks/navigation/useAppNavigate", () => ({
+  useAppNavigate: () => api.navigate,
+}));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: api.open }));
 vi.mock("./launch", async (load) => ({
   ...(await load<typeof import("./launch")>()),

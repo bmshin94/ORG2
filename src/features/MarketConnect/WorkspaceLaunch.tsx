@@ -2,12 +2,12 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import { cliAgentTuiRelease } from "@src/api/tauri/agent/cliTerminalSession";
 import Button from "@src/components/Button";
 import { ROUTES } from "@src/config/routes";
 import { useChatPanelNavigationActions } from "@src/engines/ChatPanel/hooks/useChatPanelNavigationActions";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { addChatPanelTerminalTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { createChatPanelTerminalAtom } from "@src/store/chatPanel/chatPanelTerminalAtom";
 

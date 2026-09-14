@@ -1,6 +1,6 @@
 # ORG2 Market connection module — integration audit in progress
 
-Base inspected: upstream/develop 018a34fff. Product decision: ORG2 is the required desktop host; no separate Market connector application. This document records integration boundaries, not completed implementation or acceptance.
+Current integration base: upstream/develop cd08efbc4 (the chronological notes below include earlier-base observations). Product decision: ORG2 is the required desktop host; no separate Market connector application. This document records integration boundaries, not completed implementation or acceptance.
 
 ## Completion criteria
 
@@ -189,3 +189,9 @@ Snapshot environment is also applied at the actual launch command after shell st
 The existing terminal close action parked the TUI session before closing its PTY. With session-owned configuration files, this could remove a running client's settings. Release now follows the native `close_pty` acknowledgement; native close is idempotent and kills/reaps the child before returning. An unavailable host or failed close retains the native profile for exit/recovery instead of assuming termination. The ordinary terminal state teardown remains unchanged.
 
 Three new atom-level regressions verify delayed close, failed close, unavailable native host, and that a caller cannot override the managed `ORGII_SESSION_ID`. Together with the current Market suites, 24 tests passed. This verifies release ordering, not crash cleanup or every descendant process in a packaged app.
+
+## Latest integration checkpoint
+
+The independent SearchInput test typing fix and native connection implementation are now local commits, rebased onto `upstream/develop` at `cd08efbc4`. The dependency lock was installed frozen, including upstream security updates. The new workspace launch follows the shared `useAppNavigate` wrapper, preserving the upstream navigation-completion error handling.
+
+After integration: 50 tests across Market, terminal lifecycle/command formatting, SearchInput and shared navigation passed; full TypeScript check, root Rust check and production frontend build passed. Normal commit hooks also passed lint, staged type checking and scoped Clippy. Local commit creation is not a release or PR completion claim. Packaged cross-application authorization/request, lifecycle/Windows acceptance, release marker/signing, remaining infra/product work and final PR deliverables remain open.
