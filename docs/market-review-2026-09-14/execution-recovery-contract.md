@@ -57,3 +57,7 @@ The sessions connection configuration does not explicitly guarantee foreign-key 
 The live-route reservation is followed by a durable-owner recheck, with route rollback on failure. The synchronous agent-core deletion adapter revokes again after deleting the row to cover reservation concurrent with that adapter. Ordinary prepare/release/delete continue to use their shared control lock.
 
 This is durable ownership, not completed restart execution. Regenerating a native profile after restart, surfacing source identity through canonical execution targets, and resolving it in the normal runner remain pending. An older application can ignore the new table and must not be treated as supporting these bound sessions. The additive table may remain on rollback; do not erase it or claim old-client recovery is safe. No production migration or installed-app upgrade occurred here.
+
+## Recovery read-model progress
+
+The native Session DTO and status RPC now expose the persisted non-secret `credentialSource`, separate from KeyVault `accountId`. Single and paged reads use the same indexed SQL projection; ordinary legacy rows remain compatible. The launch adapter consumes it when reconstructing a same-source native profile. Canonical execution-target selection and the standard runner still need explicit dynamic-source handling; a readable source is not yet a runnable restored conversation.

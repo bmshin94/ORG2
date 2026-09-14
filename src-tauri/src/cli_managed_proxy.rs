@@ -1232,7 +1232,7 @@ pub async fn cli_config_prepare_launch(agent_name: String, selection: String, mo
         if model.is_empty() || model.len() > 256 { return Err("Invalid launch model".into()); }
         crate::dynamic_credentials::source(&selection)?.ok_or("Dynamic credential source required")?;
         let context = resolve_proxy_context_for_selection(&agent_name, Some(&selection), Some(&model), String::new())?;
-        let restoring = crate::agent_sessions::cli::persistence::credential_source(&session_id)?.is_some();
+        let restoring = session.credential_source.is_some();
         // Validate the source above before persisting its non-secret identity.
         // Persist before exposing a local route; a failed profile write remains
         // safely retryable under the same source, never a different account.

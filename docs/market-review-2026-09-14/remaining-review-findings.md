@@ -177,3 +177,13 @@ Filesystem regression: `cargo test --manifest-path src-tauri/Cargo.toml -p agent
 The frontend still creates a fresh terminal Session. Connecting the canonical history/resume flow to this durable source is outstanding. This backend reconstruction path is not evidence that installed-app restart, actual provider execution, receipts or Windows acceptance have passed. Runtime CPU/RSS and multi-instance filesystem contention remain unmeasured. No production deployment occurred in this follow-up.
 
 Additional verification: `cargo test --lib cli_managed_proxy:: -- --nocapture` passed 14 tests, zero ignored, including local HTTP forwarding and per-session token isolation. `cargo clippy --lib -- -D warnings` passed. The IPC restoration branch itself still requires installed-app integration coverage; the filesystem and HTTP tests exercise its constituent boundaries separately.
+
+## Durable source projection into Session reads
+
+`CodeSession` now returns optional `credentialSource`, independently of `accountId`. The shared SQL projection performs an indexed source lookup inside the same query for single, full-list, offset-page and keyset-page reads. The launch adapter consumes this snapshot to choose initial preparation versus same-source restoration; the post-reservation owner read remains to guard deletion races. No secret or new database schema is introduced. Old rows omit the optional field, and deserialization accepts older payloads without it.
+
+Verification: `cargo test --lib agent_sessions::cli::persistence:: -- --nocapture` passed 24 tests, zero ignored. The added sandbox database test verifies every read variant, both keyset branches, JSON field naming, separate account identity, and old-row serialization/deserialization compatibility. `pnpm typecheck:fast` passed. The initial test command was mistakenly run from the repository root without a manifest and did not execute tests; the passing command ran in `src-tauri`.
+
+Architecture coverage: persistence ownership, read projection, RPC compatibility and launch consumption. Frontend canonical target selection and normal runner integration remain outstanding. Performance: no new timers, workers, locks or per-row IPC; an indexed scalar lookup is added per returned row. Large-list query latency and actual desktop CPU/RSS are unmeasured, so this is not runtime performance acceptance. No production database or application was touched.
+
+Strict `cargo clippy --lib -- -D warnings` passed for the source projection and its launch consumer. No rendered UI or installed-app behavior is claimed by these checks.
