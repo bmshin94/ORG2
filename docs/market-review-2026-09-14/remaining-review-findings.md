@@ -1,18 +1,41 @@
-# External review follow-up — request changes remains appropriate
+# Market 外部审计复核：仍不满足发布验收
 
-Review target: 4ae0a568e73ab55aec522a27963c8ba90a2283b0. Work is on the existing Market review branch; no merge or release is authorized by a passing helper test.
+本报告合并当前状态，后面的历史记录保留测试边界，不作为重复待办。原审计针对 `4ae0a568e73ab55aec522a27963c8ba90a2283b0`；本次源代码复核针对 `3734a65d10a39f70c6afa7efba3ce2b603b89cf5`。主要修复在 `373335f36`，授权持久化补偿在 `3734a65d1`。
 
-| Finding                                                         | Current follow-up                                                                                                                                                                                                                                                                                                 |
-| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P1 Codex /v1 missing                                            | Confirmed. Both dynamic destination paths now use a shared protocol-base adapter. Real Router → mock upstream URI regression is still required.                                                                                                                                                                   |
-| P1 Native history recursively deleted                           | Confirmed. Cleanup now removes only hash-matched module-owned configuration, then attempts empty-directory removal. Older unmarked homes are retained. Two managed-launch tests passed, including transcript preservation on repeated release. Actual close/restart/history discovery and resume remain required. |
-| P2 Disconnect cannot retry after partial cleanup                | Pending source fix and per-stage fault injection.                                                                                                                                                                                                                                                                 |
-| P2 Offline/expired purchase hides recovery                      | Pending local-state-independent disconnect UI and rendered tests.                                                                                                                                                                                                                                                 |
-| P2 Linux unsupported credential persistence discovered too late | Pending distinct buyer/seller capability advertisement and pre-exchange refusal.                                                                                                                                                                                                                                  |
-| P2 Settings index becomes invalid after deletion                | Pending stable connection identity selection and list-change tests.                                                                                                                                                                                                                                               |
-| P2 PowerShell assignment quoting                                | Pending always-literal environment assignment and real PowerShell execution test.                                                                                                                                                                                                                                 |
+**结论：原审计指出的问题成立。当前已有针对性修复，但不能将这些修复或局部测试等同于可发布的一键接入。保持不合并、不宣称全流程已验收。**
 
-Also retain the review's concerns about global credential lock contention, remote revocation semantics, module-off recovery, Keychain/index compensation, and abandoned-home lifecycle. No closed claim yet for these. Pricing work in the companion repository is paused while these regressions are addressed.
+## 七项发现的当前状态
+
+| 发现                              | 当前实现及已有证据                                                                                                                                           | 仍需验证的边界                                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| P1 Codex 丢失 `/v1`               | 初始 destination 和刷新凭据后的 destination 均通过协议基址函数保留 Codex `/v1`；真实本地 Router → mock upstream 测试已通过，覆盖 URI、query 和错误本地 token | 真实 Market 续期后经 Codex 发起上游请求及计量                                                    |
+| P1 关闭终端删除原生历史           | 不再递归删除 home；只删除 hash 匹配的模块配置，保留其他文件；关闭后发现历史、SQLite 索引重启及原生会话 ID 回归已通过                                         | **尚未关闭整个恢复问题**：实际关闭应用、重启、继续原会话，并确认原 CODEX_HOME 与 Market 计费选择 |
+| P2 断开部分成功后无法重试         | 按配置恢复 → grant 删除 → 索引写入执行；已切换到新来源时保留新配置；六个阶段前后故障场景及重复重试测试通过                                                   | 故障注入使用文件替身，尚无真实 OS Keychain 故障/进程崩溃验收                                     |
+| P2 离线/过期时无法退出            | 本地配置独立于远端购买列表加载，离线、请求悬挂、无有效购买时仍可断开；渲染测试通过                                                                           | 真实桌面离线及撤销后的恢复操作                                                                   |
+| P2 Linux 兑换 code 后才发现不支持 | buyer begin/complete 在兑换前检查平台能力；buyer 持久存储与 seller 临时授权分别声明，13 种语言有不可用提示                                                   | Linux 实机能力与发布包验收；不是已实现 Linux buyer 存储                                          |
+| P2 Settings 删除后选择越界        | 改为身份/workspace/target 稳定选择；删除及重排渲染测试通过                                                                                                   | 真实 Settings 多连接操作                                                                         |
+| P2 PowerShell 环境赋值            | RHS 始终单引号字符串并转义单引号；在 macOS PowerShell 7.6.6 实际执行生成命令，验证字面量原值                                                                 | Windows 实机路径、客户端启动及完整请求                                                           |
+
+以上测试为此前修复阶段的已记录结果。本次仅复核当前源码、远端 PR head 和报告一致性，没有重新运行这些测试，也没有新增真实 provider 请求。
+
+## 仍然开放的问题
+
+1. **恢复执行链路**：`CliResumePlan` 没有原始 CODEX_HOME 字段；当前桌面 imported-history adapter 只取 cwd 进入通用 continuation。保留文件和索引不能证明最终执行恢复原会话或沿用 Market 计费。需要继续追踪执行边界并完成真实恢复。
+2. **跨工作区阻塞**：`MarketSource` 的全局 mutex 仍跨索引读取、Keychain 恢复及 HTTP 请求持有。需要按连接身份划分同步范围，同时保持续期单次消费及断开/重新授权的互斥安全；目前未修复、未测量。
+3. **断开与撤销**：当前桌面断开只恢复配置、清理本地凭据和索引，不包含服务端撤销。不能把本地断开描述为服务端授权已撤销。
+4. **模块移除与残留目录**：module-off 编译和目录数量限制不能证明运行时配置恢复或崩溃残留处理。不得为清理目录再次删除原生会话数据。
+5. **授权持久化**：已改为先写非秘密索引、再保存凭据，避免新 grant 无法发现；缺少真实 Keychain 故障与崩溃测试，也没有自动恢复历史孤立 grant。
+6. **跨仓库及发布**：seller complete/cancel 竞态、重复绑定、过期边界，以及签名主应用 → 浏览器授权 → buyer 请求 → 计量 → 续期/撤销需要联合验收。真实 Claude App 和 Windows 尚未通过，不能用 compatibility marker 替代。
+
+## PR 与证据范围
+
+本次已能读取配套后端 PR 元数据，因此原审计“无法访问 #75”不再是当前取证阻碍；**能读取 PR 不代表其跨仓库契约已验收**。
+
+- [ORG2 #1761](https://github.com/org2AI/ORG2/pull/1761)：OPEN，代码 head `3734a65d1`，base `codex/search-input-renderer-types`
+- [Cloud infra #75](https://github.com/org2AI/ORGII-cloud-infra/pull/75)：OPEN，head `d05755d85d6a3b26ce189dffb86ff3d1613860ad`
+- [Cloud infra #76](https://github.com/org2AI/ORGII-cloud-infra/pull/76)：OPEN，head `c9cd0fa9df861a6ac5b30ef1fbd2d2d02e2d35c1`
+
+未合并、未由本次报告修改触发部署，也未将 CI queued/completed（无 conclusion）记为通过。以下为历史修复与测试记录，早期的 pending 以本报告上面的状态表为准。
 
 ## Recovery follow-up
 
