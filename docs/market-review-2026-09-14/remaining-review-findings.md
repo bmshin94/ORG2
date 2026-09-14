@@ -20,7 +20,7 @@
 
 ## 仍然开放的问题
 
-1. **恢复执行链路**：已持久化并返回动态来源，普通启动器已接入会话配置重建及代理生命周期；原生配置和启动器回归见下文。canonical target 已保留来源并参与匹配，新执行 episode 原子绑定来源；会话列表及 ChatPanel 默认选择已保留来源，实际模型选择器交互和消息 UI 尚未验收；native history materialization 的写入、同步、回滚及索引仍需统一到原生目录。必须完成主应用关闭、重启、继续原会话和真实计量验收。
+1. **恢复执行链路**：已持久化并返回动态来源，普通启动器已接入会话配置重建及代理生命周期；原生配置和启动器回归见下文。canonical target 已保留来源并参与匹配，新执行 episode 原子绑定来源；会话列表及 ChatPanel 默认选择已保留来源，实际模型选择器交互和消息 UI 尚未验收；native history materialization 的读写、同步、回滚及索引现已接入会话目录归属，本地组合回归已通过；实际应用与 provider 验收仍待完成。必须完成主应用关闭、重启、继续原会话和真实计量验收。
 2. **跨工作区阻塞**：凭据请求与购买列表现已按身份/workspace/target 使用独立锁，索引表锁不跨 I/O；断开和重新授权仍独占授权变更屏障。锁边界、同授权串行、清空旧缓存和上限回收测试已通过；真实多工作区网络与桌面 CPU/RSS 尚未测量。
 3. **断开与撤销**：当前桌面断开只恢复配置、清理本地凭据和索引，不包含服务端撤销。不能把本地断开描述为服务端授权已撤销。
 4. **模块移除与残留目录**：module-off 编译和目录数量限制不能证明运行时配置恢复或崩溃残留处理。不得为清理目录再次删除原生会话数据。
@@ -226,3 +226,15 @@ Native materialization remains incomplete: Claude paths/index publication and Co
 Strict `cargo clippy --lib -- -D warnings` passed for aggregate source propagation. Architecture coverage is DTO compatibility, source ownership and target/draft identity; runtime/UI evidence remains bounded as described above.
 
 The final 50-test frontend rerun also covers a CLI Session carrying an Agent definition for tool scope: that metadata does not replace its CLI runtime or erase its dynamic source. No additional provider/native execution was performed.
+
+## Session-owned native storage follow-up
+
+The remaining recovery failure was at the provider-native materialization boundary: a dynamic-source Session has no KeyVault account, but Codex readers/writers required one and Claude resolved the ordinary global/account store. The runner already used a Session-owned home. Keeping files without making these owners agree could not restore execution.
+
+A shared `NativeStorageOwner` now resolves paths from the persisted Session. Read, fresh materialization, suffix synchronization, rollback, finalizer convergence and pending catalog repair all use it. Managed Codex catalog operations carry the same home as CODEX_HOME; Claude publishes/removes its project index beside the actual transcript. Identical native/runner paths are retained as a regular file rather than made into a self-link. Ordinary account behavior remains unchanged. Mixed credential owners and symlinked managed stores are rejected. This adds no database schema, credential storage, background task or cross-workspace scan; managed Codex discovery searches only one Session's bounded store.
+
+Verification: `cargo test --lib native_materializer -- --test-threads=1` from `src-tauri`: **41 passed, 0 failed, 1 ignored**, including new Claude create/release/reload/append/idempotence/catalog/rollback test, Codex source-home read/pending catalog/canonical-path test, and symlink rejection. These use sandbox files and SQLite. They do not execute a live Codex app-server or provider, or close/restart the installed application. The ignored helper is not passing acceptance evidence. `cargo clippy --lib -- -D warnings` passed.
+
+Recovery boundary: existing managed histories stay in place; there is no bulk migration or cleanup. Reverting to an older reader can make them inaccessible through continuation, so preserve both the files and durable source bindings on rollback. Existing ordinary-account regressions remain required.
+
+Architecture scope: persistence owner, native-store resolver symmetry, initial/final/deferred paths, configuration ownership and file effects. No UI/wire-schema change in this follow-up. Performance scope: demand-driven bounded scan of one Session, no new cache/timer/subprocess beyond existing catalog operations; actual CPU/RSS, concurrent processes and provider rewrite/rotation remain unmeasured.

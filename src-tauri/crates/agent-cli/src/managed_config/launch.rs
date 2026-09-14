@@ -35,6 +35,12 @@ fn profile_dir(session_id: &str) -> Result<PathBuf, String> {
     Ok(app_paths::managed_cli_launch_root().join(session_id))
 }
 
+/// The persistent native store used by this Session's launch environment.
+/// Resolving it does not create a profile or require a live credential.
+pub fn native_home(session_id: &str) -> Result<PathBuf, String> {
+    profile_dir(session_id)
+}
+
 pub fn prepare(
     agent: &str,
     selection: &str,

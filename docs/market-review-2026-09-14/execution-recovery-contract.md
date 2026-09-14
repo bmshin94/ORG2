@@ -1,7 +1,7 @@
 # Market execution recovery: verified boundaries and implementation contract
 
-Source inspected: ORG2 `6764b26e97579e037be938df374ec9979328f99e`.
-This is an implementation contract derived from the actual execution paths, not passing acceptance evidence.
+Historical baseline inspected: ORG2 `6764b26e97579e037be938df374ec9979328f99e`.
+This is an implementation contract with chronological progress below, not passing acceptance evidence. The baseline list is historical; current source/runner/target/storage changes are described in the progress sections and remaining-review-findings.md.
 
 ## Current behavior confirmed from source
 
@@ -73,3 +73,7 @@ Canonical targets and candidate matching now preserve the dynamic source separat
 ## ChatPanel source projection progress
 
 The aggregate/list DTO, frontend Session and ChatPanel default/runtime target projection now carry the dynamic source, and override reconciliation includes it in identity. Ordinary explicit account picks remain available. The remaining native-storage work spans materialize/read/synchronize/discard and Claude/Codex catalog/index updates in native_materializer.rs; all must agree with the runner's managed home. Converter tests do not prove actual installed-app picker or recovery behavior.
+
+## Native store owner progress
+
+Native materialization now shares the runner's Session-owned native home when a durable dynamic source is present. This applies to the initial transcript, subsequent reads/suffixes, rollback and deferred catalog repair. Ordinary KeyVault storage keeps its existing behavior. No history migration or credential access is performed by path resolution. Local regression results are tracked in remaining-review-findings.md; actual main-app restart and provider execution remain release gates.
