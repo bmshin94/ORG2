@@ -717,6 +717,7 @@
     "performActions_other": "Perform {{count}} actions",
     "showInlineDiffs": "Inline diffs",
     "inputSettings": "Input settings",
+    "compactInput": "Compact input",
     "replay": {
       "follow": "Follow"
     },
@@ -1467,10 +1468,13 @@
     "webFetchRunning": "Fetching page",
     "webFetchDone": "Fetched page",
     "webFetchFailed": "Page fetch failed",
+    "awaitOutputSummaryShellSingle": "a terminal process",
     "awaitOutputSummaryShell_one": "1 terminal process",
     "awaitOutputSummaryShell_other": "{{count}} terminal processes",
+    "awaitOutputSummarySubagentSingle": "a Subagent",
     "awaitOutputSummarySubagent_one": "1 Subagent",
     "awaitOutputSummarySubagent_other": "{{count}} Subagents",
+    "awaitOutputSummaryUnknownSingle": "a background task",
     "awaitOutputSummaryUnknown_one": "a background task",
     "awaitOutputSummaryUnknown_other": "{{count}} background tasks",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",

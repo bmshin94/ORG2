@@ -716,6 +716,7 @@
     "performActions_other": "작업 {{count}}개 수행",
     "showInlineDiffs": "인라인 변경 사항",
     "inputSettings": "입력 설정",
+    "compactInput": "컴팩트 입력창",
     "replay": {
       "follow": "팔로우"
     },
@@ -1447,10 +1448,13 @@
     "awaitOutputListFailed": "백그라운드 작업 목록을 가져오지 못했습니다",
     "awaitOutputKeepWaiting": "여전히 실행 중",
     "awaitOutputStillRunning": "실행 중",
+    "awaitOutputSummaryShellSingle": "터미널 프로세스",
     "awaitOutputSummaryShell_one": "터미널 프로세스 1개",
     "awaitOutputSummaryShell_other": "터미널 프로세스 {{count}}개",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "Subagent 1개",
     "awaitOutputSummarySubagent_other": "Subagent {{count}}개",
+    "awaitOutputSummaryUnknownSingle": "백그라운드 작업",
     "awaitOutputSummaryUnknown_one": "백그라운드 작업 1개",
     "awaitOutputSummaryUnknown_other": "백그라운드 작업 {{count}}개",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",

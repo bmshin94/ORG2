@@ -716,6 +716,7 @@
     "performActions_other": "{{count}} 件の操作を実行",
     "showInlineDiffs": "インライン差分",
     "inputSettings": "入力設定",
+    "compactInput": "コンパクト入力欄",
     "replay": {
       "follow": "フォロー"
     },
@@ -1448,10 +1449,13 @@
     "awaitOutputListFailed": "バックグラウンドタスクの一覧表示に失敗しました",
     "awaitOutputKeepWaiting": "実行中",
     "awaitOutputStillRunning": "実行中",
+    "awaitOutputSummaryShellSingle": "ターミナルプロセス",
     "awaitOutputSummaryShell_one": "ターミナルプロセス1件",
     "awaitOutputSummaryShell_other": "ターミナルプロセス{{count}}件",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "Subagent 1件",
     "awaitOutputSummarySubagent_other": "Subagent {{count}}件",
+    "awaitOutputSummaryUnknownSingle": "バックグラウンドタスク",
     "awaitOutputSummaryUnknown_one": "バックグラウンドタスク1件",
     "awaitOutputSummaryUnknown_other": "バックグラウンドタスク{{count}}件",
     "awaitOutputSummaryMixed": "{{shell}}、{{subagent}}",

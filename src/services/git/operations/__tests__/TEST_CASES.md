@@ -34,16 +34,16 @@ cancel) via an injected `onConflict` callback.
 
 ## Error / Degraded States
 
-| #   | Scenario                   | Steps                                                 | Expected Result                                                               |
-| --- | -------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------- |
-| 1   | Non-conflict failure       | `gitCheckout` → `{ success:false, branch_not_found }` | `{ success:false, outcome:"error", errorType:"branch_not_found" }`; no dialog |
-| 2   | Missing error message      | failure with no `error` field                         | message falls back to `Failed to checkout branch "<ref>"`                     |
-| 3   | Checkout throws            | `gitCheckout` rejects                                 | `{ success:false, outcome:"error", errorType:"other", message:<err> }`        |
-| 4   | Stash push returns nothing | conflict → stash → `undefined`                        | `{ success:false, outcome:"error", message:"Failed to stash changes" }`       |
+| #   | Scenario                   | Steps                                                                                             | Expected Result                                                                    |
+| --- | -------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1   | Non-conflict failure       | `gitCheckout` → `{ success:false, branch_not_found }`                                             | `{ success:false, outcome:"error", errorType:"branch_not_found" }`; no dialog      |
+| 2   | Missing error message      | failure with no `error` field                                                                     | message falls back to `Failed to checkout branch "<ref>"`                          |
+| 3   | Checkout throws            | `gitCheckout` rejects                                                                             | `{ success:false, outcome:"error", errorType:"other", message:<err> }`             |
+| 4   | Stash push returns nothing | conflict → stash → `undefined`                                                                    | `{ success:false, outcome:"error", message:"Failed to stash changes" }`            |
 | 4b  | Stash push reports failure | conflict → stash → `{ success:false, message }` (the shape the wrapper actually returns on error) | `{ success:false, outcome:"error", message:<stash error> }`; no checkout attempted |
-| 5   | Post-stash checkout fails  | conflict → stash ok → re-checkout fails               | `{ success:false, outcome:"error", message:<checkout error> }`                |
-| 6   | Stash push throws          | conflict → stash rejects                              | `{ success:false, outcome:"error", message:"Failed to stash and checkout" }`  |
-| 7   | Force checkout fails       | conflict → force checkout fails                       | `{ success:false, outcome:"error", message:<force error> }`                   |
+| 5   | Post-stash checkout fails  | conflict → stash ok → re-checkout fails                                                           | `{ success:false, outcome:"error", message:<checkout error> }`                     |
+| 6   | Stash push throws          | conflict → stash rejects                                                                          | `{ success:false, outcome:"error", message:"Failed to stash and checkout" }`       |
+| 7   | Force checkout fails       | conflict → force checkout fails                                                                   | `{ success:false, outcome:"error", message:<force error> }`                        |
 
 ## Contract mapping (`branchOps.checkoutWithDialog`)
 
@@ -57,3 +57,7 @@ uncommitted_changes`, everything else → `unknown`.
 - [x] `onConflict` is the sole entry point to the conflict dialog (no direct UI import in the core).
 - [x] Core never throws; always resolves a normalized result.
 - [x] ActionSystem `{ success, message, errorType }` contract preserved.
+
+## Remote operation identity (2026-09-13)
+
+`remoteOps.test.ts` covers a fixed operation repo/integration/remote identity across async boundaries: push/pull/fetch credential lookup A→B, sync A→B→A with an independent B action, replaced output integration, streaming-to-auth fallback with caller parameter mutation, and pinned credential-dialog load/cancel. Network/credentials/dialogs are mocked; real remoteOps/types own the workflow. All prior remote-operation tests remain enabled.

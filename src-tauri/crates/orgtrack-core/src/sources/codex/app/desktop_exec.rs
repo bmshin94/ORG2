@@ -118,6 +118,10 @@ fn split_multiline_shell_script(command: &str) -> Vec<&str> {
 
 fn tool_args(script: &str, name: &str, expression: &str) -> Value {
     match normalize_tool_name_key(name).as_str() {
+        "sleep" | "clock_sleep" | "clock__sleep" => json!({
+            "duration_ms": object_i64(expression, "duration_ms"),
+            "payload": { "input": expression },
+        }),
         "write_stdin" => json!({
             "session_id": object_i64(expression, "session_id").unwrap_or_default(),
             "chars": object_string(expression, "chars").unwrap_or_default(),

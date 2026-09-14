@@ -716,6 +716,7 @@
     "performActions_other": "{{count}} işlem gerçekleştir",
     "showInlineDiffs": "Satır içi farklar",
     "inputSettings": "Giriş ayarları",
+    "compactInput": "Kompakt giriş alanı",
     "replay": {
       "follow": "Takip et"
     },
@@ -1447,10 +1448,13 @@
     "awaitOutputListFailed": "Arka plan görevleri listelenemedi",
     "awaitOutputKeepWaiting": "Hâlâ çalışıyor",
     "awaitOutputStillRunning": "Çalışıyor",
+    "awaitOutputSummaryShellSingle": "terminal işlemi",
     "awaitOutputSummaryShell_one": "1 terminal işlemi",
     "awaitOutputSummaryShell_other": "{{count}} terminal işlemi",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "1 Subagent",
     "awaitOutputSummarySubagent_other": "{{count}} Subagents",
+    "awaitOutputSummaryUnknownSingle": "bir arka plan görevi",
     "awaitOutputSummaryUnknown_one": "bir arka plan görevi",
     "awaitOutputSummaryUnknown_other": "{{count}} arka plan görevi",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",

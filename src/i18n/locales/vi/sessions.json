@@ -716,6 +716,7 @@
     "performActions_other": "Thực hiện {{count}} thao tác",
     "showInlineDiffs": "Thay đổi ngay trong nội dung",
     "inputSettings": "Cài đặt nhập liệu",
+    "compactInput": "Ô nhập liệu thu gọn",
     "replay": {
       "follow": "Theo dõi"
     },
@@ -1447,10 +1448,13 @@
     "awaitOutputListFailed": "Không liệt kê được tác vụ nền",
     "awaitOutputKeepWaiting": "Vẫn đang chạy",
     "awaitOutputStillRunning": "Đang chạy",
+    "awaitOutputSummaryShellSingle": "tiến trình terminal",
     "awaitOutputSummaryShell_one": "1 tiến trình terminal",
     "awaitOutputSummaryShell_other": "{{count}} tiến trình terminal",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "1 Subagent",
     "awaitOutputSummarySubagent_other": "{{count}} Subagents",
+    "awaitOutputSummaryUnknownSingle": "một tác vụ nền",
     "awaitOutputSummaryUnknown_one": "một tác vụ nền",
     "awaitOutputSummaryUnknown_other": "{{count}} tác vụ nền",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",

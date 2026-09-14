@@ -1,7 +1,7 @@
-pub(crate) mod images;
 pub mod cache;
-pub mod context_usage;
 pub mod client_origin;
+pub mod context_usage;
+pub(crate) mod images;
 pub mod managed_mirror;
 pub mod managed_roots;
 pub mod metadata;
@@ -46,6 +46,7 @@ pub const FUNCTION_AWAIT_OUTPUT: &str = "await_output";
 pub const DEFAULT_LIST_LIMIT: usize = 200;
 
 const REQUEST_HEADINGS: [&str; 2] = ["## My request for Codex:", "## My request:"];
+
 const GENERATED_CONTEXT_TAGS: [(&str, &str); 4] = [
     ("<timestamp", "</timestamp>"),
     ("<in-app-browser-context", "</in-app-browser-context>"),
@@ -85,7 +86,25 @@ pub fn needs_prompt_title_repair(text: &str) -> bool {
 /// must survive. Callers that need a one-line label want
 /// [`project_user_request_text`] instead.
 pub fn extract_user_request_body(text: &str) -> String {
-    let mut projected = strip_internal_context_blocks(text).to_string();
+    let projected = strip_generated_prompt_context(text);
+    let request_start = REQUEST_HEADINGS
+        .iter()
+        .filter_map(|heading| projected.rfind(heading).map(|index| (index, heading.len())))
+        .max_by_key(|(index, _)| *index);
+    let body = request_start
+        .map(|(index, heading_len)| &projected[index + heading_len..])
+        .unwrap_or(&projected);
+    let body = body
+        .find(ATTACHED_IMAGE_INSTRUCTION)
+        .map(|index| &body[..index])
+        .unwrap_or(body);
+    body.trim().to_string()
+}
+
+/// Remove generated context without projecting a title or discarding attachment
+/// references. Call before transport truncation, while closing tags still exist.
+pub fn strip_generated_prompt_context(text: &str) -> String {
+    let mut projected = strip_internal_context_blocks_impl(text, true).to_string();
     for (open_prefix, close_tag) in GENERATED_CONTEXT_TAGS {
         while let Some(start) = projected.find(open_prefix) {
             let Some(open_end_relative) = projected[start..].find('>') else {
@@ -99,20 +118,7 @@ pub fn extract_user_request_body(text: &str) -> String {
             projected.replace_range(start..end, " ");
         }
     }
-    projected = strip_internal_context_blocks(&projected).to_string();
-
-    let request_start = REQUEST_HEADINGS
-        .iter()
-        .filter_map(|heading| projected.rfind(heading).map(|index| (index, heading.len())))
-        .max_by_key(|(index, _)| *index);
-    let body = request_start
-        .map(|(index, heading_len)| &projected[index + heading_len..])
-        .unwrap_or(&projected);
-    let body = body
-        .find(ATTACHED_IMAGE_INSTRUCTION)
-        .map(|index| &body[..index])
-        .unwrap_or(body);
-    body.trim().to_string()
+    strip_internal_context_blocks_impl(&projected, true).to_string()
 }
 
 /// Project transport-generated prompt wrappers to a single-line title.
@@ -670,6 +676,10 @@ const INTERNAL_CONTEXT_BLOCKS: &[(&str, &str)] = &[
 /// remainder is treated as internal and `""` is returned — an unclosed
 /// internal block never carries user-authored text after it.
 pub fn strip_internal_context_blocks(text: &str) -> &str {
+    strip_internal_context_blocks_impl(text, false)
+}
+
+fn strip_internal_context_blocks_impl(text: &str, preserve_body_whitespace: bool) -> &str {
     let mut remaining = text;
     let mut stripped = false;
     'outer: loop {
@@ -688,10 +698,10 @@ pub fn strip_internal_context_blocks(text: &str) -> &str {
         }
         break;
     }
-    if stripped {
+    if stripped && !preserve_body_whitespace {
         remaining.trim_start()
     } else {
-        text
+        remaining
     }
 }
 
@@ -1155,6 +1165,17 @@ mod impact_tests {
 #[cfg(test)]
 mod user_request_projection_tests {
     use super::*;
+
+    #[test]
+    fn context_projection_keeps_attachment_envelope_and_plain_message_formatting() {
+        let body = "# Files mentioned by the user:\n## code.ts: /workspace/code.ts\n\n## My request:\n  keep indentation\n\n<custom>literal</custom>";
+        let wrapped = format!("<orgii_provider_context>rules</orgii_provider_context>\n{body}");
+        assert!(strip_generated_prompt_context(&wrapped).ends_with(body));
+        assert_eq!(strip_generated_prompt_context(body), body);
+        let incomplete = "<orgii_provider_context>unterminated input";
+        // Preserve the existing policy for a truncated leading internal block.
+        assert_eq!(strip_generated_prompt_context(incomplete), "");
+    }
 
     const MULTI_LINE_PROMPT: &str =
         "Update the loader.\n\n```rust\nfn load() {\n    todo!();\n}\n```\n\n  keep this indented";

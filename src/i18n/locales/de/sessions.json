@@ -716,6 +716,7 @@
     "performActions_other": "{{count}} Aktionen ausführen",
     "showInlineDiffs": "Inline-Diffs",
     "inputSettings": "Eingabeeinstellungen",
+    "compactInput": "Kompakte Eingabe",
     "replay": {
       "follow": "Folgen"
     },
@@ -1447,10 +1448,13 @@
     "awaitOutputListFailed": "Auflisten der Hintergrundaufgaben fehlgeschlagen",
     "awaitOutputKeepWaiting": "Läuft noch",
     "awaitOutputStillRunning": "Läuft",
+    "awaitOutputSummaryShellSingle": "Terminal-Prozess",
     "awaitOutputSummaryShell_one": "1 Terminal-Prozess",
     "awaitOutputSummaryShell_other": "{{count}} Terminal-Prozesse",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "1 Subagent",
     "awaitOutputSummarySubagent_other": "{{count}} Subagents",
+    "awaitOutputSummaryUnknownSingle": "eine Hintergrundaufgabe",
     "awaitOutputSummaryUnknown_one": "eine Hintergrundaufgabe",
     "awaitOutputSummaryUnknown_other": "{{count}} Hintergrundaufgaben",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",

@@ -716,6 +716,7 @@
     "performActions_other": "Realizar {{count}} acciones",
     "showInlineDiffs": "Diferencias en línea",
     "inputSettings": "Configuración de entrada",
+    "compactInput": "Entrada compacta",
     "replay": {
       "follow": "Seguir"
     },
@@ -1447,10 +1448,13 @@
     "awaitOutputListFailed": "Error al listar tareas en segundo plano",
     "awaitOutputKeepWaiting": "Aún ejecutándose",
     "awaitOutputStillRunning": "Ejecutándose",
+    "awaitOutputSummaryShellSingle": "proceso de terminal",
     "awaitOutputSummaryShell_one": "1 proceso de terminal",
     "awaitOutputSummaryShell_other": "{{count}} procesos de terminal",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "1 Subagent",
     "awaitOutputSummarySubagent_other": "{{count}} Subagents",
+    "awaitOutputSummaryUnknownSingle": "una tarea en segundo plano",
     "awaitOutputSummaryUnknown_one": "una tarea en segundo plano",
     "awaitOutputSummaryUnknown_other": "{{count}} tareas en segundo plano",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",

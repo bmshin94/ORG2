@@ -26,6 +26,7 @@ export * from "./recentModelEntriesAtom";
 export * from "./recentAgentSelectionsAtom";
 export * from "./creatorDefaultExecModeAtom";
 export * from "./pinnedActionsVisibleAtom";
+export * from "./compactComposerInputAtom";
 export * from "./creatorLaunchpadActionsVisibleAtom";
 export * from "./creatorRepoChromePositionAtom";
 export * from "./cliUpdateAlertsAtom";

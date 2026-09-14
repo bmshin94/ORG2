@@ -3221,3 +3221,79 @@ fn native_function_calls_with_response_ids_still_normalize() {
     assert!(chunks.iter().all(|chunk| chunk.function != "spawn_agent" && chunk.function != "shell"));
     std::fs::remove_dir_all(&temp_dir).unwrap();
 }
+
+#[test]
+fn codex_sleep_imports_as_standalone_wait_with_native_identity() {
+    let path = std::env::temp_dir().join(format!("orgii-codex-sleep-{}.jsonl", std::process::id()));
+    let output = "Wall time: 45.0141 seconds\nSleep completed.";
+    let content = format!(
+        "{}\n{}\n",
+        json!({
+            "timestamp": "2026-09-14T03:39:39.934Z",
+            "type": "response_item",
+            "payload": {
+                "type": "function_call", "id": "fc_sleep",
+                "name": "sleep", "namespace": "clock", "call_id": "call_sleep",
+                "arguments": "{\"duration_ms\":45000}"
+            }
+        }),
+        json!({
+            "timestamp": "2026-09-14T03:40:24.948Z",
+            "type": "response_item",
+            "payload": {
+                "type": "function_call_output", "call_id": "call_sleep", "output": output
+            }
+        })
+    );
+    std::fs::write(&path, content).unwrap();
+    let chunks = load_codex_app_from_path("codexapp-sleep", &path).unwrap();
+    std::fs::remove_file(&path).unwrap();
+    assert_eq!(chunks.len(), 1);
+    let chunk = &chunks[0];
+    assert_eq!(chunk.function, imported_history::FUNCTION_AWAIT_OUTPUT);
+    assert_eq!(chunk.args["command"], "wait_for");
+    assert_eq!(chunk.args["duration_ms"], 45000);
+    assert_eq!(chunk.args["block_until_ms"], 45000);
+    assert_eq!(chunk.args["__orgiiSourceEventId"], "fc_sleep");
+    assert!(chunk.args.get("session_id").is_none());
+    assert_eq!(chunk.result["call_id"], "call_sleep");
+    assert_eq!(chunk.result["output"], output);
+    assert_eq!(chunk.result["status"], "completed");
+}
+
+#[test]
+fn codex_sleep_normalizes_qualified_and_wrapped_calls_without_guessing_other_waits() {
+    for name in ["sleep", "clock.sleep", "clock__sleep"] {
+        let calls = normalize_codex_tool_calls(name, json!({"duration_ms": 45000}));
+        assert_eq!(calls[0].0, imported_history::FUNCTION_AWAIT_OUTPUT);
+        assert_eq!(calls[0].1["block_until_ms"], 45000);
+    }
+    let payload = json!({
+        "name": "exec", "call_id": "wrapped_sleep",
+        "input": "text(await tools.clock__sleep({duration_ms:45000}));"
+    });
+    let (_, calls) =
+        pending_custom_tool_calls_from_payload(&payload, "2026-09-14T00:00:00Z").unwrap();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(
+        calls[0].canonical_name,
+        imported_history::FUNCTION_AWAIT_OUTPUT
+    );
+    assert_eq!(calls[0].args["block_until_ms"], 45000);
+    for args in [
+        json!({}),
+        json!({"duration_ms": -1}),
+        json!({"duration_ms": "invalid"}),
+    ] {
+        assert_eq!(
+            normalize_codex_tool_calls("sleep", args.clone()),
+            vec![("sleep".to_string(), args)]
+        );
+    }
+    // functions.wait has separate cell-resolution semantics; never relabel it
+    // just because its arguments contain a duration.
+    assert_eq!(
+        normalize_codex_tool_calls("wait", json!({"cell_id": "12"}))[0].0,
+        "wait"
+    );
+}

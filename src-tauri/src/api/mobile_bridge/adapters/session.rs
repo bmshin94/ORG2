@@ -1373,6 +1373,25 @@ fn mobile_event_kind(
     None
 }
 
+fn mobile_display_text(kind: &str, text: &str, max_bytes: usize) -> (String, bool) {
+    let projected;
+    let text = if kind == "user" {
+        projected = orgtrack_core::sources::imported_history::strip_generated_prompt_context(text);
+        let blank_prefix: usize = projected
+            .split_inclusive('\n')
+            .take_while(|line| line.trim().is_empty())
+            .map(str::len)
+            .sum();
+        &projected[blank_prefix..]
+    } else {
+        text
+    };
+    (
+        truncate_mobile_text(text, max_bytes),
+        text.len() > max_bytes,
+    )
+}
+
 fn mobile_event_from_session(event: &SessionEvent) -> Option<(Value, bool)> {
     let kind = if event.source == EventSource::User {
         Some("user")
@@ -1404,6 +1423,8 @@ fn mobile_event_from_session(event: &SessionEvent) -> Option<(Value, bool)> {
         MAX_MOBILE_MESSAGE_TEXT_BYTES
     };
 
+    let (display_text, text_truncated) =
+        mobile_display_text(kind, &event.display_text, max_text_bytes);
     let mut mobile_event = json!({
         "id": event.id,
         "uiCanonical": event.ui_canonical,
@@ -1412,7 +1433,7 @@ fn mobile_event_from_session(event: &SessionEvent) -> Option<(Value, bool)> {
         "source": event.source,
         "displayVariant": event.display_variant,
         "displayStatus": event.display_status,
-        "displayText": truncate_mobile_text(&event.display_text, max_text_bytes),
+        "displayText": display_text,
         "createdAt": event.created_at,
     });
     let extracted = event
@@ -1444,7 +1465,15 @@ fn mobile_event_from_session(event: &SessionEvent) -> Option<(Value, bool)> {
     {
         mobile_event["turnIntentId"] = Value::String(turn_intent_id.to_string());
     }
-    Some((mobile_event, tool_data_truncated))
+    Some((
+        mobile_event,
+        tool_data_truncated
+            || text_truncated
+            || event
+                .payload_refs
+                .iter()
+                .any(|reference| reference.field_path == "displayText" && reference.truncated),
+    ))
 }
 
 fn wire_string<'a>(event: &'a Value, camel: &str, snake: &str) -> &'a str {
@@ -1467,6 +1496,11 @@ fn mobile_event_from_wire(event: &Value) -> Option<(Value, bool)> {
         MAX_MOBILE_MESSAGE_TEXT_BYTES
     };
 
+    let (display_text, text_truncated) = mobile_display_text(
+        kind,
+        wire_string(event, "displayText", "display_text"),
+        max_text_bytes,
+    );
     let mut mobile_event = json!({
         "id": truncate_mobile_text(wire_string(event, "id", "id"), MAX_MOBILE_ID_BYTES),
         "uiCanonical": canonical,
@@ -1475,10 +1509,7 @@ fn mobile_event_from_wire(event: &Value) -> Option<(Value, bool)> {
         "source": source,
         "displayVariant": display_variant,
         "displayStatus": wire_string(event, "displayStatus", "display_status"),
-        "displayText": truncate_mobile_text(
-            wire_string(event, "displayText", "display_text"),
-            max_text_bytes,
-        ),
+        "displayText": display_text,
         "createdAt": wire_string(event, "createdAt", "created_at"),
     });
     let tool_data_truncated = if kind == "tool" {
@@ -1515,7 +1546,20 @@ fn mobile_event_from_wire(event: &Value) -> Option<(Value, bool)> {
     if !turn_intent_id.is_empty() {
         mobile_event["turnIntentId"] = Value::String(turn_intent_id.to_string());
     }
-    Some((mobile_event, tool_data_truncated))
+    let source_text_truncated = event
+        .get("payloadRefs")
+        .or_else(|| event.get("payload_refs"))
+        .and_then(Value::as_array)
+        .is_some_and(|references| {
+            references.iter().any(|reference| {
+                wire_string(reference, "fieldPath", "field_path") == "displayText"
+                    && reference.get("truncated").and_then(Value::as_bool) == Some(true)
+            })
+        });
+    Some((
+        mobile_event,
+        tool_data_truncated || text_truncated || source_text_truncated,
+    ))
 }
 
 fn budget_mobile_upserts<I>(events: I) -> MobileUpsertBudget
@@ -1577,25 +1621,7 @@ where
 }
 
 fn mobile_upserts_from_session_events(events: &[SessionEvent]) -> MobileUpsertBudget {
-    budget_mobile_upserts(events.iter().filter_map(|event| {
-        let (mobile_event, tool_data_truncated) = mobile_event_from_session(event)?;
-        let text_limit = if mobile_event.get("displayVariant").and_then(Value::as_str)
-            == Some("tool_call")
-            || mobile_event.get("actionType").and_then(Value::as_str) == Some("tool_call")
-            || mobile_event
-                .get("uiCanonical")
-                .and_then(Value::as_str)
-                .is_some_and(|canonical| canonical.starts_with("tool_"))
-        {
-            MAX_MOBILE_TOOL_TEXT_BYTES
-        } else {
-            MAX_MOBILE_MESSAGE_TEXT_BYTES
-        };
-        Some((
-            mobile_event,
-            tool_data_truncated || event.display_text.len() > text_limit,
-        ))
-    }))
+    budget_mobile_upserts(events.iter().filter_map(mobile_event_from_session))
 }
 
 fn mobile_upserts_from_wire(envelope: &Value) -> MobileUpsertBudget {
@@ -1604,26 +1630,7 @@ fn mobile_upserts_from_wire(envelope: &Value) -> MobileUpsertBudget {
         .and_then(Value::as_array)
         .map(Vec::as_slice)
         .unwrap_or_default();
-    budget_mobile_upserts(upserts.iter().filter_map(|event| {
-        let display_text = wire_string(event, "displayText", "display_text");
-        let (mobile_event, tool_data_truncated) = mobile_event_from_wire(event)?;
-        let text_limit = if mobile_event.get("displayVariant").and_then(Value::as_str)
-            == Some("tool_call")
-            || mobile_event.get("actionType").and_then(Value::as_str) == Some("tool_call")
-            || mobile_event
-                .get("uiCanonical")
-                .and_then(Value::as_str)
-                .is_some_and(|canonical| canonical.starts_with("tool_"))
-        {
-            MAX_MOBILE_TOOL_TEXT_BYTES
-        } else {
-            MAX_MOBILE_MESSAGE_TEXT_BYTES
-        };
-        Some((
-            mobile_event,
-            tool_data_truncated || display_text.len() > text_limit,
-        ))
-    }))
+    budget_mobile_upserts(upserts.iter().filter_map(mobile_event_from_wire))
 }
 
 fn mobile_removed_ids(envelope: &Value) -> Vec<String> {
@@ -2363,6 +2370,86 @@ mod tests {
         assert_eq!(all["sessions"][0]["id"], json!("idle-b"));
         assert_eq!(all["nextOffset"], json!(4));
         assert_eq!(all["hasMore"], json!(true));
+    }
+
+    #[test]
+    fn mobile_user_context_is_removed_before_history_and_live_wire_limits() {
+        let body = "# Files mentioned by the user:\n## example.ts: /workspace/example.ts\n\n## My request:\n请修复\n\n```ts\n  const value = 1;\n```";
+        let raw_text = format!(
+            "<orgii_provider_context>\n{}\n</orgii_provider_context>\n<in-app-browser-context source=\"ambient-ui-state\">\n{}\n</in-app-browser-context>\n{body}",
+            "workspace instructions\n".repeat(2000),
+            "browser context\n".repeat(2000)
+        );
+        let user = core_types::activity::ActivityChunk::new("s", "raw", "user_message")
+            .with_result(json!({"type":"user","message":{"role":"user","content":"seed"}}));
+        let (raw, _) = chunks_to_raw(vec![user], "s");
+        let mut events =
+            crate::agent_sessions::event_pipeline::ingestion::ingest_raw_chunks(&raw, "s").events;
+        events[0].display_text = raw_text.clone();
+        let history = build_subscription_snapshot("s", Some("round"), &events, false, 7);
+        assert_eq!(history["upserts"][0]["displayText"], body);
+        assert_eq!(history["truncated"], false);
+        assert_eq!(
+            events[0].display_text, raw_text,
+            "source history must remain unchanged"
+        );
+
+        for snake_case in [false, true] {
+            let mut event = serde_json::to_value(&events[0]).unwrap();
+            if snake_case {
+                let object = event.as_object_mut().unwrap();
+                let text = object.remove("displayText").unwrap();
+                object.insert("display_text".into(), text);
+            }
+            let envelope =
+                json!({"sessionId":"s", "version":7,"snapshotDelta":true,"upserts":[event]});
+            let live = compact_snapshot_envelope_for_mobile(&envelope);
+            assert_eq!(live["upserts"][0]["displayText"], body);
+            assert_eq!(live["truncated"], false);
+            assert_eq!(live["version"], 7);
+            assert_eq!(
+                compact_snapshot_envelope_for_mobile(&live),
+                live,
+                "reprojection must be stable"
+            );
+        }
+    }
+
+    #[test]
+    fn mobile_message_projection_preserves_plain_text_and_real_truncation() {
+        let plain = "  indented first line\n\n```xml\n<custom>keep</custom>\n```";
+        assert_eq!(
+            mobile_display_text("user", plain, MAX_MOBILE_MESSAGE_TEXT_BYTES),
+            (plain.into(), false)
+        );
+        let context_only = "<orgii_provider_context>internal</orgii_provider_context>\n";
+        assert_eq!(
+            mobile_display_text("user", context_only, MAX_MOBILE_MESSAGE_TEXT_BYTES),
+            (String::new(), false)
+        );
+        let body = "中文".repeat(MAX_MOBILE_MESSAGE_TEXT_BYTES);
+        let wrapped = format!("{context_only}{body}");
+        let (text, truncated) =
+            mobile_display_text("user", &wrapped, MAX_MOBILE_MESSAGE_TEXT_BYTES);
+        assert!(truncated);
+        assert!(text.starts_with("中文"));
+        assert!(text.ends_with("\n…"));
+        for kind in ["agent", "tool"] {
+            assert_eq!(
+                mobile_display_text(kind, context_only, MAX_MOBILE_MESSAGE_TEXT_BYTES),
+                (context_only.into(), false)
+            );
+        }
+        let event = json!({
+            "id":"large-user", "source":"user", "uiCanonical":"user_message",
+            "displayText":"previously compacted body",
+            "payloadRefs":[{"fieldPath":"displayText","truncated":true}]
+        });
+        let compacted = compact_snapshot_envelope_for_mobile(&json!({"upserts":[event]}));
+        assert_eq!(
+            compacted["truncated"], true,
+            "keep upstream truncation visible"
+        );
     }
 
     #[test]

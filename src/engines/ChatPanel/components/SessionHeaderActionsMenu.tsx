@@ -39,6 +39,7 @@ import {
   ThirdBracketIcon,
 } from "@src/icons";
 import { sessionByIdAtom, upsertSession } from "@src/store/session";
+import { compactComposerInputAtom } from "@src/store/session/compactComposerInputAtom";
 import { pinnedActionsVisibleAtom } from "@src/store/session/pinnedActionsVisibleAtom";
 import { openSessionInNewWindowAtom } from "@src/store/session/sessionTabPlacementAtom";
 import { collapseToolActivityAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
@@ -134,7 +135,11 @@ export const SessionHeaderActionsMenu: React.FC<
   const [collapseToolActivity, setCollapseToolActivity] = useAtom(
     collapseToolActivityAtom
   );
+  const [compactComposerInput, setCompactComposerInput] = useAtom(
+    compactComposerInputAtom
+  );
   const showSkillsLabel = t("chat.startPage.showSkills");
+  const compactInputLabel = t("chat.compactInput");
 
   // Track this / Convert to Project (orgtrack/v1 §7.2). Self-contained:
   // the backend command persists the switch + root WorkItem; only the
@@ -588,6 +593,16 @@ export const SessionHeaderActionsMenu: React.FC<
                       size="small"
                       ariaLabel={showSkillsLabel}
                       dataTestId="session-menu-show-skills-toggle"
+                    />
+                  </div>
+                  <div className={DROPDOWN_CLASSES.menuControlItem}>
+                    <span className="flex-1 truncate">{compactInputLabel}</span>
+                    <Switch
+                      checked={compactComposerInput}
+                      onCheckedChange={setCompactComposerInput}
+                      size="small"
+                      ariaLabel={compactInputLabel}
+                      dataTestId="session-menu-compact-input-toggle"
                     />
                   </div>
                 </ActionSubmenu>

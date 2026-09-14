@@ -73,7 +73,7 @@ const VoiceRecordingBar: React.FC<VoiceRecordingBarProps> = memo(
 
     return (
       <div
-        className="flex h-9 min-h-9 w-full items-center gap-1 px-1 text-text-2"
+        className="flex h-9 min-h-9 w-full items-center gap-1 pt-2 text-text-2"
         data-testid="composer-voice-recording-bar"
         role="region"
         aria-label={t("common:tooltips.startVoiceInput")}

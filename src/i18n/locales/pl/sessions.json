@@ -716,6 +716,7 @@
     "performActions_other": "Wykonaj {{count}} działań",
     "showInlineDiffs": "Różnice w treści",
     "inputSettings": "Ustawienia wprowadzania",
+    "compactInput": "Kompaktowe pole wprowadzania",
     "replay": {
       "follow": "Śledź"
     },
@@ -1467,10 +1468,13 @@
     "webFetchRunning": "Pobieranie strony",
     "webFetchDone": "Pobrano stronę",
     "webFetchFailed": "Pobranie strony nieudane",
+    "awaitOutputSummaryShellSingle": "proces terminala",
     "awaitOutputSummaryShell_one": "1 proces terminala",
     "awaitOutputSummaryShell_other": "{{count}} procesów terminala",
+    "awaitOutputSummarySubagentSingle": "Subagent",
     "awaitOutputSummarySubagent_one": "1 Subagent",
     "awaitOutputSummarySubagent_other": "{{count}} Subagentów",
+    "awaitOutputSummaryUnknownSingle": "zadanie w tle",
     "awaitOutputSummaryUnknown_one": "zadanie w tle",
     "awaitOutputSummaryUnknown_other": "{{count}} zadań w tle",
     "awaitOutputSummaryMixed": "{{shell}}, {{subagent}}",

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ComposerInputRef } from "@src/components/ComposerInput";
 
-import { InputAreaTopRows } from "./InputAreaChrome";
+import { InputAreaTopRows, getComposerShellVariant } from "./InputAreaChrome";
 
 vi.mock("../ChatHeader", () => ({ default: () => null }));
 vi.mock("./PlanTodoPill", () => ({ default: () => null }));
@@ -57,5 +57,32 @@ describe("InputAreaTopRows", () => {
       '[data-testid="pinned-actions-bar"]'
     );
     expect(pinnedActions?.getAttribute("data-visible")).toBe("false");
+  });
+});
+
+describe("getComposerShellVariant", () => {
+  const shellVariant = (
+    overrides: Partial<Parameters<typeof getComposerShellVariant>[0]> = {}
+  ) =>
+    getComposerShellVariant({
+      compactShell: false,
+      isEditMode: false,
+      quietEditSurface: false,
+      surfaceBg: false,
+      ...overrides,
+    });
+
+  it("wraps the compact row in the pill shell on any surface", () => {
+    expect(shellVariant({ compactShell: true })).toBe("pill");
+    expect(shellVariant({ compactShell: true, surfaceBg: true })).toBe("pill");
+  });
+
+  it("keeps the stacked shells when the row is not compact", () => {
+    expect(shellVariant()).toBe("embedded");
+    expect(shellVariant({ surfaceBg: true })).toBe("default");
+    expect(shellVariant({ isEditMode: true })).toBe("embedded");
+    expect(shellVariant({ isEditMode: true, quietEditSurface: true })).toBe(
+      "historyEdit"
+    );
   });
 });

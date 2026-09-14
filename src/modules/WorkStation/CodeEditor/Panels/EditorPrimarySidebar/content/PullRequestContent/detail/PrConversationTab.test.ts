@@ -150,7 +150,7 @@ describe("PrConversationTab", () => {
     expect(input?.className).toContain("px-1.5");
     expect(input?.className).toContain("pt-1.5!");
     expect(input?.className).toContain("pb-1.5");
-    expect(actionRow?.className).toContain("px-1");
+    expect(actionRow?.className).toContain("pt-2");
     expect(composer?.textContent).toContain("Submit review");
     expect(composer?.textContent).toContain("Comment");
   });

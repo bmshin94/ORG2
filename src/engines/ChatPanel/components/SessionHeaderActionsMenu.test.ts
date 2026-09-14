@@ -15,6 +15,7 @@ import {
   CursorInWindowIcon,
   ThirdBracketIcon,
 } from "@src/icons";
+import { compactComposerInputAtom } from "@src/store/session/compactComposerInputAtom";
 import { collapseToolActivityAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 import {
@@ -33,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   pinnedActionsVisible: false,
   setPinnedActionsVisible: vi.fn(),
   setCollapseToolActivity: vi.fn(),
+  setCompactComposerInput: vi.fn(),
 }));
 
 vi.mock("@src/api/tauri/externalHistory/appOpen", () => ({
@@ -55,7 +57,9 @@ vi.mock("jotai", async (importOriginal) => ({
   useAtom: (atom: unknown) =>
     atom === collapseToolActivityAtom
       ? [false, mocks.setCollapseToolActivity]
-      : [mocks.pinnedActionsVisible, mocks.setPinnedActionsVisible],
+      : atom === compactComposerInputAtom
+        ? [false, mocks.setCompactComposerInput]
+        : [mocks.pinnedActionsVisible, mocks.setPinnedActionsVisible],
   useAtomValue: () => mocks.session,
   useSetAtom: () => mocks.openWindow,
 }));
@@ -471,12 +475,28 @@ describe("SessionHeaderActionsMenu", () => {
 
     click("session-input-settings-submenu");
     const inputPanel = element("session-input-settings-submenu-panel");
-    expect(inputPanel.querySelectorAll('[role="switch"]')).toHaveLength(1);
+    const inputSwitches =
+      inputPanel.querySelectorAll<HTMLButtonElement>('[role="switch"]');
+    expect(
+      [...inputSwitches].map((control) => [
+        control.getAttribute("aria-label"),
+        control.getAttribute("aria-checked"),
+      ])
+    ).toEqual([
+      ["chat.startPage.showSkills", "false"],
+      ["chat.compactInput", "false"],
+    ]);
     click("session-menu-show-skills-toggle");
     expect(mocks.setPinnedActionsVisible).toHaveBeenCalledWith(
       true,
       expect.anything()
     );
+    click("session-menu-compact-input-toggle");
+    expect(mocks.setCompactComposerInput).toHaveBeenCalledWith(
+      true,
+      expect.anything()
+    );
+    expect(mocks.setPinnedActionsVisible).toHaveBeenCalledOnce();
     expect(props.toggleHeaderActionsMenu).not.toHaveBeenCalled();
 
     render({ showTranscriptActions: false });

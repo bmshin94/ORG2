@@ -166,9 +166,9 @@ describe("NormalComposerContent contextual presentations", () => {
         toggle: vi.fn(),
         isSupported: true,
       },
+      isCompactRow: false,
       contextualPanel: true,
       inlineLeadingContent: createElement("span", null, "Stat"),
-      suppressToolbarHover: false,
       currentInputEmpty,
       stopSuppressedForEmptyInput: false,
       isWpGeneWorking: false,
@@ -197,13 +197,13 @@ describe("NormalComposerContent contextual presentations", () => {
     renderComposer(true);
 
     expect(testState.composerBarProps).toMatchObject({
+      inlineLayout: false,
       showContextInfo: false,
     });
-    expect(testState.composerBarProps).not.toHaveProperty("inlineLayout");
     expect(testState.inputEditorProps).toMatchObject({
+      compact: false,
       leadingContent: expect.anything(),
     });
-    expect(testState.inputEditorProps).not.toHaveProperty("compact");
     expect(container.textContent).toContain("Stat");
     expect(
       container.querySelector("[data-testid='input-editor']")
@@ -217,6 +217,50 @@ describe("NormalComposerContent contextual presentations", () => {
       container.querySelector("[data-testid='input-actions']")
     ).not.toBeNull();
     expect(container.querySelector("[data-testid='prompt-polish']")).toBeNull();
+  });
+
+  it("moves the ordinary composer into the compact row without dropping controls", () => {
+    renderComposer(true, {
+      isCompactRow: true,
+      contextualPanel: false,
+      inlineLeadingContent: undefined,
+      modePill: createElement("span", null, "Build"),
+      modelPill: createElement("span", null, "Opus 5"),
+    });
+
+    expect(testState.composerBarProps).toMatchObject({
+      inlineLayout: true,
+      showContextInfo: true,
+    });
+    expect(testState.inputEditorProps).toMatchObject({ compact: true });
+    expect(testState.inputEditorProps?.leadingContent).toBeUndefined();
+    expect(container.textContent).toContain("Build");
+    expect(container.textContent).toContain("Opus 5");
+    expect(
+      container.querySelector("[data-testid='prompt-polish']")
+    ).not.toBeNull();
+    expect(
+      container.querySelector("[data-testid='voice-button']")
+    ).not.toBeNull();
+    expect(
+      container.querySelector("[data-testid='input-actions']")
+    ).not.toBeNull();
+  });
+
+  it("keeps the contextual reference on the compact row's editor line", () => {
+    renderComposer(true, { isCompactRow: true });
+
+    expect(testState.composerBarProps).toMatchObject({
+      inlineLayout: true,
+      showContextInfo: false,
+    });
+    expect(testState.inputEditorProps).toMatchObject({
+      compact: true,
+      leadingContent: expect.anything(),
+    });
+    expect(
+      container.querySelector("[data-testid='input-editor']")?.textContent
+    ).toBe("Stat");
   });
 
   it("keeps the standard microphone and send actions after typing", () => {
@@ -239,13 +283,13 @@ describe("NormalComposerContent contextual presentations", () => {
     });
 
     expect(testState.composerBarProps).toMatchObject({
+      inlineLayout: false,
       showContextInfo: false,
     });
-    expect(testState.composerBarProps).not.toHaveProperty("inlineLayout");
     expect(testState.inputEditorProps).toMatchObject({
+      compact: false,
       leadingContent: expect.anything(),
     });
-    expect(testState.inputEditorProps).not.toHaveProperty("compact");
     expect(container.textContent).toContain("H1");
     expect(
       container.querySelector("[data-testid='input-editor']")?.textContent
