@@ -1,5 +1,8 @@
 {
   "marketConnection": {
+    "loadingPurchases": "Chargement des achats…",
+    "purchasesFailed": "Impossible de charger les achats. Vous pouvez toujours déconnecter la connexion locale.",
+    "retryPurchases": "Recharger les achats",
     "manage": "Gérer la connexion",
     "reauthorize": "Autoriser à nouveau",
     "platformUnavailable": "Les connexions acheteur Market ne sont pas disponibles sur cette plateforme, car le stockage sécurisé des identifiants n’est pas pris en charge",

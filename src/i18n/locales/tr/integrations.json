@@ -1,5 +1,8 @@
 {
   "marketConnection": {
+    "loadingPurchases": "Satın alımlar yükleniyor…",
+    "purchasesFailed": "Satın alımlar yüklenemedi. Yerel bağlantıyı yine de kesebilirsiniz.",
+    "retryPurchases": "Satın alımları yeniden yükle",
     "manage": "Bağlantıyı yönet",
     "reauthorize": "Yeniden yetkilendir",
     "platformUnavailable": "Bu platform güvenli kimlik bilgisi depolamayı desteklemediği için Market alıcı bağlantıları kullanılamıyor",

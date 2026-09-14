@@ -1,5 +1,8 @@
 {
   "marketConnection": {
+    "loadingPurchases": "Wczytywanie zakupów…",
+    "purchasesFailed": "Nie udało się wczytać zakupów. Nadal możesz rozłączyć połączenie lokalne.",
+    "retryPurchases": "Wczytaj zakupy ponownie",
     "manage": "Zarządzaj połączeniem",
     "reauthorize": "Autoryzuj ponownie",
     "platformUnavailable": "Połączenia kupującego Market są niedostępne na tej platformie, ponieważ nie obsługuje ona bezpiecznego przechowywania danych uwierzytelniających",

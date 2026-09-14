@@ -168,6 +168,21 @@ it.each(["offline", "pending", "expired"])(
       )
     );
     expect(button("marketConnection.disconnect").disabled).toBe(false);
+    if (state === "expired")
+      expect(document.body.textContent).toContain(
+        "marketConnection.noPurchases"
+      );
+    else
+      expect(document.body.textContent).not.toContain(
+        "marketConnection.noPurchases"
+      );
+    expect(document.body.textContent).toContain(
+      state === "offline"
+        ? "marketConnection.purchasesFailed"
+        : state === "pending"
+          ? "marketConnection.loadingPurchases"
+          : "marketConnection.noPurchases"
+    );
     await act(async () => button("marketConnection.disconnect").click());
     expect(api.disconnect).toHaveBeenCalledWith(connection);
     expect(api.apply).not.toHaveBeenCalled();
@@ -193,3 +208,82 @@ it.each(["claude-app", "org2"] as const)(
     expect(close).toHaveBeenCalledOnce();
   }
 );
+
+it("retries only remote purchases and distinguishes failure, loading and successful empty response", async () => {
+  let finish!: (value: unknown[]) => void;
+  api.entries
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+  await act(async () =>
+    root.render(
+      createElement(ConnectionDialog, { connection, onClose: () => {} })
+    )
+  );
+  expect(document.body.textContent).toContain(
+    "marketConnection.purchasesFailed"
+  );
+  expect(document.body.textContent).not.toContain(
+    "marketConnection.noPurchases"
+  );
+  await act(async () => button("marketConnection.retryPurchases").click());
+  expect(document.body.textContent).toContain(
+    "marketConnection.loadingPurchases"
+  );
+  expect(document.body.textContent).not.toContain(
+    "marketConnection.purchasesFailed"
+  );
+  expect(document.body.textContent).not.toContain(
+    "marketConnection.noPurchases"
+  );
+  expect(button("marketConnection.disconnect").disabled).toBe(false);
+  expect(api.config).toHaveBeenCalledOnce();
+  await act(async () => finish([]));
+  expect(document.body.textContent).toContain("marketConnection.noPurchases");
+  expect(document.body.textContent).not.toContain(
+    "marketConnection.loadingPurchases"
+  );
+  expect(api.entries).toHaveBeenCalledTimes(2);
+});
+it("ignores an older workspace purchase response after switching connections", async () => {
+  let finish!: (value: unknown[]) => void;
+  api.entries
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    )
+    .mockResolvedValueOnce([]);
+  await act(async () =>
+    root.render(
+      createElement(ConnectionDialog, { connection, onClose: () => {} })
+    )
+  );
+  await act(async () =>
+    root.render(
+      createElement(ConnectionDialog, {
+        connection: { ...connection, workspace_id: "ws_other" },
+        onClose: () => {},
+      })
+    )
+  );
+  await act(async () =>
+    finish([
+      {
+        entitlement_id: "ent_stale",
+        service_name: "Stale purchase",
+        status: "active",
+        expires_at: null,
+        models_by_agent: { codex: ["stale-model"], claude: [] },
+      },
+    ])
+  );
+  expect(document.body.textContent).toContain("marketConnection.noPurchases");
+  expect(document.body.textContent).not.toContain("Stale purchase");
+  expect(button("marketConnection.configure").disabled).toBe(true);
+});

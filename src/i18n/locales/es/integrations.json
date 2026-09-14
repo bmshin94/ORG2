@@ -1,5 +1,8 @@
 {
   "marketConnection": {
+    "loadingPurchases": "Cargando compras…",
+    "purchasesFailed": "No se pudieron cargar las compras. Aún puedes desconectar la conexión local.",
+    "retryPurchases": "Volver a cargar compras",
     "manage": "Gestionar conexión",
     "reauthorize": "Autorizar de nuevo",
     "platformUnavailable": "Las conexiones de comprador de Market no están disponibles en esta plataforma porque no admite el almacenamiento seguro de credenciales",

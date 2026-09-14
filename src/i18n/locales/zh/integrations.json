@@ -1,5 +1,8 @@
 {
   "marketConnection": {
+    "loadingPurchases": "正在读取购买记录…",
+    "purchasesFailed": "购买记录读取失败，仍可断开本地连接。",
+    "retryPurchases": "重新读取购买记录",
     "manage": "管理连接",
     "reauthorize": "重新授权",
     "platformUnavailable": "当前平台不支持安全保存凭据，暂时无法连接 Market 买家工作区",
@@ -10,7 +13,7 @@
     "disconnect": "断开连接",
     "configure": "配置客户端",
     "adapterPending": "此客户端适配尚未完成",
-    "listing": "Listing",
+    "listing": "服务",
     "model": "模型",
     "noPurchases": "此工作区没有有效购买项",
     "conflict": "配置已在 ORG2 外被修改，请先检查",
@@ -18,7 +21,7 @@
     "openWorkspace": "选择文件夹并打开客户端",
     "launchNote": "ORG2 会在所选文件夹中打开客户端，无需复制命令或密钥。",
     "clientMissing": "请先在 ORG2 设置中安装此客户端，然后重试。",
-    "launchFailed": "无法打开工作区。请检查文件夹，并重新连接所选 listing。"
+    "launchFailed": "无法打开工作区。请检查文件夹，并重新连接所选服务。"
   },
   "scopeLabels": {
     "user": "User",

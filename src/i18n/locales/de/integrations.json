@@ -1,5 +1,8 @@
 {
   "marketConnection": {
+    "loadingPurchases": "Käufe werden geladen…",
+    "purchasesFailed": "Käufe konnten nicht geladen werden. Die lokale Verbindung kann weiterhin getrennt werden.",
+    "retryPurchases": "Käufe erneut laden",
     "manage": "Verbindung verwalten",
     "reauthorize": "Erneut autorisieren",
     "platformUnavailable": "Market-Käuferverbindungen sind auf dieser Plattform nicht verfügbar, da die sichere Speicherung von Zugangsdaten nicht unterstützt wird",

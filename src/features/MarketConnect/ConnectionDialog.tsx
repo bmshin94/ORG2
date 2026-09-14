@@ -26,8 +26,12 @@ export default function ConnectionDialog({
 }) {
   const { t } = useTranslation("integrations");
   const tr = (key: string) => t(`marketConnection.${key}`);
-  const [entries, setEntries] = useState<Entry[]>([]),
-    [entry, setEntry] = useState(""),
+  const [purchases, setPurchases] = useState<
+    { phase: "loading" | "failed" } | { phase: "ready"; entries: Entry[] }
+  >({ phase: "loading" });
+  const [purchaseRetry, setPurchaseRetry] = useState(0);
+  const entries = purchases.phase === "ready" ? purchases.entries : [];
+  const [entry, setEntry] = useState(""),
     [model, setModel] = useState("");
   const [config, setConfig] = useState<CliConfigManagedStatus | null>(null);
   const [busy, setBusy] = useState(true),
@@ -49,32 +53,11 @@ export default function ConnectionDialog({
     let current = true;
     // Remote availability must never gate local recovery.
     setConfigured(false);
-    setEntries([]);
     setEntry("");
     setModel("");
     setConfig(null);
     setBusy(true);
     setError(false);
-    void loadEntries(connection)
-      .then((all) => {
-        if (!current) return;
-        const agent = connection.target === "codex" ? "codex" : "claude";
-        const active = all
-          .map((e) => ({ ...e, models: e.models_by_agent[agent] }))
-          .filter(
-            (e) =>
-              e.status === "active" &&
-              (e.expires_at === null || e.expires_at > Date.now())
-          );
-        setEntries(active);
-        if (active.length === 1) {
-          setEntry((value) => value || active[0].entitlement_id);
-          setModel((value) => value || active[0].models[0] || "");
-        }
-      })
-      .catch(() => {
-        if (current) setError(true);
-      });
     void loadConfig(connection)
       .then((status) => {
         if (!current) return;
@@ -120,6 +103,34 @@ export default function ConnectionDialog({
       alive.current = false;
     };
   }, [connection, supported]);
+  useEffect(() => {
+    if (!supported) return;
+    let current = true;
+    setPurchases({ phase: "loading" });
+    void loadEntries(connection)
+      .then((all) => {
+        if (!current) return;
+        const agent = connection.target === "codex" ? "codex" : "claude";
+        const active = all
+          .map((e) => ({ ...e, models: e.models_by_agent[agent] }))
+          .filter(
+            (e) =>
+              e.status === "active" &&
+              (e.expires_at === null || e.expires_at > Date.now())
+          );
+        setPurchases({ phase: "ready", entries: active });
+        if (active.length === 1) {
+          setEntry((value) => value || active[0].entitlement_id);
+          setModel((value) => value || active[0].models[0] || "");
+        }
+      })
+      .catch(() => {
+        if (current) setPurchases({ phase: "failed" });
+      });
+    return () => {
+      current = false;
+    };
+  }, [connection, supported, purchaseRetry]);
   const selected = entries.find((e) => e.entitlement_id === entry);
   const run = async (disconnect = false) => {
     if (!disconnect && (!entry || !config)) return;
@@ -238,7 +249,21 @@ export default function ConnectionDialog({
                 panelZIndex={MODAL_SELECT_Z_INDEX}
               />
             </label>
-            {!busy && !entries.length && (
+            {purchases.phase === "loading" && (
+              <p role="status">{tr("loadingPurchases")}</p>
+            )}
+            {purchases.phase === "failed" && (
+              <div role="alert">
+                <p>{tr("purchasesFailed")}</p>
+                <Button
+                  disabled={busy}
+                  onClick={() => setPurchaseRetry((value) => value + 1)}
+                >
+                  {tr("retryPurchases")}
+                </Button>
+              </div>
+            )}
+            {purchases.phase === "ready" && !entries.length && (
               <p role="status">{tr("noPurchases")}</p>
             )}
             {config?.conflict && <p role="alert">{tr("conflict")}</p>}

@@ -1,5 +1,8 @@
 {
   "marketConnection": {
+    "loadingPurchases": "Loading purchases…",
+    "purchasesFailed": "Could not load purchases. Your local connection can still be disconnected.",
+    "retryPurchases": "Retry loading purchases",
     "manage": "Manage connection",
     "reauthorize": "Authorize again",
     "platformUnavailable": "Market buyer connections are not available on this platform because secure credential storage is not supported",
