@@ -17,6 +17,8 @@ import { isWindows } from "@src/util/platform/tauri";
 export interface CliTuiSessionCreateParams {
   platform: CliAgentType;
   name: string;
+  /** Persist the selected launch model for history and subsequent turns. */
+  model?: string;
   repoPath?: string;
   /** Create a fresh isolated worktree. */
   isolate?: boolean;
@@ -173,6 +175,7 @@ export async function cliAgentCreateTuiSession(
       platform: params.platform,
       keySource: "own_key",
       runner: "tui",
+      ...(params.model ? { model: params.model } : {}),
       ...(params.repoPath ? { repoPath: params.repoPath } : {}),
       ...(params.isolate ? { isolate: true } : {}),
       ...(params.worktreeBaseRef

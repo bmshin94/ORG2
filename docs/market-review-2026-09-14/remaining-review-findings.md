@@ -1,6 +1,6 @@
 # Market 外部审计复核：仍不满足发布验收
 
-本报告合并当前状态，后面的历史记录保留测试边界，不作为重复待办。原审计针对 `4ae0a568e73ab55aec522a27963c8ba90a2283b0`；本次源代码复核针对 `3734a65d10a39f70c6afa7efba3ce2b603b89cf5`。主要修复在 `373335f36`，授权持久化补偿在 `3734a65d1`。
+本报告合并当前状态，后面的历史记录保留测试边界，不作为重复待办。原审计针对 `4ae0a568e73ab55aec522a27963c8ba90a2283b0`；后续并发修复及本轮恢复链路复核基于 `031768e2db0d94424102cf5d6b102d449c926497`。主要修复在 `373335f36`，授权持久化补偿在 `3734a65d1`。
 
 **结论：原审计指出的问题成立。当前已有针对性修复，但不能将这些修复或局部测试等同于可发布的一键接入。保持不合并、不宣称全流程已验收。**
 
@@ -122,3 +122,15 @@ Performance verdict: blocked for full runtime acceptance. Coordinator tests pass
 Clippy follow-up: `cargo clippy --lib -- -D warnings` passed after simplifying the cache-expiry predicate and naming the proxy resolver function type. The initial strict run failed on those two lints; it is not counted as passing evidence. No lint was suppressed.
 
 Final rerun after lint corrections: `cargo test --lib market_connection::` passed 7/7 and `cargo test --lib codex_router_forwards_workspace_v1_uri_and_query_to_upstream` passed 1/1; zero ignored in either filtered suite.
+
+## Execution recovery audit: selected model and credential ownership
+
+The current Market launcher creates a TUI row via `cliAgentCreateTuiSession` before generating its session-owned proxy profile. That create wrapper previously sent neither the chosen model nor any credential selection; it always sent `keySource: own_key`. The initial terminal still used the generated Market configuration, so a successful first request did not prove that the persisted Session could reproduce it after restart.
+
+This follow-up preserves the selected model through the shared TUI create request into the existing `CreateCodeSessionParams.model` field. The production SQLite writer already inserts that field. There is no schema change or new default for ordinary TUI callers. Tests cover both the Market caller and actual shared IPC request construction, including omission for callers without a model.
+
+**Credential ownership remains unresolved.** The Market selection is a dynamic-source key, while the normal session runner's accountId is resolved by KeyVault and refreshed through provider-specific KeyVault functions. Copying a `market:` selection into accountId would overload that contract and would not create a functioning restart path. The next implementation must retain the source identity through the session owner's execution contract and resolve it through the registered dynamic source before launch, without substituting an unrelated KeyVault/default account. This requires coverage of create, follow-up, restart, and explicit account switching; merely retaining CODEX_HOME or model is insufficient.
+
+Additional direct-resume consumers were found: `orgtrack-cli::commands` launches the planned native ID with args/cwd only, and the mobile imported Codex adapter similarly constructs exec/resume without the transcript's custom home. Desktop imported continuation instead enters canonical materialization with the selected target. These paths have different execution semantics and must not be fixed by blindly injecting the same environment in all three.
+
+Verification: targeted Market launch and shared terminal tests passed 36 with one existing PowerShell runtime test skipped because no runtime override was supplied. The skipped test is not new Windows evidence. No real continuation, provider request, native app build, or production rollout was performed by this follow-up.

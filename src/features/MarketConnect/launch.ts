@@ -79,6 +79,7 @@ export async function prepareLaunch(
   const created = await cliAgentCreateTuiSession({
     platform,
     name: agent.displayName,
+    model,
     repoPath: folder,
   });
   try {

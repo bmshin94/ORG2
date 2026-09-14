@@ -71,6 +71,7 @@ it("creates the selected client in the selected folder with a managed session an
   expect(api.create).toHaveBeenCalledWith({
     platform: "codex",
     name: "Codex",
+    model: "gpt-5.3-codex",
     repoPath: "/project with spaces",
   });
   expect(api.release).not.toHaveBeenCalled();

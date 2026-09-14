@@ -5,15 +5,19 @@ import type { CliLaunchProfileView } from "@src/api/tauri/rpc/schemas/agentOrgs"
 
 import {
   appendCliCommandArgs,
+  cliAgentCreateTuiSession,
   deriveExpectedProcess,
   formatCliTuiCommand,
   resolveCliTuiCommand,
   withCliCommandEnvironment,
 } from "../cliTerminalSession";
 
-const { getLaunchProfile } = vi.hoisted(() => ({
+const { getLaunchProfile, invoke } = vi.hoisted(() => ({
+  invoke: vi.fn(),
   getLaunchProfile: vi.fn(),
 }));
+
+vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 vi.mock("@src/api/tauri/rpc", () => ({
   rpc: {
@@ -313,3 +317,32 @@ it.skipIf(!powershellExecutable)(
     }
   }
 );
+
+it("preserves an explicitly selected TUI model in the native create request", async () => {
+  invoke.mockResolvedValue({ sessionId: "cli_model" });
+  await cliAgentCreateTuiSession({
+    platform: "codex",
+    name: "Codex",
+    model: "gpt-5.3-codex",
+    repoPath: "/project",
+  });
+  expect(invoke).toHaveBeenLastCalledWith("cli_agent_create", {
+    params: {
+      platform: "codex",
+      name: "Codex",
+      model: "gpt-5.3-codex",
+      repoPath: "/project",
+      keySource: "own_key",
+      runner: "tui",
+    },
+  });
+  await cliAgentCreateTuiSession({ platform: "codex", name: "Codex" });
+  expect(invoke).toHaveBeenLastCalledWith("cli_agent_create", {
+    params: {
+      platform: "codex",
+      name: "Codex",
+      keySource: "own_key",
+      runner: "tui",
+    },
+  });
+});
