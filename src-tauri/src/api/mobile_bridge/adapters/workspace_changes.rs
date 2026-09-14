@@ -61,7 +61,7 @@ pub(super) async fn read(session_id: &str, selected: Option<&str>) -> Result<Val
 
 async fn read_at(root: &Path, selected: Option<&str>) -> Result<Value, RpcError> {
     let status = git(
-        &root,
+        root,
         &["status", "--porcelain=v1", "-z", "--untracked-files=all"],
     )
     .await?;
@@ -87,7 +87,7 @@ async fn read_at(root: &Path, selected: Option<&str>) -> Result<Value, RpcError>
         if selected == Some(path) {
             let candidate = root.join(path);
             if let Ok(canonical) = tokio::fs::canonicalize(&candidate).await {
-                if !canonical.starts_with(&root) {
+                if !canonical.starts_with(root) {
                     return Err(RpcError::invalid_params("file outside workspace"));
                 }
                 let handle = tokio::fs::File::open(canonical)
@@ -114,13 +114,13 @@ async fn read_at(root: &Path, selected: Option<&str>) -> Result<Value, RpcError>
             }
             if &entry[..2] != "??" {
                 let spec = format!("HEAD:{original}");
-                if let Ok(before) = git(&root, &["show", &spec]).await {
+                if let Ok(before) = git(root, &["show", &spec]).await {
                     if !before.contains('\0') {
                         file["before"] = json!(before);
                     }
                 }
                 if let Ok(patch) = git(
-                    &root,
+                    root,
                     &[
                         "diff",
                         "--no-ext-diff",
