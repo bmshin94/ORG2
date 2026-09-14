@@ -1,8 +1,9 @@
 import type { TFunction } from "i18next";
 import { useCallback } from "react";
-import type { Location, NavigateFunction } from "react-router-dom";
+import type { Location } from "react-router-dom";
 
 import { ROUTES } from "@src/config/routes";
+import { type AppNavigateFunction as NavigateFunction } from "@src/hooks/navigation/useAppNavigate";
 import type { useAppNavigation } from "@src/hooks/navigation/useAppNavigation";
 import type { StationMode } from "@src/store/ui/simulatorAtom";
 

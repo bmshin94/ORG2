@@ -5,9 +5,9 @@
  */
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@src/config/routes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import {
   type SessionViewState,

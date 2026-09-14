@@ -1,7 +1,7 @@
 import { getDefaultStore } from "jotai";
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { exchangeSupabaseCodeForSession } from "@src/api/http/auth/supabase";
 import { ROUTES } from "@src/config/routes";
@@ -20,6 +20,7 @@ import {
   serviceValidatedAtom,
 } from "@src/hooks/auth";
 import { createLogger } from "@src/hooks/logger";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 
 import { LoginLoadingState } from "./index";
 

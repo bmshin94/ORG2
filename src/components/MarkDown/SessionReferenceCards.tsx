@@ -1,10 +1,10 @@
 import { useSetAtom, useStore } from "jotai";
 import React, { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { LocalSessionReferenceCard } from "@src/components/SessionReferenceCard";
 import { ROUTES } from "@src/config/routes";
 import CloudSessionReferenceCard from "@src/features/Org2Cloud/CloudSessionReferenceCard";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
 import { sessionByIdAtom } from "@src/store/session";
 

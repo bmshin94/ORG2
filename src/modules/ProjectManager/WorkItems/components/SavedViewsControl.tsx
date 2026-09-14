@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import {
   type SavedView,
@@ -18,6 +18,7 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import Message from "@src/components/Message";
 import Select from "@src/components/Select";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { BookBookmark01Icon, Delete02Icon, HugeiconsIcon } from "@src/icons";
 import Modal from "@src/scaffold/ModalSystem";
 

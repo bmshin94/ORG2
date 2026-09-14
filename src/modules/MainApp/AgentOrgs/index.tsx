@@ -8,7 +8,7 @@
 import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { rpc } from "@src/api/tauri/rpc";
 import { Message } from "@src/components/Message";
@@ -25,6 +25,7 @@ import { useKeyVault } from "@src/hooks/keyVault";
 import { loadSharedLocalKeys } from "@src/hooks/keyVault/sharedLocalKeyStore";
 import { createLogger } from "@src/hooks/logger";
 import { useWizardParam } from "@src/hooks/navigation";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useCliAgents } from "@src/modules/MainApp/Integrations/KeyVault/CliClients/hooks/useCliAgents";
 import {
   DETAIL_PANEL_TOKENS,

@@ -18,12 +18,12 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import type { GitHubIssue } from "@src/api/tauri/github";
 import Button from "@src/components/Button";
 import { Placeholder } from "@src/components/Placeholder";
 import { buildIntegrationsPath } from "@src/config/mainAppPaths/integrations";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { SectionFilterInput } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/components/SectionFilterInput";
 import {
   type SectionStatus,

@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import {
-  type Location,
-  createPath,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { type Location, createPath, useLocation } from "react-router-dom";
 
 import Button from "@src/components/Button";
 import PageNotice from "@src/components/PageNotice";
@@ -16,6 +11,7 @@ import {
   useServiceAuth,
 } from "@src/hooks/auth/useServiceAuth";
 import { createLogger } from "@src/hooks/logger";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { HugeiconsIcon, Login01Icon, Refresh04Icon } from "@src/icons";
 import { captureOpaquePairingReturnLocation } from "@src/modules/MobileRemote/auth/mobileAuthIntent";
 

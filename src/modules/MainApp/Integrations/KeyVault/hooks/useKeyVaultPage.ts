@@ -14,7 +14,7 @@
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { getFullKey, validateKey } from "@src/api/services/keyValidation";
 import type { SaveKeyRequest as RpcSaveKeyRequest } from "@src/api/tauri/rpc/schemas/validation";
@@ -32,6 +32,7 @@ import { useKeyVault } from "@src/hooks/keyVault";
 import { requiresCodexReauthentication } from "@src/hooks/keyVault/codexReauthentication";
 import { createLogger } from "@src/hooks/logger";
 import { useWizardParam } from "@src/hooks/navigation";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { clearStaleAccountIdAtom } from "@src/store/session/creatorDefaultModelAtom";
 
 import { disconnectAccount } from "./disconnectAccount";

@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import {
   type HousekeeperTokenBenchmarkResponse,
@@ -23,6 +22,7 @@ import {
   HOUSEKEEPER_DEFAULT_MODEL,
   useHousekeeperConfig,
 } from "@src/hooks/housekeeper";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import {
   SECTION_ACTION_GAP_CLASSES,
   SECTION_CONTROL_STYLE,

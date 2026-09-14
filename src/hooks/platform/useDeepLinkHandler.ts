@@ -25,7 +25,6 @@
 import { emit } from "@tauri-apps/api/event";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@src/config/routes";
 import {
@@ -59,6 +58,7 @@ import {
 } from "@src/features/Org2Cloud/org2CloudPendingShareAtom";
 import { useOpenCloudSessionReference } from "@src/features/Org2Cloud/useOpenCloudSessionReference";
 import { log, logDebug, logError, logWarn } from "@src/hooks/logger";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { activeStationChatVisibleAtom } from "@src/store/ui/chatPanel/visibilityAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { isTauriReady } from "@src/util/platform/tauri/init";

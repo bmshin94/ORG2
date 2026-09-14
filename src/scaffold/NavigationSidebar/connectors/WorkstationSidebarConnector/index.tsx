@@ -1,10 +1,11 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import Message from "@src/components/Message";
 import { ROUTES } from "@src/config/routes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useAppNavigation } from "@src/hooks/navigation/useAppNavigation";
 import { useSessionView } from "@src/hooks/ui/tabs/useSessionView";
 import { teamInboxUnreadCountAtom } from "@src/modules/MainApp/TeamInbox/store";

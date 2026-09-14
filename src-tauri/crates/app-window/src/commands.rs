@@ -46,9 +46,9 @@ pub async fn set_webview_zoom(webview: tauri::Webview, scale_factor: f64) -> Res
 /// Remove the startup background from the CALLING window. Every window's
 /// frontend invokes this once React finishes loading and CSS backgrounds are
 /// painted — restoring the transparent glass appearance and re-asserting the
-/// traffic-light inset (the post-paint re-apply is what keeps the buttons
-/// stable on macOS). Tauri injects the invoking window, so main and detached
-/// session windows each clear their own backdrop.
+/// traffic-light inset once more (stability itself comes from the observers
+/// `app_window::traffic_lights` keeps per window). Tauri injects the invoking
+/// window, so main and detached session windows each clear their own backdrop.
 #[tauri::command]
 pub async fn remove_window_background(window: tauri::WebviewWindow) -> Result<(), String> {
     #[cfg(target_os = "macos")]
@@ -281,8 +281,9 @@ fn build_detached_app_window(
     // plate off every macOS window to match (`html[data-host-desktop="macos"]`).
     //
     // The frontend still invokes `remove_window_background` once React paints;
-    // the background clear is then a no-op and the call's remaining job is the
-    // post-paint traffic-light re-apply.
+    // the background clear is then a no-op and the call only re-asserts the
+    // traffic-light inset (which the observers installed by the first call
+    // below already keep in place).
     #[cfg(target_os = "macos")]
     {
         super::set_traffic_light_position(&window, super::TRAFFIC_LIGHT_X, super::TRAFFIC_LIGHT_Y);

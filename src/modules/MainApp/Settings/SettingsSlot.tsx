@@ -28,7 +28,7 @@ import {
 import { useAtomValue, useSetAtom } from "jotai";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
 import Button from "@src/components/Button";
 import { KeyboardShortcutTooltipContent } from "@src/components/KeyboardShortcut";
@@ -51,6 +51,7 @@ import { getSettingsSectionById } from "@src/config/settingsUiManifest";
 // Reuse ChatPanel's resize wiring so the seam between the slot and the
 // workbench surface behaves identically across both slot occupants.
 import { useChatPanelResize } from "@src/engines/ChatPanel/hooks/useChatPanelResize";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useShouldOffsetChatPanelHeader } from "@src/hooks/ui/sidebar/useCollapsedSidebarChromeOffset";
 import {
   ArrowExpand01Icon,

@@ -1,9 +1,9 @@
 import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import { ACTION_ID, useActionSystemOptional } from "@src/ActionSystem";
 import { ROUTES } from "@src/config/routes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 
 import { SpotlightFooterAction } from "./SpotlightFooterAction";
 

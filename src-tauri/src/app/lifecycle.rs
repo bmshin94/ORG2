@@ -23,15 +23,21 @@ fn exit_request_supports_bounded_shutdown(code: Option<i32>) -> bool {
     code != Some(tauri::RESTART_EXIT_CODE)
 }
 
-/// Keeps the macOS traffic lights pinned after scale-factor, theme, and focus
-/// changes.
+/// Re-places the macOS traffic lights after the window events tao delivers
+/// from the AppKit delegate *after* the theme frame has re-laid out the
+/// title bar: resize (also `zoom:` and native full-screen transitions),
+/// focus, scale-factor and theme changes. Synchronous, so a live resize
+/// never shows the default position. Resets without a delegate callback
+/// (`setTitle:`, appearance, de-miniaturise) are caught by the frame-change
+/// observers `app_window::traffic_lights` installs per window.
 pub(crate) fn sync_traffic_lights_on_window_event(
     _window: &tauri::Window,
     _event: &tauri::WindowEvent,
 ) {
     #[cfg(target_os = "macos")]
     match _event {
-        tauri::WindowEvent::ScaleFactorChanged { .. }
+        tauri::WindowEvent::Resized(_)
+        | tauri::WindowEvent::ScaleFactorChanged { .. }
         | tauri::WindowEvent::ThemeChanged(_)
         | tauri::WindowEvent::Focused(true) => {
             if let Some(webview_window) = _window.app_handle().get_webview_window(_window.label()) {
@@ -62,6 +68,7 @@ pub(crate) fn handle_window_close_and_destroy(
         if _window.label() == "main" {
             app_ui::broker().disconnect();
         }
+        app_window::unpin_traffic_lights(_window.label());
         system_services::power::release_sleep_inhibitor_for_window_label(_window.label());
         if app_window::is_station_window_label(_window.label()) {
             browser::inline::release_station_window_webview_state(_window.label());

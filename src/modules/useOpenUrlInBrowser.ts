@@ -12,11 +12,12 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import Message from "@src/components/Message";
 import { ROUTES } from "@src/config/routes";
 import { useBrowserContext } from "@src/contexts/workstation";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";

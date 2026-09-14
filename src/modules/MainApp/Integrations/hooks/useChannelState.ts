@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import {
   type SyncConnection,
@@ -18,6 +18,7 @@ import { WIZARD_IDS, buildWizardPath } from "@src/config/mainAppPaths";
 import { parseSettingsSetupProvider } from "@src/config/settingsSetupActions";
 import { createLogger } from "@src/hooks/logger";
 import { useWizardParam } from "@src/hooks/navigation";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import type { WizardCategory } from "@src/scaffold/WizardSystem/variants/Channel/channelWizardTypes";
 import { showChannelActionDialogSafely } from "@src/util/dialogs/channelActionDialog";
 import { confirmDestructiveAction } from "@src/util/dialogs/confirmDestructiveAction";

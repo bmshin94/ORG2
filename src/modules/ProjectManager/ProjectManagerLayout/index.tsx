@@ -1,6 +1,5 @@
 import { useSetAtom } from "jotai";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { PROJECT_ORG_SYNC_PROVIDER } from "@src/api/http/project";
 import {
@@ -8,6 +7,7 @@ import {
   buildIntegrationsPath,
   buildWizardPath,
 } from "@src/config/mainAppPaths";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useCloseTabWithGuard } from "@src/hooks/tabHost/useCloseTabWithGuard";
 import { usePrimarySidebarState } from "@src/hooks/tabHost/useWorkStationPanels";
 import { useWorkStationTabShortcutBridge } from "@src/hooks/tabHost/useWorkStationTabShortcutBridge";

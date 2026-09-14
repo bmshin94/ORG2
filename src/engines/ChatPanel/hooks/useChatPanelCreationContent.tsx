@@ -1,13 +1,13 @@
 import type { TFunction } from "i18next";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import {
   WIZARD_IDS,
   buildIntegrationsPath,
   buildWizardPath,
 } from "@src/config/mainAppPaths";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { allAgentDefsAtom } from "@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom";
 import { installAvailableAppUpdate } from "@src/scaffold/AppUpdater/actions";
 import { openOrReplaceSessionInChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";

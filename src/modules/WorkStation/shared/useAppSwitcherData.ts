@@ -11,7 +11,6 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@src/config/routes";
 import { replayModeAtom } from "@src/engines/SessionCore";
@@ -20,6 +19,7 @@ import {
   getSimulatorDockTitleCenter,
 } from "@src/engines/Simulator/components/Dock";
 import { AppType } from "@src/engines/Simulator/types/appTypes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { CodeXmlIcon, type IconSvgElement } from "@src/icons";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import {

@@ -5,10 +5,10 @@
  */
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { ACTION_ID, useActionSystem } from "@src/ActionSystem";
 import { ROUTES } from "@src/config/routes";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { navigateApp } from "@src/router/navigateApp";
 import { FileOperationsService } from "@src/services/file";
 import { workspaceFoldersAtom } from "@src/store/ui/workspaceFoldersAtom";

@@ -24,7 +24,7 @@
 import { useAtomValue } from "jotai";
 import React, { memo, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { hasMacWindowChrome } from "@src/config/windowChromeRadius";
 import { ChatProvider } from "@src/contexts/workspace/ChatContext";
@@ -52,6 +52,7 @@ import { useQueueDispatch } from "@src/engines/SessionCore/hooks/session/useQueu
 import SessionSyncProvider from "@src/engines/SessionCore/sync/SessionSyncProvider";
 import { dispatchQueuedCanonicalConversation } from "@src/features/ConversationContinuation/canonicalConversationDispatcher";
 import SessionViewersIndicator from "@src/features/Org2Cloud/SessionViewersIndicator";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useNativeSessionStatusMonitor } from "@src/hooks/session/useNativeSessionStatusMonitor";
 import { getPrimaryPaneBackgroundStyle } from "@src/modules/shared/layouts/viewContainerTokens";
 import { sessionByIdAtom } from "@src/store/session";

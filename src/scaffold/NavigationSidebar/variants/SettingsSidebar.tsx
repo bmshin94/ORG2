@@ -9,7 +9,7 @@
 import { useAtomValue } from "jotai";
 import React, { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import Button from "@src/components/Button";
 import { ROUTES } from "@src/config/routes";
@@ -22,6 +22,7 @@ import {
 } from "@src/config/settingsNavigation";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
 import { useOrg2CloudSignIn } from "@src/features/Org2Cloud/useOrg2CloudSignIn";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { SIDEBAR_MEMORY_KIND, useSidebarMemoryEntry } from "@src/hooks/perf";
 import { ArrowLeft01Icon, Settings01Icon } from "@src/icons";
 import {

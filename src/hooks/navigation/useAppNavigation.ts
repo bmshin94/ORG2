@@ -27,7 +27,6 @@
  */
 import { useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 
 import {
   type ExternalSkillsetsTab,
@@ -39,6 +38,7 @@ import {
 } from "@src/config/mainAppPaths";
 import { ROUTES } from "@src/config/routes";
 import { clearSessionAtom } from "@src/engines/SessionCore/core/atoms";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { preloadRouteByPath } from "@src/router/lazy/preload";
 import { navigateApp } from "@src/router/navigateApp";
 import {

@@ -1,12 +1,13 @@
 import { registerAppActions } from "@/src/ActionSystem/registerAppActions";
 import { useEffect } from "react";
-import { Outlet, createBrowserRouter, useNavigate } from "react-router-dom";
+import { Outlet, createBrowserRouter } from "react-router-dom";
 
 import { useOrg2CloudOrgs } from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { useOrg2CloudRosterReconcile } from "@src/features/Org2Cloud/org2CloudRosterReconcile";
 import { useOrg2CloudGuestShareAccess } from "@src/features/Org2Cloud/useOrg2CloudGuestShareAccess";
 import { useOrg2CloudRealtime } from "@src/features/Org2Cloud/useOrg2CloudRealtime";
 import { useOrg2CloudSyncEngine } from "@src/features/Org2Cloud/useOrg2CloudSyncEngine";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useDeepLinkHandler } from "@src/hooks/platform/useDeepLinkHandler";
 import AppShell from "@src/modules";
 import ErrorPage from "@src/modules/shared/Error";

@@ -520,6 +520,46 @@ mod tests {
     }
 
     #[test]
+    fn corrected_catalog_rates_reach_stored_session_estimates() {
+        let conn = fixture_conn();
+        // 10k input + 2k output + 30k cache reads + 4k cache writes.
+        // Assert published-dollar results, not expectations derived from the
+        // resolver under test, so a stale catalog cannot make this test pass.
+        for (session_id, model, expected) in [
+            ("astra", "openai/gpt-6-astra-high", 0.28),
+            ("fable", "claude-fable-5-1-xhigh", 0.2575),
+            ("mythos", "claude-mythos-5-1", 0.2575),
+            ("sol", "gpt-5.6", 0.112),
+            ("terra", "gpt-5.6-terra", 0.06),
+            ("luna", "gpt-5.6-luna", 0.006),
+            ("cursor-grok", "cursor-grok-4.6-high-fast", 0.11),
+            ("composer-fast", "composer-2.5-fast", 0.087),
+        ] {
+            insert_code_session(&conn, session_id, "own_key");
+            insert_turn(
+                &conn,
+                session_id,
+                Some(model),
+                (10_000, 2_000, 30_000, 4_000, 46_000, 44_000),
+                "2026-09-14T00:00:00Z",
+            );
+            let record = recompute_session_usage(&conn, session_id)
+                .expect("recompute")
+                .expect("projected");
+            assert!(
+                (record.estimated_cost_usd - expected).abs() < 1e-9,
+                "{model}"
+            );
+            let stored = SqliteRecordStore::new(&conn)
+                .get_session_usage(session_id)
+                .expect("read projection")
+                .expect("projection row");
+            assert!((stored.cost_usd - expected).abs() < 1e-9, "{model}");
+            assert_eq!(stored.recorded_cost_usd, 0.0);
+        }
+    }
+
+    #[test]
     fn native_rollups_sum_tokens_and_max_context() {
         let conn = fixture_conn();
         insert_code_session(&conn, "s-native", "own_key");

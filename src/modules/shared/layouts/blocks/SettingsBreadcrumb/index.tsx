@@ -22,7 +22,7 @@
 import { useAtomValue } from "jotai";
 import React, { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { DROPDOWN_ITEM } from "@src/components/Dropdown/tokens";
 import {
@@ -36,6 +36,7 @@ import {
   buildSettingsNavigationGroups,
   getActiveSettingsNavigationItemId,
 } from "@src/config/settingsNavigation";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { ArrowRight01Icon, HugeiconsIcon } from "@src/icons";
 import { devModeEnabledAtom } from "@src/store/platform/devModeAtom";
 import {

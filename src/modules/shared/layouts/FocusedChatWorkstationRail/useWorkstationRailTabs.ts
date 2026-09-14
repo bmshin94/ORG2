@@ -6,11 +6,11 @@
 import type { TFunction } from "i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { ROUTES } from "@src/config/routes";
 import { getTerminalDisplayTitle } from "@src/engines/TerminalCore/types";
 import { createLogger } from "@src/hooks/logger";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useCloseTabWithGuard } from "@src/hooks/tabHost/useCloseTabWithGuard";
 import { File01Icon, InternetIcon, SquareTerminalIcon } from "@src/icons";
 import { chatPanelMaximizedAtom } from "@src/store/ui/chatPanel/surfaceAtoms";

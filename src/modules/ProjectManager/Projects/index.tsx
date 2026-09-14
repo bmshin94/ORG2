@@ -8,11 +8,11 @@
 import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import { Placeholder } from "@src/components/Placeholder";
 import { ROUTES } from "@src/config/routes";
 import { useProjectOrgCloudPermissions } from "@src/features/Org2Cloud/useProjectOrgCloudPermissions";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useProjectDataChanged } from "@src/hooks/project";
 import type { LinearProjectSelection } from "@src/modules/ProjectManager/Panels/ProjectManagerSidebar/content/WorkspaceTreeContent";
 import WorkItemSection from "@src/modules/ProjectManager/WorkItems/components/WorkItemSection";

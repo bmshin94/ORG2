@@ -38,7 +38,9 @@ Inspecting the final `responses_common::convert_tools` output revealed that both
 
 The full agent-core suite exposed missing tool detail metadata and incomplete canonical-name/renderer classification for the eight new tools. The metadata now reuses each shared description for its detail text. The canonical inventory lists all eight names; the renderer ledger explicitly keeps their bounded state/receipt text in the same generic block as `control_orgii`, since it is neither a process stream nor an artifact payload. Existing full-suite assertions are retained.
 
-Integrating develop also required preserving separate reload cleanup: only main-window reload disconnects the UI broker; station-window reload uses the upstream window-scoped browser cleanup. The UI runtime fixture now supplies the upstream `isStationWindow` identity export. The four frontend suites pass 23 tests with the updated Vitest version; shared/CLI suites pass 28 tests after integration. Native boundary tests pass 3 tests; the full native suite is rerun after the metadata repair.
+Integrating develop also required preserving separate reload cleanup: only main-window reload disconnects the UI broker; station-window reload uses the upstream window-scoped browser cleanup. The UI runtime fixture now supplies the upstream `isStationWindow` identity export. The four frontend suites pass 23 tests with the updated Vitest version; shared/CLI suites pass 29 tests and native boundary tests pass 4 tests. CI on `4a9f6269c` passed all 17 checks, including 8,012 Rust tests and 14,009 frontend tests. The first frontend attempt had one unchanged Runtime panel lazy-loading assertion fail; its nine tests passed locally and the full frontend rerun passed without code changes.
+
+A subsequent integration of develop at `57200d724` preserves the upstream traffic-light observer teardown for every destroyed window alongside the main-only UI broker disconnect. Neither cleanup replaces the other. The diff against that base adds only the two existing main-specific broker disconnect blocks to `lifecycle.rs`. Final checks after this integration are recorded in the PR.
 
 ## Lifecycle review
 

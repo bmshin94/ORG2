@@ -11,11 +11,11 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import Message from "@src/components/Message";
 import { ROUTES } from "@src/config/routes";
 import { useBrowserAutomation } from "@src/engines/BrowserCore/hooks/useBrowserAutomation";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { useWorkStationTabShortcutBridge } from "@src/hooks/tabHost/useWorkStationTabShortcutBridge";
 import { useBrowserPaneState } from "@src/modules/WorkStation/Browser/hooks/useBrowserPaneState";
 import { useBrowserSessions } from "@src/modules/WorkStation/Browser/hooks/useBrowserSessions";

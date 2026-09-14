@@ -102,7 +102,7 @@ export const AppBootstrap: FC = () => {
         </Suspense>
       )}
       <ErrorBoundary>
-        <RouterProvider router={router} future={{ v7_startTransition: true }} />
+        <RouterProvider router={router} />
         <RepoLoader />
         <QuitConfirmationModal />
         <AppDeferredServices ready={deferredComponentsReady} />

@@ -5,7 +5,6 @@
  */
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 
 import { ACTION_ID, useActionSystemOptional } from "@src/ActionSystem";
 import type { GitHubRepo } from "@src/api/http/github/types";
@@ -14,6 +13,7 @@ import Input from "@src/components/Input";
 import { Placeholder } from "@src/components/Placeholder";
 import Radio from "@src/components/Radio";
 import { buildIntegrationsPath } from "@src/config/mainAppPaths";
+import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import {
   CodeXmlIcon,
   FilterIcon,
