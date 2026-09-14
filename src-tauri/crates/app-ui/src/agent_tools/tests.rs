@@ -217,6 +217,24 @@ fn catalog_schemas_reuse_command_bounds_and_hide_transport_identity() {
             .len(),
         7
     );
+    let browser = schema["properties"]["target"]["anyOf"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|variant| variant["properties"]["type"]["enum"] == json!(["browser"]))
+        .unwrap();
+    assert!(browser["properties"]["url"].get("format").is_none());
+    let command = crate::catalog()["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["id"] == "ui.web.open")
+        .unwrap();
+    assert_eq!(command["params"]["properties"]["url"]["format"], "uri");
+    assert_eq!(
+        browser["properties"]["url"]["maxLength"],
+        command["params"]["properties"]["url"]["maxLength"]
+    );
     assert!(catalog.to_string().len() < 20_000);
 }
 #[test]

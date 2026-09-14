@@ -90,8 +90,59 @@ mod tests {
         use crate::providers::responses_common::convert_tools;
         let definitions: Vec<Value>=agent_tools::ALL.iter().map(|kind| json!({"type":"function","function":{"name":kind.name(),"description":kind.description(),"parameters":Org2UiTool(*kind).parameters()}})).collect();
         let wire = convert_tools(Some(&definitions)).unwrap();
+        fn check_subset(schema: &Value) {
+            if let Some(format) = schema["format"].as_str() {
+                assert!(
+                    [
+                        "date-time",
+                        "time",
+                        "date",
+                        "duration",
+                        "email",
+                        "hostname",
+                        "ipv4",
+                        "ipv6",
+                        "uuid"
+                    ]
+                    .contains(&format),
+                    "unsupported format: {format}"
+                );
+            }
+            for keyword in [
+                "allOf",
+                "not",
+                "dependentRequired",
+                "dependentSchemas",
+                "if",
+                "then",
+                "else",
+            ] {
+                assert!(
+                    schema.get(keyword).is_none(),
+                    "unsupported keyword: {keyword}"
+                );
+            }
+            if let Some(properties) = schema["properties"].as_object() {
+                assert_eq!(schema["additionalProperties"], false);
+                let required = schema["required"].as_array().unwrap();
+                assert_eq!(properties.len(), required.len());
+                for (name, child) in properties {
+                    assert!(required.contains(&json!(name)));
+                    check_subset(child);
+                }
+            }
+            if let Some(variants) = schema["anyOf"].as_array() {
+                for child in variants {
+                    check_subset(child);
+                }
+            }
+            if let Some(items) = schema.get("items") {
+                check_subset(items);
+            }
+        }
         for tool in &wire {
             let params = &tool["parameters"];
+            check_subset(params);
             let properties = params["properties"].as_object().unwrap();
             let required = params["required"].as_array().unwrap();
             assert_eq!(properties.len(), required.len());

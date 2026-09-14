@@ -38,8 +38,18 @@ pub(super) fn parameters(kind: Kind) -> Value {
         Kind::Open => {
             let mut terminal = variant("ui.terminal.focus", "terminal");
             terminal["required"] = json!(["type"]);
+            // URI is not a supported Responses strict-schema format. Keep URL
+            // validation in the canonical command handler, and expose its intent
+            // as prose in the portable agent schema.
+            let mut browser = variant("ui.web.open", "browser");
+            browser["properties"]["url"]
+                .as_object_mut()
+                .unwrap()
+                .remove("format");
+            browser["properties"]["url"]["description"] =
+                json!("An absolute HTTP or HTTPS URL; validated by the app");
             let target = json!({"anyOf":[
-                variant("ui.file.open", "file"), variant("ui.web.open", "browser"),
+                variant("ui.file.open", "file"), browser,
                 object(json!({"type":{"type":"string","enum":["explorer"]}}), &["type"]),
                 object(json!({"type":{"type":"string","enum":["source-control"]}}), &["type"]),
                 terminal, variant("ui.terminal.new", "new-terminal"), variant("ui.tab.focus", "tab")
