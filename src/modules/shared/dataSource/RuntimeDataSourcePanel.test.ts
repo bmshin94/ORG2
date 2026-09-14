@@ -83,6 +83,15 @@ vi.mock("@src/components/Select", () => ({
     ),
 }));
 
+// The panel's Suspense fallback. The real Placeholder debounces its loading
+// spinner, so render a marker straight away: settleLazySections uses it to
+// tell whether a lazy section is still pending.
+vi.mock("@src/components/Placeholder", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@src/components/Placeholder")>()),
+  Placeholder: () =>
+    createElement("div", { "data-testid": "runtime-lazy-fallback" }),
+}));
+
 vi.mock("./TeamRuntimePanel", () => ({
   default: ({ orgId, view }: { orgId?: string; view?: string }) =>
     createElement("div", {
@@ -164,6 +173,37 @@ describe("RuntimeDataSourcePanel", () => {
   let container: HTMLDivElement;
   let root: Root;
 
+  // Waits until the lazy section that the last update requested is on
+  // screen and the section it replaced has run its cleanup.
+  //
+  // A lazy section swaps in through a Suspense retry. React commits that
+  // retry immediately only while an act() scope is open. Outside act(), it
+  // holds a reveal that replaces a just-shown fallback for
+  // FALLBACK_THROTTLE_MS (300 ms) and commits it from a timer.
+  // vi.dynamicImportSettled() does not wait for this file's async vi.mock
+  // factories, so on a loaded runner a section's import can finish after
+  // the act() below has closed. Asserting right after it then sees the old
+  // section still mounted (hidden) and the new one missing.
+  const settleLazySections = async () => {
+    await act(async () => {
+      await vi.dynamicImportSettled();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    await vi.waitFor(
+      () => {
+        expect(
+          container.querySelector('[data-testid="runtime-lazy-fallback"]')
+        ).toBeNull();
+      },
+      { timeout: 5_000 }
+    );
+    // A retry committed from React's timer runs passive effect cleanups in a
+    // later task; flush them before callers assert on lifecycle mocks.
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+  };
+
   beforeAll(() => {
     reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
     vi.stubGlobal(
@@ -189,10 +229,7 @@ describe("RuntimeDataSourcePanel", () => {
     await act(async () => {
       root.render(createElement(RuntimeDataSourcePanel));
     });
-    await act(async () => {
-      await vi.dynamicImportSettled();
-      await new Promise((resolve) => window.setTimeout(resolve, 0));
-    });
+    await settleLazySections();
   });
 
   afterEach(() => {
@@ -213,10 +250,7 @@ describe("RuntimeDataSourcePanel", () => {
     await act(async () => {
       button?.click();
     });
-    await act(async () => {
-      await vi.dynamicImportSettled();
-      await new Promise((resolve) => window.setTimeout(resolve, 0));
-    });
+    await settleLazySections();
   };
 
   it("mounts only the active lazy section and disposes it on navigation", async () => {
@@ -306,10 +340,7 @@ describe("RuntimeDataSourcePanel", () => {
       scopePicker.value = "cloud:org-1";
       scopePicker.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await act(async () => {
-      await vi.dynamicImportSettled();
-      await Promise.resolve();
-    });
+    await settleLazySections();
 
     expect(
       container.querySelector('[data-testid="data-source-view-usage"]')
@@ -366,10 +397,7 @@ describe("RuntimeDataSourcePanel", () => {
         view: "members",
       });
     });
-    await act(async () => {
-      await vi.dynamicImportSettled();
-      await Promise.resolve();
-    });
+    await settleLazySections();
 
     expect(
       container
@@ -441,10 +469,7 @@ describe("RuntimeDataSourcePanel", () => {
       scopePicker.value = "cloud:org-1";
       scopePicker.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await act(async () => {
-      await vi.dynamicImportSettled();
-      await Promise.resolve();
-    });
+    await settleLazySections();
     expect(
       container.querySelector('[data-testid="runtime-section-organization"]')
     ).not.toBeNull();
@@ -456,10 +481,7 @@ describe("RuntimeDataSourcePanel", () => {
         view: "scanning",
       });
     });
-    await act(async () => {
-      await vi.dynamicImportSettled();
-      await new Promise((resolve) => window.setTimeout(resolve, 0));
-    });
+    await settleLazySections();
 
     expect(
       container.querySelector('[data-testid="runtime-section-scanning"]')
@@ -484,10 +506,7 @@ describe("RuntimeDataSourcePanel", () => {
         view: "scanning",
       });
     });
-    await act(async () => {
-      await vi.dynamicImportSettled();
-      await new Promise((resolve) => window.setTimeout(resolve, 0));
-    });
+    await settleLazySections();
 
     expect(
       container.querySelector('[data-testid="runtime-section-scanning"]')
