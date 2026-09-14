@@ -538,8 +538,10 @@ pub(crate) mod tests {
                 let indexed = Cell::new(false);
                 let stored = Cell::new(false);
                 let grant = fixture();
-                let mut enrollment = crate::Enrollment::default();
-                enrollment.exchanging = Some(grant.state.clone());
+                let mut enrollment = crate::Enrollment {
+                    exchanging: Some(grant.state.clone()),
+                    ..Default::default()
+                };
                 let result = enrollment.commit_authorized(grant, || {
                     if failed_stage == 0 && !after_write { return Err("index failed"); }
                     indexed.set(true);
