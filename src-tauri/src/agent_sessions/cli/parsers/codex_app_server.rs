@@ -625,7 +625,10 @@ impl CodexAppServerEventParser {
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
                 if will_retry {
-                    tracing::warn!("[CodexAppServer] Retryable error: {}", message);
+                    tracing::warn!(
+                        "[CodexAppServer] Retryable error: {}",
+                        canonicalize_cli_error_message(message)
+                    );
                     self.last_retry_notice = Some(canonicalize_cli_error_message(message));
                     return vec![];
                 }
