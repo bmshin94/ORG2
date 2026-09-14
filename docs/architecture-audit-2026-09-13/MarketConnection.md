@@ -240,3 +240,14 @@ parameters, competing attempts and expired approvals are rejected; cancellation
 retires late completion. The Market crate passes 25 tests. This owner is not yet
 registered in the application deep-link dispatcher and its Console page is still
 to be implemented, so no seller connection button is advertised as working.
+
+## Seller native redemption transport
+
+The seller redemption now POSTs its proof to the fixed Console endpoint with an
+eight-second deadline, no redirects and the existing bounded response reader.
+Its native-only grant rejects general login/refresh credentials, mismatched
+provider/region/state, substituted Market origin and expiry expansion. No Debug
+or Serialize implementation exposes the credential through IPC. The Market crate
+passes 28 tests, including grant substitution and lifetime checks. Actual HTTPS
+redemption from the packaged application remains unverified; the host dispatcher
+and complete provider workflow still need wiring.

@@ -276,7 +276,9 @@ impl Connection {
             .map_err(|_| "credential_store_unavailable")?
     }
 }
-async fn bounded_response(mut response: reqwest::Response) -> Result<Vec<u8>, &'static str> {
+pub(crate) async fn bounded_response(
+    mut response: reqwest::Response,
+) -> Result<Vec<u8>, &'static str> {
     if !response.status().is_success() {
         return Err("market_reauthorization_required");
     }
@@ -293,7 +295,7 @@ async fn bounded_response(mut response: reqwest::Response) -> Result<Vec<u8>, &'
     }
     Ok(bytes)
 }
-fn valid_identity(value: &str) -> bool {
+pub(crate) fn valid_identity(value: &str) -> bool {
     let b = value.as_bytes();
     b.len() == 36
         && b.iter().enumerate().all(|(i, c)| {
