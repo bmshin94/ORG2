@@ -73,3 +73,48 @@ pub fn source(selection: &str) -> Result<Option<Arc<dyn Source>>, String> {
         .map(Some)
         .ok_or_else(|| "Selected credential module is unavailable".into())
 }
+
+/// Startup recovery asks only whether a registered module owns the selection.
+/// A broken registry is an error, not permission to restore configuration.
+pub(crate) fn is_unavailable(selection: Option<&str>) -> Result<bool, String> {
+    let Some((namespace, _)) = selection.and_then(|key| key.split_once(':')) else {
+        return Ok(false);
+    };
+    let sources = SOURCES
+        .get_or_init(Default::default)
+        .read()
+        .map_err(|_| "Credential sources unavailable")?;
+    Ok(!sources.iter().any(|source| source.namespace() == namespace))
+}
+
+#[cfg(test)]
+mod startup_recovery_tests {
+    use super::*;
+
+    struct Available;
+    impl Source for Available {
+        fn namespace(&self) -> &'static str {
+            "startup-recovery-test"
+        }
+        fn destination(&self, _: &str, _: &str) -> Result<Destination, String> {
+            Err("not used by startup recovery".into())
+        }
+        fn credential<'a>(
+            &'a self,
+            _: &'a str,
+            _: &'a str,
+        ) -> Pin<Box<dyn Future<Output = Result<Credential, String>> + Send + 'a>> {
+            Box::pin(async { Err("not used by startup recovery".into()) })
+        }
+    }
+
+    #[test]
+    fn recovery_uses_registered_ownership_and_preserves_static_keys() {
+        assert!(!is_unavailable(None).unwrap());
+        assert!(!is_unavailable(Some("static-key-id")).unwrap());
+        assert!(is_unavailable(Some("removed-test-module:selection")).unwrap());
+        register(Arc::new(Available)).unwrap();
+        assert!(!is_unavailable(Some("startup-recovery-test:selection")).unwrap());
+        assert!(source("removed-test-module:selection").is_err());
+    }
+}

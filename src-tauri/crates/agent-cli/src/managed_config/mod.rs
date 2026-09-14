@@ -144,6 +144,15 @@ pub fn enable_orgii_managed_checked(
 /// Shutdown restoration is deliberately non-forcing: a config edited outside
 /// ORGII is left untouched and reported instead of being overwritten.
 pub fn restore_managed_configs_for_shutdown() -> Result<CliConfigShutdownRestoreReport, String> {
+    restore_managed_configs_matching(|_| Ok(true))
+}
+
+/// Restore selected managed profiles under the existing configuration/target locks.
+/// The predicate must be local and must not re-enter configuration operations.
+/// Unmatched profiles and externally modified files are never replaced.
+pub fn restore_managed_configs_matching(
+    matches: impl Fn(Option<&str>) -> Result<bool, String>,
+) -> Result<CliConfigShutdownRestoreReport, String> {
     let _guard = config_operation_guard()?;
     let mut report = CliConfigShutdownRestoreReport::default();
 
@@ -162,7 +171,19 @@ pub fn restore_managed_configs_for_shutdown() -> Result<CliConfigShutdownRestore
         }
 
         let managed_active = match read_manifest(agent_name) {
-            Ok(Some(manifest)) => manifest.mode == CliConfigMode::OrgiiManaged,
+            Ok(Some(manifest)) => {
+                if manifest.mode != CliConfigMode::OrgiiManaged {
+                    false
+                } else {
+                    match matches(manifest.selected_key_id.as_deref()) {
+                        Ok(selected) => selected,
+                        Err(err) => {
+                            report.failed_agents.push((agent_name.to_string(), err));
+                            continue;
+                        }
+                    }
+                }
+            }
             Ok(None) => false,
             Err(err) => {
                 report.failed_agents.push((agent_name.to_string(), err));

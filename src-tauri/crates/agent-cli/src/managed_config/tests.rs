@@ -1135,3 +1135,41 @@ fn connection_matcher_restores_only_owned_unchanged_config_and_is_retryable() {
     .unwrap();
     assert_eq!(std::fs::read(&target_path).unwrap(), b"original-config");
 }
+
+#[test]
+fn startup_recovery_preserves_unmatched_history_and_retries_conflicts() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    let target_path = temp.path().join("config.toml");
+    let history = temp.path().join("history.jsonl");
+    std::fs::write(&history, b"user-session-history").unwrap();
+    let mut target = test_target("config", &target_path, &temp.path().join("profiles"));
+    let backup = PathBuf::from(&target.default_backup_path);
+    std::fs::create_dir_all(backup.parent().unwrap()).unwrap();
+    std::fs::write(&backup, b"original").unwrap();
+    std::fs::write(&target_path, b"managed").unwrap();
+    target.original_hash = Some(sha256_bytes(b"original"));
+    target.last_applied_hash = Some(sha256_bytes(b"managed"));
+    let mut manifest = test_manifest(CODEX_AGENT, vec![target]);
+    manifest.selected_key_id = Some("removed:selection".into());
+    write_manifest(&manifest).unwrap();
+
+    let unmatched = restore_managed_configs_matching(|_| Ok(false)).unwrap();
+    assert!(unmatched.restored_agents.is_empty());
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"managed");
+    let failed = restore_managed_configs_matching(|_| Err("registry unavailable".into())).unwrap();
+    assert_eq!(failed.failed_agents.len(), 1);
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"managed");
+
+    std::fs::write(&target_path, b"external-edit").unwrap();
+    let conflict = restore_managed_configs_matching(|key| Ok(key == Some("removed:selection"))).unwrap();
+    assert_eq!(conflict.failed_agents.len(), 1);
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"external-edit");
+    std::fs::write(&target_path, b"managed").unwrap();
+    let restored = restore_managed_configs_matching(|key| Ok(key == Some("removed:selection"))).unwrap();
+    assert_eq!(restored.restored_agents, vec![CODEX_AGENT.to_string()]);
+    assert_eq!(std::fs::read(&target_path).unwrap(), b"original");
+    assert_eq!(std::fs::read(&history).unwrap(), b"user-session-history");
+    assert!(restore_managed_configs_matching(|_| Ok(true)).unwrap().restored_agents.is_empty());
+}
