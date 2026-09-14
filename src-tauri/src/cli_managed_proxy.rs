@@ -819,17 +819,22 @@ fn compatible_key_ids_for_agent(agent_name: &str) -> Vec<String> {
         .collect()
 }
 
+async fn ensure_managed_proxy_running() -> Result<(), String> {
+    start_cli_managed_proxy_thread();
+    for _ in 0..20 {
+        if PROXY_RUNNING.load(Ordering::SeqCst) { return Ok(()); }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    if PROXY_RUNNING.load(Ordering::SeqCst) { Ok(()) } else { Err(proxy_unavailable_message()) }
+}
+
 /// Application adapter for trusted dynamic sources; normal KeyVault selection
 /// still uses its endpoint/model test receipt path below.
 pub(crate) async fn enable_dynamic_managed(agent:String,key:String,model:String,expected_hashes:std::collections::BTreeMap<String,Option<String>>)->Result<agent_cli::managed_config::CliConfigManagedStatus,String>{
     if !matches!(agent.as_str(),"claude_code"|"codex") || model.is_empty() || model.len()>256 {return Err("Unsupported dynamic client selection".into());}
     let source=crate::dynamic_credentials::source(&key)?.ok_or("Dynamic credential source required")?;
     source.credential(&key,&agent).await?;
-    start_cli_managed_proxy_thread();
-    for _ in 0..20 {
-        if PROXY_RUNNING.load(Ordering::SeqCst){break;}
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
+    ensure_managed_proxy_running().await?;
     tokio::task::spawn_blocking(move||{
         if !PROXY_RUNNING.load(Ordering::SeqCst){return Err(proxy_unavailable_message());}
         let context=resolve_proxy_context_for_selection(&agent,Some(&key),Some(&model),String::new())?;
@@ -850,13 +855,7 @@ pub async fn cli_config_enable_orgii_managed(
         key_id.as_deref(),
         model.as_deref(),
     )?;
-    start_cli_managed_proxy_thread();
-    for _ in 0..20 {
-        if PROXY_RUNNING.load(Ordering::SeqCst) {
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
+    ensure_managed_proxy_running().await?;
     tokio::task::spawn_blocking(move || {
         if !PROXY_RUNNING.load(Ordering::SeqCst) {
             return Err(proxy_unavailable_message());
@@ -1219,6 +1218,7 @@ mod tests {
 #[tauri::command(rename_all = "camelCase")]
 pub async fn cli_config_prepare_launch(agent_name: String, selection: String, model: String,
     session_id: String) -> Result<agent_cli::managed_config::launch::ManagedLaunchProfile, String> {
+    ensure_managed_proxy_running().await?;
     let control = crate::agent_sessions::cli::session_runner::session_control_lock(&session_id).await;
     let guard = control.lock_owned().await;
     tokio::task::spawn_blocking(move || {
@@ -1232,6 +1232,7 @@ pub async fn cli_config_prepare_launch(agent_name: String, selection: String, mo
         if model.is_empty() || model.len() > 256 { return Err("Invalid launch model".into()); }
         crate::dynamic_credentials::source(&selection)?.ok_or("Dynamic credential source required")?;
         let context = resolve_proxy_context_for_selection(&agent_name, Some(&selection), Some(&model), String::new())?;
+        let restoring = crate::agent_sessions::cli::persistence::credential_source(&session_id)?.is_some();
         // Validate the source above before persisting its non-secret identity.
         // Persist before exposing a local route; a failed profile write remains
         // safely retryable under the same source, never a different account.
@@ -1243,8 +1244,14 @@ pub async fn cli_config_prepare_launch(agent_name: String, selection: String, mo
             let saved = crate::agent_sessions::cli::persistence::credential_source(&session_id)?
                 .ok_or("Session credential source was not persisted")?;
             if saved != selection { return Err("Session credential source changed".into()); }
-            agent_cli::managed_config::launch::prepare_with_proxy_token(
-                &agent_name, &selection, &model, &session_id, Some(&token))
+            if restoring {
+                agent_cli::managed_config::launch::restore_with_proxy_token(
+                    &agent_name, &model, &session_id,
+                    &agent_cli::managed_config::managed_proxy_url(), &token)
+            } else {
+                agent_cli::managed_config::launch::prepare_with_proxy_token(
+                    &agent_name, &selection, &model, &session_id, Some(&token))
+            }
         })();
         if result.is_err() { session_routes::release(&session_id)?; }
         result

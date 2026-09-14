@@ -1029,6 +1029,20 @@ fn managed_launch_freezes_proxy_generation_and_releases_only_its_session() {
         launch::release(&session_id).unwrap();
         assert!(!config_path.exists());
         assert_eq!(std::fs::read(&history).unwrap(), b"persistent native transcript");
+        let restored = launch::restore_with_proxy_token(agent, "gpt-test", &session_id,
+            "http://127.0.0.1:43123", "session_restored-token").unwrap();
+        assert_eq!(restored.env.get(env_key), profile.env.get(env_key));
+        assert!(std::fs::read_to_string(&config_path).unwrap().contains("session_restored-token"));
+        // Reconstruct after an unclean exit, while the old owned config remains.
+        launch::restore_with_proxy_token(agent, "gpt-test", &session_id,
+            "http://127.0.0.1:43123", "session_rotated-token").unwrap();
+        assert!(std::fs::read_to_string(&config_path).unwrap().contains("session_rotated-token"));
+        assert_eq!(std::fs::read(&history).unwrap(), b"persistent native transcript");
+        std::fs::write(&config_path, b"user edited config").unwrap();
+        assert!(launch::restore_with_proxy_token(agent, "gpt-test", &session_id,
+            "http://127.0.0.1:43123", "session_rejected-token").is_err());
+        assert!(launch::release(&session_id).is_err());
+        assert_eq!(std::fs::read(&config_path).unwrap(), b"user edited config");
         assert_eq!(std::fs::read(&target_path).unwrap(), b"current config");
     }
 }
@@ -1046,4 +1060,43 @@ fn managed_launch_refuses_external_file_edits() {
     std::fs::write(&target_path, b"external edit").unwrap();
     assert!(launch::prepare(CODEX_AGENT, "key-1", "gpt-test", "cli_conflict").is_err());
     assert!(!temp.path().join("orgii-home/managed-cli-launches/cli_conflict").exists());
+}
+
+#[test]
+fn managed_launch_restores_interrupted_owned_writes_and_rejects_unmarked_files() {
+    let _env_lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii-home"));
+    for agent in [CODEX_AGENT, "claude_code"] {
+        let session = format!("cli_crash_{agent}");
+        let profile = launch::restore_with_proxy_token(agent, "gpt-test", &session,
+            "http://127.0.0.1:43123", "session_first-token").unwrap();
+        let directory = PathBuf::from(profile.env.values().next().unwrap());
+        let filename = if agent == CODEX_AGENT { "config.toml" } else { "settings.json" };
+        let config = directory.join(filename);
+        let marker = directory.join(".org2-launch-config.json");
+        let history = directory.join("transcript.jsonl");
+        std::fs::write(&history, b"original transcript").unwrap();
+        // Simulate interruption before or after the atomic config replacement.
+        for pending_is_current in [false, true] {
+            let current = file_hash(&config).unwrap().unwrap();
+            let (old, pending) = if pending_is_current { ("previous".to_owned(), current) }
+                else { (current, "pending".to_owned()) };
+            std::fs::write(&marker, serde_json::to_vec(&serde_json::json!({
+                "filename": filename, "hash": old, "pending_hash": pending
+            })).unwrap()).unwrap();
+            launch::restore_with_proxy_token(agent, "gpt-test", &session,
+                "http://127.0.0.1:43123", "session_retry-token").unwrap();
+            assert_eq!(std::fs::read(&history).unwrap(), b"original transcript");
+        }
+        let other = if agent == CODEX_AGENT { "claude_code" } else { CODEX_AGENT };
+        assert!(launch::restore_with_proxy_token(other, "gpt-test", &session,
+            "http://127.0.0.1:43123", "session_other-token").is_err());
+        std::fs::remove_file(&marker).unwrap();
+        let before = std::fs::read(&config).unwrap();
+        assert!(launch::restore_with_proxy_token(agent, "gpt-test", &session,
+            "http://127.0.0.1:43123", "session_unmarked-token").is_err());
+        assert_eq!(std::fs::read(&config).unwrap(), before);
+        assert_eq!(std::fs::read(&history).unwrap(), b"original transcript");
+    }
 }

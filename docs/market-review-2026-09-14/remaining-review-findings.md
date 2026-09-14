@@ -165,3 +165,15 @@ A real SQLite file regression passed with foreign-key enforcement explicitly off
 No application runtime, provider or production database was touched. Additive-schema rollback retains this metadata; an older binary ignoring it cannot be considered a verified restore path. The core synchronous delete adapter and post-reservation owner check also close the route-reservation/deletion ordering gap; actual concurrent desktop IPC fault injection remains unverified.
 
 Final verification for persisted-source changes: `cargo test --lib agent_sessions::cli::persistence:: -- --nocapture` passed 23 tests, zero ignored, including the new file-backed binding regression and existing account-scoped native-resume state tests. `cargo clippy --lib -- -D warnings` and `git diff --check` passed. These checks do not cover actual restored execution or prove the synchronous deletion race through a real desktop process.
+
+## Session-owned profile reconstruction
+
+The launch IPC now distinguishes a first launch from a persisted same-source retry. A retry validates the durable client/model/source binding and generates a fresh local route into the original native home, without depending on the current global account selection. Proxy startup uses the existing bounded two-second readiness wait. No permanent polling was added.
+
+Profile replacement publishes an ownership intent containing the previous and next hashes before the atomic configuration write. This makes interruption on either side retryable while rejecting unmarked or externally edited configuration. Both initial creation and restoration use this intent. The marker addition is optional on read, preserving older markers. Existing owned homes can be restored at the 256-profile limit without increasing the count; retained native transcripts remain outside cleanup ownership.
+
+Filesystem regression: `cargo test --manifest-path src-tauri/Cargo.toml -p agent_cli managed_launch -- --nocapture` passed 3 tests, zero ignored. Both client formats cover release/reconstruct in the same directory, live owned-file rotation, changed global selection, interruption before/after replacement, wrong-client refusal, external/unmarked-file refusal, and transcript preservation. These tests simulate write-boundary interruption; they do not kill a real desktop process.
+
+The frontend still creates a fresh terminal Session. Connecting the canonical history/resume flow to this durable source is outstanding. This backend reconstruction path is not evidence that installed-app restart, actual provider execution, receipts or Windows acceptance have passed. Runtime CPU/RSS and multi-instance filesystem contention remain unmeasured. No production deployment occurred in this follow-up.
+
+Additional verification: `cargo test --lib cli_managed_proxy:: -- --nocapture` passed 14 tests, zero ignored, including local HTTP forwarding and per-session token isolation. `cargo clippy --lib -- -D warnings` passed. The IPC restoration branch itself still requires installed-app integration coverage; the filesystem and HTTP tests exercise its constituent boundaries separately.
