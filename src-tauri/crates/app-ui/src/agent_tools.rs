@@ -96,6 +96,8 @@ pub fn prepare(
         .ok_or("Expected object arguments")?;
     let workspace = fields
         .remove("workspace")
+        // Responses/Codex strict schemas encode omitted optional fields as null.
+        .filter(|value| !value.is_null())
         .map(serde_json::from_value::<Workspace>)
         .transpose()
         .map_err(|e| e.to_string())?;

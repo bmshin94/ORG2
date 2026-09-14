@@ -88,6 +88,30 @@ mod tests {
     }
 
     #[test]
+    fn responses_and_codex_wire_schemas_make_optional_arguments_nullable() {
+        use crate::providers::responses_common::convert_tools;
+        let definitions: Vec<Value>=agent_tools::ALL.iter().map(|kind| json!({"type":"function","function":{"name":kind.name(),"description":kind.description(),"parameters":Org2UiTool(*kind).parameters()}})).collect();
+        let wire = convert_tools(Some(&definitions)).unwrap();
+        for tool in &wire {
+            let params = &tool["parameters"];
+            let properties = params["properties"].as_object().unwrap();
+            let required = params["required"].as_array().unwrap();
+            assert_eq!(properties.len(), required.len());
+            assert!(properties.keys().all(|key| required.contains(&json!(key))));
+        }
+        let open = wire
+            .iter()
+            .find(|tool| tool["name"] == Kind::Open.name())
+            .unwrap();
+        for field in ["workspace", "reveal"] {
+            assert!(open["parameters"]["properties"][field]["anyOf"]
+                .as_array()
+                .unwrap()
+                .contains(&json!({"type":"null"})));
+        }
+    }
+
+    #[test]
     fn read_only_modes_deny_mutations_but_keep_ui_discovery() {
         use crate::session::AgentExecMode;
         use crate::tools::policy::{ResolvedToolPolicy, ToolVerdict};
@@ -115,7 +139,7 @@ mod tests {
     #[tokio::test]
     async fn native_boundary_checks_authority_binds_caller_and_preserves_receipt_ownership() {
         let tool = Org2UiTool(Kind::Open);
-        let args = json!({"target":{"type":"file","path":"src/main.ts"}});
+        let args = json!({"target":{"type":"file","path":"src/main.ts","line":null},"workspace":null,"reveal":null});
         assert!(tool
             .execute_text(args.clone(), &CallContext::default())
             .await
@@ -134,6 +158,7 @@ mod tests {
                 }
             );
             assert!(event.request.reveal);
+            assert_eq!(event.request.params, json!({"path":"src/main.ts"}));
             broker.resolve(
                 &event.generation,
                 app_ui::Response {

@@ -9,11 +9,7 @@ fn parse<T: serde::de::DeserializeOwned>(value: Value) -> Result<T, String> {
 #[serde(deny_unknown_fields)]
 struct Open {
     target: OpenTarget,
-    #[serde(default = "yes")]
-    reveal: bool,
-}
-fn yes() -> bool {
-    true
+    reveal: Option<bool>,
 }
 #[derive(Deserialize)]
 #[serde(
@@ -97,6 +93,7 @@ pub(super) fn operation(kind: Kind, value: Value) -> Result<(&'static str, Value
     let (command, mut params, reveal) = match kind {
         Kind::Open => {
             let Open { target, reveal } = parse(value)?;
+            let reveal = reveal.unwrap_or(true);
             let (command, params) = match target {
                 OpenTarget::File { path, line } => {
                     ("ui.file.open", json!({"path":path,"line":line}))

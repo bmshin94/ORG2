@@ -49,6 +49,8 @@ impl Fixture {
                     }
                     Err(error) => panic!("{error}"),
                 };
+                // Accepted sockets can inherit the listener's nonblocking mode.
+                socket.set_nonblocking(false).unwrap();
                 socket
                     .set_read_timeout(Some(Duration::from_secs(2)))
                     .unwrap();
@@ -122,8 +124,14 @@ impl Fixture {
 impl Drop for Fixture {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Relaxed);
-        self.server.take().unwrap().join().unwrap();
-        fs::remove_dir_all(&self.root).unwrap();
+        let joined = self.server.take().unwrap().join();
+        let cleaned = fs::remove_dir_all(&self.root);
+        if !std::thread::panicking() {
+            if let Err(panic) = joined {
+                std::panic::resume_unwind(panic);
+            }
+            cleaned.unwrap();
+        }
     }
 }
 

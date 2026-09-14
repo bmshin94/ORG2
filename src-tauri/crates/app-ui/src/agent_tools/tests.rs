@@ -303,3 +303,44 @@ async fn typed_calls_use_the_same_broker_receipts_and_deduplicate_host_identity(
     );
     assert_eq!(receipt(&broker, "cli", "stable-id")["status"], "unknown");
 }
+
+#[test]
+fn strict_provider_nulls_preserve_optional_defaults() {
+    let req = request(
+        Kind::Open,
+        json!({"target":{"type":"file","path":"src/main.ts","line":null},"workspace":null,"reveal":null}),
+    );
+    assert_eq!(req.target, target());
+    assert!(req.reveal);
+    assert_eq!(req.params, json!({"path":"src/main.ts"}));
+    for kind in [Kind::Tabs, Kind::Terminals] {
+        assert_eq!(
+            request(kind, json!({"workspace":null,"limit":null,"cursor":null})).params,
+            json!({})
+        );
+    }
+    assert_eq!(
+        request(Kind::Context, json!({"workspace":null})).target,
+        target()
+    );
+    assert_eq!(
+        request(
+            Kind::ReadTerminal,
+            json!({"terminalId":"shell","maxBytes":null,"workspace":null})
+        )
+        .params,
+        json!({"terminalId":"shell"})
+    );
+    assert!(matches!(
+        prepare(
+            Kind::Docs,
+            json!({"topic":null,"query":null,"command":null}),
+            None,
+            ""
+        )
+        .unwrap(),
+        Call::Document(_)
+    ));
+    assert!(prepare(Kind::Context, json!({"workspace":null}), None, "id").is_err());
+    assert!(!request(Kind::Open,json!({"target":{"type":"file","path":"x"},"workspace":{"kind":"global"},"reveal":false})).reveal);
+}
