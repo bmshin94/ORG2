@@ -1,17 +1,21 @@
 use serde_json::{json, Value};
 type Flags = std::collections::HashMap<String, String>;
 const RULEBOOK: &str = include_str!("../../../../docs/agent/ui/rulebook.md");
+const CLI_RULEBOOK: &str = include_str!("../../../../docs/agent/ui/cli-rulebook.md");
 const RESULTS: &str = include_str!("../../../../docs/agent/ui/results.md");
 const TARGETS: &str = include_str!("../../../../docs/agent/ui/targets.md");
 pub fn rulebook() -> Value {
-    json!({"markdown":RULEBOOK})
+    json!({"markdown":CLI_RULEBOOK})
 }
 pub fn rulebook_markdown() -> &'static str {
     RULEBOOK
 }
 pub fn help() -> String {
-    let mut result="ORG2 UI commands\n\norg2 rulebook\norg2 ui instances | capabilities | windows\norg2 ui docs --list | --search <task> | <topic>\norg2 ui schema <command-id>\norg2 ui exec <command-id> --params-file <file> --target-file <file>\norg2 ui request status <request-id>\n\nCommon commands:\n".to_string();
+    let mut result="ORG2 UI commands\n\norg2 rulebook\norg2 ui instances | capabilities | windows\norg2 ui docs --list | --search <task> | <topic>\norg2 ui tools [tool-name]\norg2 ui call <tool-name> --params-file <file>\norg2 ui schema <command-id>\norg2 ui exec <command-id> --params-file <file> --target-file <file>\norg2 ui request status <request-id>\n\nCommon commands:\n".to_string();
     for item in crate::catalog()["commands"].as_array().unwrap() {
+        if item["discoveryTier"] != "common" {
+            continue;
+        }
         result.push_str(&format!(
             "  org2 ui {}{} — {}\n",
             item["cli"]
@@ -39,17 +43,19 @@ pub fn read(words: &[String], flags: &Flags) -> Result<Value, String> {
             json!({"topic":"targets","description":"Instance, window, workspace and permissions / 目标 窗口 权限"}),
             json!({"topic":"results","description":"Receipts, retries, failures and unknown outcomes / 结果 超时 重试"}),
             json!({"topic":"more-actions","description":"Navigation, appearance and other actions / 导航 主题 设置"}),
-            json!({"topic":"native","description":"Use the built-in control_orgii tool without a shell / 内置工具"}),
+            json!({"topic":"native","description":"Concrete tools, defaults and examples / 内置工具"}),
+            json!({"topic":"cli","description":"Agent tool schemas, CLI calls and host workspace binding / 命令行 绑定"}),
+            json!({"topic":"protocol","description":"Low-level control_orgii protocol compatibility / 底层协议"}),
         ];
         entries.extend(catalog["commands"].as_array().unwrap().iter().map(|c|json!({"topic":c["topic"],"command":c["id"],"description":c["description"],"keywords":c["keywords"]})));
-        if let Some(query) = query {
-            entries.retain(|e| e.to_string().to_lowercase().contains(&query));
+        if let Some(query) = &query {
+            entries.retain(|e| e.to_string().to_lowercase().contains(query));
         }
         if flags.contains_key("list") {
             let mut seen = std::collections::HashSet::new();
             entries.retain(|entry| seen.insert(entry["topic"].as_str().unwrap().to_string()));
         }
-        entries.truncate(8);
+        entries.truncate(if query.is_some() { 8 } else { 16 });
         return Ok(json!({"protocolVersion":1,"catalogHash":catalog["hash"],"topics":entries}));
     }
     let topic = words
@@ -62,6 +68,8 @@ pub fn read(words: &[String], flags: &Flags) -> Result<Value, String> {
     match topic.as_str() {
         "targets"|"access"=>output.push_str(TARGETS),
         "native"=>output.push_str(include_str!("../../../../docs/agent/ui/native.md")),
+        "cli"=>output.push_str(include_str!("../../../../docs/agent/ui/cli.md")),
+        "protocol"=>output.push_str(include_str!("../../../../docs/agent/ui/protocol.md")),
         "results"=>output.push_str(RESULTS),
         "terminals"=>output.push_str(include_str!("../../../../docs/agent/ui/terminals.md")),
         "more-actions"=>output.push_str("This release exposes file, web, Explorer, Source Control, tab focus and shell terminal commands. Settings, themes, Spotlight, guide actions, session control and DOM execution are not public UI commands. Do not guess internal action IDs. Check capabilities after upgrading.\n"),
@@ -85,8 +93,10 @@ mod tests {
     #[test]
     fn rulebook_is_short_and_references_only_published_workflows() {
         assert!(RULEBOOK.len() <= 6144);
-        assert!(RULEBOOK.split_whitespace().count() <= 800);
-        assert!(RULEBOOK.contains("docs --search"));
+        assert!(RULEBOOK.split_whitespace().count() <= 320);
+        assert!(CLI_RULEBOOK.split_whitespace().count() <= 320);
+        assert!(RULEBOOK.contains("get_org2_ui_docs"));
+        assert!(CLI_RULEBOOK.contains("docs --search"));
         assert!(!RULEBOOK.contains("gui.execute"));
     }
     #[test]
@@ -110,6 +120,11 @@ mod tests {
         let mut flags = Flags::new();
         flags.insert("list".into(), "true".into());
         let list = read(&["docs".into()], &flags).unwrap();
+        assert!(list["topics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["topic"] == "cli"));
         let mut seen = std::collections::HashSet::new();
         for item in list["topics"].as_array().unwrap() {
             let topic = item["topic"].as_str().unwrap();

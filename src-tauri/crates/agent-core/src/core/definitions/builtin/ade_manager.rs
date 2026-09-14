@@ -224,7 +224,10 @@ mod tests {
             tool_names::CONTROL_ORGII,
             tool_names::SPOTLIGHT,
             tool_names::LIST_SESSION_WORKSPACE,
-        ] {
+        ]
+        .into_iter()
+        .chain(app_ui::agent_tools::ALL.iter().map(|kind| kind.name()))
+        {
             assert!(
                 !excluded.iter().any(|t| t == tool),
                 "{tool} must NOT be excluded — ADE Manager subsumes GUI Control"

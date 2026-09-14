@@ -66,7 +66,7 @@ async fn authenticated_http_and_native_share_broker_receipts() {
         target: app_ui::Target {
             instance_id: app_ui::broker().instance_id.clone(),
             window_id: "main".into(),
-            workspace: app_ui::Workspace::Global,
+            workspace: app_ui::Workspace::Global {},
         },
         params: json!({"path":"fixture.txt"}),
         reveal: false,

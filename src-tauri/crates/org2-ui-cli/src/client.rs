@@ -76,7 +76,65 @@ fn info(client: &Client, endpoint: &Endpoint) -> Option<Value> {
         .ok()?;
     (response["instanceId"] == endpoint.instance_id).then_some(response)
 }
-pub fn execute(words: Vec<String>, flags: Flags) -> Result<Value, String> {
+pub fn execute(words: Vec<String>, mut flags: Flags) -> Result<Value, String> {
+    let agent_call = if words.first().is_some_and(|s| s == "call") {
+        if words.len() != 2 {
+            return Err("Use call <tool-name> --params-file <file>".into());
+        }
+        for flag in flags.keys() {
+            if !matches!(
+                flag.as_str(),
+                "params-file"
+                    | "target-file"
+                    | "instance"
+                    | "window"
+                    | "session"
+                    | "global"
+                    | "request-id"
+                    | "json"
+            ) {
+                return Err(format!(
+                    "Unknown call option --{flag}; put tool arguments in --params-file"
+                ));
+            }
+        }
+        let kind =
+            app_ui::agent_tools::Kind::from_name(&words[1]).ok_or("Unknown UI tool; use tools")?;
+        let args = flags
+            .get("params-file")
+            .map(|path| read_json(path))
+            .transpose()?
+            .unwrap_or_else(|| json!({}));
+        if kind == app_ui::agent_tools::Kind::Docs {
+            if let app_ui::agent_tools::Call::Document(value) =
+                app_ui::agent_tools::prepare(kind, args, None, "")?
+            {
+                return Ok(value);
+            }
+            unreachable!("docs call");
+        }
+        Some((kind, args))
+    } else {
+        None
+    };
+    // A host may bind one immutable target file in the child environment. Explicit
+    // target flags replace that binding as a whole; never borrow another window's focus.
+    apply_binding(&mut flags, std::env::var("ORG2_UI_TARGET_FILE").ok());
+    let bound_target: Option<app_ui::Target> = flags
+        .get("target-file")
+        .map(|path| {
+            read_json(path).and_then(|v| serde_json::from_value(v).map_err(|e| e.to_string()))
+        })
+        .transpose()?;
+    if let Some(target) = &bound_target {
+        if flags
+            .get("instance")
+            .is_some_and(|id| *id != target.instance_id)
+        {
+            return Err("--instance does not match target-file".into());
+        }
+        flags.insert("instance".into(), target.instance_id.clone());
+    }
     let client = client()?;
     let mut live = Vec::new();
     for endpoint in endpoints(flags.get("instance"))? {
@@ -117,20 +175,42 @@ pub fn execute(words: Vec<String>, flags: Flags) -> Result<Value, String> {
             json!({"status":"failed","error":{"code":"PROTOCOL_MISMATCH","message":"CLI and app catalogs differ"}}),
         );
     }
-    if words.first().is_some_and(|s| s == "request") {
-        if words.get(1).map(String::as_str) != Some("status") || words.len() != 3 {
-            return Err("Use request status <request-id>".into());
+    let tool_receipt = if let Some((app_ui::agent_tools::Kind::Result, args)) = &agent_call {
+        match app_ui::agent_tools::prepare(
+            app_ui::agent_tools::Kind::Result,
+            args.clone(),
+            None,
+            "",
+        )? {
+            app_ui::agent_tools::Call::Receipt(id) => Some(id),
+            _ => unreachable!("receipt call"),
         }
+    } else {
+        None
+    };
+    if words.first().is_some_and(|s| s == "request") || tool_receipt.is_some() {
+        let request_id = if let Some(id) = tool_receipt {
+            id
+        } else {
+            if words.get(1).map(String::as_str) != Some("status") || words.len() != 3 {
+                return Err("Use request status <request-id>".into());
+            }
+            words[2].clone()
+        };
         return client
             .get(format!("http://127.0.0.1:{}/ui/v1/receipt", endpoint.port))
             .header("x-orgii-ui-token", endpoint.token)
-            .query(&[("requestId", &words[2])])
+            .query(&[("requestId", &request_id)])
             .send()
             .map_err(|e| e.to_string())?
             .json()
             .map_err(|e| e.to_string());
     }
-    let (command, params) = command_params(&words, &flags)?;
+    let (command, params) = if agent_call.is_some() {
+        (String::new(), json!({}))
+    } else {
+        command_params(&words, &flags)?
+    };
     if flags.contains_key("target-file")
         && ["window", "session", "global"]
             .iter()
@@ -138,8 +218,8 @@ pub fn execute(words: Vec<String>, flags: Flags) -> Result<Value, String> {
     {
         return Err("--target-file cannot be combined with target options".into());
     }
-    let target = if let Some(path) = flags.get("target-file") {
-        read_json(path)?
+    let target = if let Some(target) = &bound_target {
+        serde_json::to_value(target).map_err(|e| e.to_string())?
     } else {
         if flags.contains_key("session") && flags.contains_key("global") {
             return Err("--session and --global are mutually exclusive".into());
@@ -157,7 +237,24 @@ pub fn execute(words: Vec<String>, flags: Flags) -> Result<Value, String> {
         .get("request-id")
         .cloned()
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-    let request = json!({"protocolVersion":1,"requestId":id,"command":command,"target":target,"params":params,"reveal":flags.contains_key("reveal"),"timeoutMs":10000});
+    let request = if let Some((kind, args)) = agent_call {
+        if flags.contains_key("reveal") {
+            return Err("For call, put reveal in the tool arguments".into());
+        }
+        let binding: app_ui::Target =
+            serde_json::from_value(target.clone()).map_err(|e| e.to_string())?;
+        match app_ui::agent_tools::prepare(kind, args, Some(&binding), &id)? {
+            app_ui::agent_tools::Call::Execute(request) => {
+                serde_json::to_value(request).map_err(|e| e.to_string())?
+            }
+            _ => unreachable!("non-execution tools handled before dispatch"),
+        }
+    } else {
+        json!({"protocolVersion":1,"requestId":id,"command":command,"target":target,"params":params,"reveal":flags.contains_key("reveal"),"timeoutMs":10000})
+    };
+    // A tool may explicitly override the workspace; unknown receipts must report
+    // the actual submitted target rather than the host's original binding.
+    let target = request["target"].clone();
     match client
         .post(format!("http://127.0.0.1:{}/ui/v1/execute", endpoint.port))
         .header("x-orgii-ui-token", endpoint.token)
@@ -168,6 +265,16 @@ pub fn execute(words: Vec<String>, flags: Flags) -> Result<Value, String> {
         Err(_) => Ok(
             json!({"protocolVersion":1,"requestId":id,"target":target,"status":"unknown","error":{"code":"DEADLINE_EXCEEDED","message":"Transport ended without a receipt; inspect request status"}}),
         ),
+    }
+}
+fn apply_binding(flags: &mut Flags, binding: Option<String>) {
+    if !["target-file", "instance", "window", "session", "global"]
+        .iter()
+        .any(|key| flags.contains_key(*key))
+    {
+        if let Some(path) = binding {
+            flags.insert("target-file".into(), path);
+        }
     }
 }
 fn read_json(path: &str) -> Result<Value, String> {
@@ -268,6 +375,18 @@ mod tests {
         assert!(command_params(&words(&["file", "open", "file.ts"]), &flags).is_err());
         assert!(command_params(&words(&["file", "open"]), &Flags::new()).is_err());
         assert!(command_params(&words(&["exec", "gui.execute"]), &Flags::new()).is_err());
+    }
+    #[test]
+    fn explicit_target_options_replace_the_entire_environment_binding() {
+        let mut flags = Flags::new();
+        apply_binding(&mut flags, Some("host-target.json".into()));
+        assert_eq!(flags.get("target-file").unwrap(), "host-target.json");
+        for flag in ["instance", "window", "session", "global", "target-file"] {
+            let mut flags = Flags::from([(flag.into(), "explicit".into())]);
+            apply_binding(&mut flags, Some("host-target.json".into()));
+            assert_eq!(flags.len(), 1);
+            assert_eq!(flags.get(flag).unwrap(), "explicit");
+        }
     }
     #[test]
     fn non_numeric_line_is_a_parse_error() {

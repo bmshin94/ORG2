@@ -9,7 +9,7 @@ fn request(broker: &Broker, id: &str) -> Request {
         target: Target {
             instance_id: broker.instance_id.clone(),
             window_id: "main".into(),
-            workspace: Workspace::Global,
+            workspace: Workspace::Global {},
         },
         params: json!({"path":"/tmp/example"}),
         reveal: false,

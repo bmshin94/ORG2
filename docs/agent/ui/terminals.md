@@ -29,7 +29,7 @@ For multiline input, control characters or shell metacharacters, use JSON files 
 org2 ui exec ui.terminal.input --params-file input.json --target-file target.json --json
 ```
 
-`input.json` contains `{"terminalId":"<discovered-id>","data":"literal text\r"}`. `target.json` has the ordinary versioned UI target shape, documented in `docs native`. JSON files are parsed as data, never evaluated as shell code. Terminal input can itself run programs; follow the user's authorization for the supplied input.
+`input.json` contains `{"terminalId":"<discovered-id>","data":"literal text\r"}`. `target.json` has the ordinary versioned UI target shape, documented in `docs cli`. JSON files are parsed as data, never evaluated as shell code. Terminal input can itself run programs; follow the user's authorization for the supplied input.
 
 ## Output and uncertain results
 

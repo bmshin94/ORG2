@@ -183,6 +183,18 @@ export const uiCatalog = {
     const { $schema: _schema, ...params } = z.toJSONSchema(
       uiSchemas[command.id]
     );
-    return { ...command, discoveryTier: "common", params };
+    const discoveryTier = [
+      "ui.context",
+      "ui.tabs.list",
+      "ui.file.open",
+      "ui.web.open",
+      "ui.tab.open",
+      "ui.terminal.open",
+      "ui.terminal.list",
+      "ui.terminal.read",
+    ].includes(command.id)
+      ? "common"
+      : "reference";
+    return { ...command, discoveryTier, params };
   }),
 };

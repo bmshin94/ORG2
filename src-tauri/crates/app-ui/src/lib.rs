@@ -1,5 +1,6 @@
 //! Harness-independent UI command protocol and bounded request broker.
 //! No Tauri, agent sessions, provider clients, filesystem watchers or polling.
+pub mod agent_tools;
 mod broker;
 pub mod docs;
 pub mod protocol;

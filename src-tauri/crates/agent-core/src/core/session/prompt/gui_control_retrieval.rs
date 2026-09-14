@@ -66,10 +66,10 @@ const CONTROL_CARDS: &[ControlCard] = &[
         ],
     },
     ControlCard {
-        id: "ui.tab.open",
-        kind: "public-command",
+        id: "open_in_org2",
+        kind: "tool",
         summary: "Open the Workstation Source Control / Git sidebar tab.",
-        call: r#"Use the shared app rulebook and uiRequest with command=ui.tab.open, params={"kind":"source-control"}. Read control_orgii({"action":"ui.docs","params":{"topic":"native"}}) for target discovery and the request format."#,
+        call: r#"open_in_org2({"target":{"type":"source-control"}}). Omit workspace to use the calling session; specify another workspace only when the user intends it."#,
         terms: &["source control", "scm", "git panel", "git sidebar", "changes", "staged", "unstaged"],
     },
     ControlCard {

@@ -7,7 +7,7 @@ pub const MAX_BODY: usize = 64 * 1024;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Workspace {
-    Global,
+    Global {},
     Session {
         #[serde(rename = "sessionId")]
         session_id: String,

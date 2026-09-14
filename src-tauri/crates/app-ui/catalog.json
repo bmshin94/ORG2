@@ -172,7 +172,7 @@
         "tab"
       ],
       "capability": "ui.present",
-      "discoveryTier": "common",
+      "discoveryTier": "reference",
       "params": {
         "type": "object",
         "properties": {
@@ -239,7 +239,7 @@
         "输出",
         "中断"
       ],
-      "discoveryTier": "common",
+      "discoveryTier": "reference",
       "params": {
         "type": "object",
         "properties": {
@@ -307,7 +307,7 @@
         "输出",
         "中断"
       ],
-      "discoveryTier": "common",
+      "discoveryTier": "reference",
       "params": {
         "type": "object",
         "properties": {
@@ -382,7 +382,7 @@
         "输出",
         "中断"
       ],
-      "discoveryTier": "common",
+      "discoveryTier": "reference",
       "params": {
         "type": "object",
         "properties": {
@@ -423,7 +423,7 @@
         "输出",
         "中断"
       ],
-      "discoveryTier": "common",
+      "discoveryTier": "reference",
       "params": {
         "type": "object",
         "properties": {
@@ -464,7 +464,7 @@
         "输出",
         "中断"
       ],
-      "discoveryTier": "common",
+      "discoveryTier": "reference",
       "params": {
         "type": "object",
         "properties": {
@@ -481,5 +481,5 @@
       }
     }
   ],
-  "hash": "d0b1b89d655a6e819549d8af2a5d2b9fa8c52abb0a1eb524edaaec523b663b60"
+  "hash": "65e185e3e38f6225ea73db094321b52e4c8012e90fb89befc4a3182f6ebb4fd5"
 }

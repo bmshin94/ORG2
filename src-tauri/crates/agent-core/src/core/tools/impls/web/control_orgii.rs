@@ -133,7 +133,7 @@ impl Tool for OrgiiControlTool {
     }
 
     fn description(&self) -> &str {
-        "Use action=ui.rulebook for common commands, action=ui.docs with params.topic or params.query for on-demand reference. For shared semantic commands, use action=ui.capabilities to discover the instance and uiRequest to execute the versioned org2 ui request. Inspect and control the ORG2 GUI through the frontend ActionSystem. Prefer action=gui.context for current route/station/tab/session/URL state, action=gui.inspect to discover registered actions and visible controls, guide.* actions for tutorials/highlights, then action=gui.execute or a direct registered action to execute one."
+        "Use open_in_org2 and the dedicated ORG2 tools for files, pages, tabs and terminals. This tool retains settings, guides and advanced protocol access; read get_org2_ui_docs with topic=protocol before using uiRequest. Inspect and control the ORG2 GUI through the frontend ActionSystem. Prefer action=gui.context for current route/station/tab/session/URL state, action=gui.inspect to discover registered actions and visible controls, guide.* actions for tutorials/highlights, then action=gui.execute or a direct registered action to execute one."
     }
 
     fn parameters(&self) -> Value {
@@ -178,10 +178,7 @@ impl Tool for OrgiiControlTool {
             return Ok(app_ui::capabilities().to_string());
         }
         if params.get("action").and_then(Value::as_str) == Some("ui.rulebook") {
-            return Ok(app_ui::docs::rulebook()["markdown"]
-                .as_str()
-                .unwrap_or("")
-                .to_string());
+            return Ok(app_ui::docs::rulebook_markdown().to_string());
         }
         if params.get("action").and_then(Value::as_str) == Some("ui.docs") {
             let topic = params["params"]["topic"].as_str();

@@ -21,6 +21,18 @@ describe("UI wire contract", () => {
       }).success
     ).toBe(false);
   });
+  it("keeps common help compact while preserving reference commands", () => {
+    expect(
+      uiCatalog.commands.filter((command) => command.discoveryTier === "common")
+    ).toHaveLength(8);
+    const reference = uiCatalog.commands.filter(
+      (command) => command.discoveryTier === "reference"
+    );
+    expect(reference).toHaveLength(6);
+    expect(reference.map((command) => command.id)).toContain(
+      "ui.terminal.interrupt"
+    );
+  });
   it("keeps the bundled CLI catalog aligned with Zod definitions", () => {
     const { hash, ...bundled } = catalog;
     expect(hash).toBe(

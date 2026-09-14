@@ -1,0 +1,196 @@
+//! Thin native adapter for the harness-independent agent tool surface.
+use crate::tools::traits::{CallContext, Tool, ToolError};
+use app_ui::agent_tools::{self, Call, Kind};
+use async_trait::async_trait;
+use serde_json::Value;
+use sha2::{Digest, Sha256};
+
+pub struct Org2UiTool(pub Kind);
+
+#[async_trait]
+impl Tool for Org2UiTool {
+    fn name(&self) -> &str {
+        self.0.name()
+    }
+    fn category(&self) -> &str {
+        crate::tools::categories::WEB
+    }
+    fn description(&self) -> &str {
+        self.0.description()
+    }
+    fn parameters(&self) -> Value {
+        self.0.parameters()
+    }
+
+    async fn execute_text(&self, params: Value, ctx: &CallContext) -> Result<String, ToolError> {
+        ctx.require_tool_authority(self.name())?;
+        let broker = app_ui::broker();
+        let target = app_ui::Target {
+            instance_id: broker.instance_id.clone(),
+            window_id: "main".into(),
+            workspace: app_ui::Workspace::Session {
+                session_id: ctx.session_id.clone(),
+            },
+        };
+        // Stable for redispatch of the same host tool invocation; never model supplied.
+        let request_id = if ctx.call_id.is_empty() {
+            uuid::Uuid::new_v4().to_string()
+        } else {
+            format!(
+                "{:x}",
+                Sha256::digest(
+                    format!("{}:{}{}", ctx.session_id.len(), ctx.session_id, ctx.call_id)
+                        .as_bytes()
+                )
+            )
+        };
+        let call = agent_tools::prepare(self.0, params, Some(&target), &request_id)
+            .map_err(ToolError::InvalidParams)?;
+        let caller = format!("native:{}", ctx.session_id);
+        let value = match call {
+            Call::Execute(request) => serde_json::to_value(broker.execute(&caller, request).await),
+            Call::Document(value) => Ok(value),
+            Call::Receipt(id) => Ok(agent_tools::receipt(broker, &caller, &id)),
+        }
+        .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
+        Ok(value
+            .get("markdown")
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+            .unwrap_or_else(|| value.to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    };
+
+    #[test]
+    fn native_metadata_and_schemas_match_shared_catalog_and_management_gate() {
+        for kind in agent_tools::ALL {
+            let tool = Org2UiTool(*kind);
+            let entry = crate::tools::builtin_tools::BUILTIN_TOOLS
+                .iter()
+                .find(|entry| entry.name == tool.name())
+                .unwrap();
+            assert_eq!(tool.parameters(), kind.parameters());
+            assert_eq!(entry.description, tool.description());
+            assert_eq!(
+                entry.required_capability,
+                crate::definitions::capabilities::RequiredCapability::Management
+            );
+        }
+    }
+
+    #[test]
+    fn read_only_modes_deny_mutations_but_keep_ui_discovery() {
+        use crate::session::AgentExecMode;
+        use crate::tools::policy::{ResolvedToolPolicy, ToolVerdict};
+        for mode in [
+            AgentExecMode::Ask,
+            AgentExecMode::Plan,
+            AgentExecMode::Review,
+            AgentExecMode::Debug,
+        ] {
+            let policy =
+                ResolvedToolPolicy::permissive().with_extra_layer(mode.policy_layer().unwrap());
+            for kind in agent_tools::ALL {
+                assert_eq!(
+                    policy.verdict(kind.name()),
+                    if matches!(kind, Kind::Open | Kind::WriteTerminal) {
+                        ToolVerdict::Deny
+                    } else {
+                        ToolVerdict::Allow
+                    }
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn native_boundary_checks_authority_binds_caller_and_preserves_receipt_ownership() {
+        let tool = Org2UiTool(Kind::Open);
+        let args = json!({"target":{"type":"file","path":"src/main.ts"}});
+        assert!(tool
+            .execute_text(args.clone(), &CallContext::default())
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("tool_authority_denied"));
+        let broker = app_ui::broker();
+        let count = Arc::new(AtomicUsize::new(0));
+        let calls = count.clone();
+        let generation = broker.register(Arc::new(move |event| {
+            calls.fetch_add(1, Ordering::SeqCst);
+            assert_eq!(
+                event.request.target.workspace,
+                app_ui::Workspace::Session {
+                    session_id: "calling-session".into()
+                }
+            );
+            assert!(event.request.reveal);
+            broker.resolve(
+                &event.generation,
+                app_ui::Response {
+                    protocol_version: app_ui::VERSION,
+                    request_id: event.request.request_id,
+                    target: event.request.target,
+                    status: app_ui::Status::Applied,
+                    result: Some(json!({"presentationState":"requested","revealed":false})),
+                    error: None,
+                },
+            );
+            Ok(())
+        }));
+        struct Unregister(String);
+        impl Drop for Unregister {
+            fn drop(&mut self) {
+                app_ui::broker().unregister(&self.0);
+            }
+        }
+        let _guard = Unregister(generation);
+        let mut ctx = CallContext::trusted_sde();
+        ctx.session_id = "calling-session".into();
+        ctx.call_id = "host-call".into();
+        let result: Value =
+            serde_json::from_str(&tool.execute_text(args.clone(), &ctx).await.unwrap()).unwrap();
+        let replay: Value =
+            serde_json::from_str(&tool.execute_text(args, &ctx).await.unwrap()).unwrap();
+        assert_eq!(result, replay);
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+        let receipt_tool = Org2UiTool(Kind::Result);
+        let receipt_args = json!({"requestId":result["requestId"]});
+        assert_eq!(
+            serde_json::from_str::<Value>(
+                &receipt_tool
+                    .execute_text(receipt_args.clone(), &ctx)
+                    .await
+                    .unwrap()
+            )
+            .unwrap(),
+            result
+        );
+        ctx.session_id = "other-session".into();
+        let missing: Value =
+            serde_json::from_str(&receipt_tool.execute_text(receipt_args, &ctx).await.unwrap())
+                .unwrap();
+        assert_eq!(missing["status"], "unknown");
+        ctx.session_id.clear();
+        assert!(Org2UiTool(Kind::Context)
+            .execute_text(json!({}), &ctx)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("UI_TARGET_UNBOUND"));
+        assert!(Org2UiTool(Kind::Docs)
+            .execute_text(json!({"topic":"native"}), &ctx)
+            .await
+            .unwrap()
+            .contains("Native agent tools"));
+    }
+}
