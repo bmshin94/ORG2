@@ -21,7 +21,7 @@
 ## 仍然开放的问题
 
 1. **恢复执行链路**：`CliResumePlan` 没有原始 CODEX_HOME 字段；当前桌面 imported-history adapter 只取 cwd 进入通用 continuation。保留文件和索引不能证明最终执行恢复原会话或沿用 Market 计费。需要继续追踪执行边界并完成真实恢复。
-2. **跨工作区阻塞**：`MarketSource` 的全局 mutex 仍跨索引读取、Keychain 恢复及 HTTP 请求持有。需要按连接身份划分同步范围，同时保持续期单次消费及断开/重新授权的互斥安全；目前未修复、未测量。
+2. **跨工作区阻塞**：凭据请求与购买列表现已按身份/workspace/target 使用独立锁，索引表锁不跨 I/O；断开和重新授权仍独占授权变更屏障。锁边界、同授权串行、清空旧缓存和上限回收测试已通过；真实多工作区网络与桌面 CPU/RSS 尚未测量。
 3. **断开与撤销**：当前桌面断开只恢复配置、清理本地凭据和索引，不包含服务端撤销。不能把本地断开描述为服务端授权已撤销。
 4. **模块移除与残留目录**：module-off 编译和目录数量限制不能证明运行时配置恢复或崩溃残留处理。不得为清理目录再次删除原生会话数据。
 5. **授权持久化**：已改为先写非秘密索引、再保存凭据，避免新 grant 无法发现；缺少真实 Keychain 故障与崩溃测试，也没有自动恢复历史孤立 grant。
@@ -97,3 +97,28 @@ Remaining execution question: `CliResumePlan` carries native ID/cwd but no origi
 The authorization commit now checks the active enrollment and publishes the non-secret connection index before writing the OS credential store. Previously, an index failure after a successful credential write could leave an undiscoverable grant. A failed credential write now leaves discoverable metadata: status reports reauthorization required if no grant exists, and disconnect can remove the entry. Existing grants are retained if replacement fails before the credential write. Retired attempts cannot publish index entries. No secrets or new schema fields are added to the index. This does not recover historical orphaned grants or remotely revoke authorization.
 
 Verification on top of integrated upstream commit `c5564be9e`: Market UI/terminal suite 60 passed including PowerShell execution on macOS; frontend typecheck passed; exact retained-history SQLite restart test 1 passed. An initial broad Rust test filter matched zero tests and is not counted as evidence. The Market native crate passes 31 tests, including before/after index and credential commit failure injection with in-memory store effects and cancelled-attempt rejection. Real Keychain failure and process-crash execution remain unverified.
+
+## Connection concurrency follow-up
+
+Both credential minting and purchase-list requests now share an owner-scoped entry rather than holding the registry mutex over filesystem, Keychain and HTTP operations. The fixed production endpoint plus identity/workspace/target define the owner; selections retain their entitlement-specific credential caches. A shared authorization read barrier spans each request, while disconnect and enrollment completion take the exclusive barrier, clear entries, and retain exclusivity through the persistent commit. Existing spawned-task ownership is retained so dropping an IPC/request future does not release the barrier during a credential commit.
+
+The registry remains capped at 32 owners and 32 selection reservations globally, including failed/in-flight attempts. Failed restoration is retryable in the same slot. Retirement reclaims all reservations. There is no eviction during a rotating-grant operation, no timer, no polling, and no new persistence/wire format. Explicit authorization mutations still pause all owners; this change removes cross-owner serialization for ordinary requests, not for mutations.
+
+Verification: `cargo test --lib market_connection::source::tests -- --nocapture` passed 6 tests; `cargo test --lib market_connection::` passed 7 including disconnect fault injection. Controlled lock tests prove another workspace can acquire while one is stalled, the same owner serializes, a queued authorization writer waits for old requests and excludes new ones, and retirement replaces the old cache and reclaims bounds. These tests exercise the production coordinator but do not perform real Keychain/HTTP operations or prove refresh-token single consumption against a live server.
+
+### Architecture and performance review
+
+Architecture layers 1–10: Rust test compilation passed; restore logic is shared by both production request entry points; owner state and authorization barrier have separate names/responsibilities; protocol selection/validation and authenticated cache lifetime are preserved; no Market concepts moved into generic proxy crates; no wire/schema changes; both request paths acquire the same coordinator; initial/refreshed destinations still use the same protocol-base resolver. This is a scoped audit of the changed call chain, not a fresh whole-repository audit.
+
+| Area               | Verdict | Evidence / lifecycle decision                                                                                                   | Verification                                                |
+| ------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Background work    | keep    | Demand-driven requests; no new timer or polling; existing spawned operations retain ownership through completion                | Source trace; real idle/hidden/shutdown measurement not run |
+| Memory             | keep    | 32 owners and 32 selection reservations; failed attempts bounded; authorization mutation clears all                             | Bound/reclamation test passed                               |
+| Scope/isolation    | fix     | Per-identity/workspace/target lock; request read barrier and mutation write barrier; no late old-cache publication after commit | Cross-owner/same-owner and invalidation tests passed        |
+| Rendering/hot path | keep    | No React or streaming-delta code changed; registry lock contains no I/O                                                         | Source trace; desktop latency/CPU/RSS not measured          |
+
+Performance verdict: blocked for full runtime acceptance. Coordinator tests pass, but the matching desktop build has not yet been exercised with real concurrent workspaces, network failures, primary/secondary instances, or visible/hidden/closed measurements. This does not block further implementation work and does not mean the overall thread goal is blocked.
+
+Clippy follow-up: `cargo clippy --lib -- -D warnings` passed after simplifying the cache-expiry predicate and naming the proxy resolver function type. The initial strict run failed on those two lints; it is not counted as passing evidence. No lint was suppressed.
+
+Final rerun after lint corrections: `cargo test --lib market_connection::` passed 7/7 and `cargo test --lib codex_router_forwards_workspace_v1_uri_and_query_to_upstream` passed 1/1; zero ignored in either filtered suite.

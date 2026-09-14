@@ -2,7 +2,10 @@ use crate::dynamic_credentials::{Authentication, Credential, Destination, Source
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use market_connect::{Connection, ConnectionMetadata, WorkspaceCredential};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -53,13 +56,75 @@ impl Selection {
     }
 }
 #[derive(Default)]
-pub(super) struct State {
-    connections: HashMap<String, Arc<Connection>>,
+struct ConnectionState {
+    connection: Option<Arc<Connection>>,
     credentials: HashMap<String, WorkspaceCredential>,
 }
 #[derive(Default)]
+struct State {
+    connections: HashMap<String, Arc<tokio::sync::Mutex<ConnectionState>>>,
+    selections: HashSet<String>,
+}
+#[derive(Clone, Default)]
 pub(super) struct MarketSource {
     state: Arc<tokio::sync::Mutex<State>>,
+    // Requests share this barrier. Authorization mutations take it exclusively,
+    // wait for prior requests, and keep it until the persistent commit finishes.
+    authorization: Arc<tokio::sync::RwLock<()>>,
+}
+impl MarketSource {
+    async fn acquire(
+        &self,
+        metadata: &ConnectionMetadata,
+        selection: Option<&str>,
+    ) -> Result<
+        (
+            tokio::sync::OwnedRwLockReadGuard<()>,
+            Arc<tokio::sync::Mutex<ConnectionState>>,
+        ),
+        String,
+    > {
+        let authorization = Arc::clone(&self.authorization).read_owned().await;
+        let key = serde_json::to_string(metadata).map_err(|_| "Invalid Market identity")?;
+        let mut state = self.state.lock().await;
+        if !state.connections.contains_key(&key) && state.connections.len() >= 32 {
+            return Err("Market connection limit reached".into());
+        }
+        if let Some(selection) = selection {
+            if !state.selections.contains(selection) && state.selections.len() >= 32 {
+                return Err("Market selection limit reached".into());
+            }
+            state.selections.insert(selection.into());
+        }
+        let connection = Arc::clone(state.connections.entry(key).or_default());
+        Ok((authorization, connection))
+    }
+
+    async fn retire(&self) -> tokio::sync::OwnedRwLockWriteGuard<()> {
+        let guard = Arc::clone(&self.authorization).write_owned().await;
+        *self.state.lock().await = State::default();
+        guard
+    }
+}
+impl ConnectionState {
+    async fn restore(&mut self, metadata: ConnectionMetadata) -> Result<Arc<Connection>, String> {
+        if let Some(connection) = &self.connection {
+            return Ok(Arc::clone(connection));
+        }
+        let expected = metadata.clone();
+        if !tokio::task::spawn_blocking(move || {
+            super::enabled::read_index().map(|r| r.contains(&expected))
+        })
+        .await
+        .map_err(|_| "Market index unavailable")??
+        {
+            return Err("Market authorization is missing".into());
+        }
+        let scope = app_paths::orgii_root().to_string_lossy().into_owned();
+        let connection = Connection::restore(scope, metadata).await?;
+        self.connection = Some(Arc::clone(&connection));
+        Ok(connection)
+    }
 }
 impl Source for MarketSource {
     fn namespace(&self) -> &'static str {
@@ -70,10 +135,13 @@ impl Source for MarketSource {
         Ok(Destination {
             provider: "market".into(),
             authentication: Authentication::Bearer,
-            base_url: protocol_base_url(&format!(
-                "https://org2-market.fly.dev/w/{}",
-                selection.metadata.workspace_id
-            ), agent),
+            base_url: protocol_base_url(
+                &format!(
+                    "https://org2-market.fly.dev/w/{}",
+                    selection.metadata.workspace_id
+                ),
+                agent,
+            ),
         })
     }
     fn credential<'a>(
@@ -82,7 +150,7 @@ impl Source for MarketSource {
         agent: &'a str,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Credential, String>> + Send + 'a>>
     {
-        let owner = Arc::clone(&self.state);
+        let owner = self.clone();
         let key = key.to_owned();
         let agent = agent.to_owned();
         Box::pin(async move {
@@ -90,39 +158,15 @@ impl Source for MarketSource {
                 let key = key.as_str();
                 let agent = agent.as_str();
                 let selection = Selection::parse(key, agent)?;
-                let mut state = owner.lock().await;
-                let owner_key = serde_json::to_string(&selection.metadata)
-                    .map_err(|_| "Invalid Market identity")?;
-                if !state.connections.contains_key(&owner_key) {
-                    if state.connections.len() >= 32 {
-                        return Err("Market connection limit reached".into());
-                    }
-                    let metadata = selection.metadata.clone();
-                    if !tokio::task::spawn_blocking(move || {
-                        super::enabled::read_index().map(|r| r.contains(&metadata))
-                    })
-                    .await
-                    .map_err(|_| "Market index unavailable")??
-                    {
-                        return Err("Market authorization is missing".into());
-                    }
-                    let scope = app_paths::orgii_root().to_string_lossy().into_owned();
-                    let connection = Connection::restore(scope, selection.metadata.clone()).await?;
-                    state.connections.insert(owner_key.clone(), connection);
-                }
+                let (_authorization, entry) = owner.acquire(&selection.metadata, Some(key)).await?;
+                let mut state = entry.lock().await;
+                let connection = state.restore(selection.metadata.clone()).await?;
                 let now = chrono::Utc::now().timestamp_millis();
-                if !state
+                if state
                     .credentials
                     .get(key)
-                    .is_some_and(|c| c.expires_at() > now + 60000)
+                    .is_none_or(|c| c.expires_at() <= now + 60000)
                 {
-                    if !state.credentials.contains_key(key) && state.credentials.len() >= 32 {
-                        return Err("Market selection limit reached".into());
-                    }
-                    let connection = state
-                        .connections
-                        .get(&owner_key)
-                        .ok_or("Market connection missing")?;
                     let wire_agent = if agent == "codex" { "codex" } else { "claude" };
                     let credential = connection
                         .workspace_credential(&selection.entitlement_id, wire_agent)
@@ -152,12 +196,8 @@ static INSTANCE: std::sync::OnceLock<Arc<MarketSource>> = std::sync::OnceLock::n
 pub(super) fn instance() -> Arc<MarketSource> {
     Arc::clone(INSTANCE.get_or_init(|| Arc::new(MarketSource::default())))
 }
-pub(super) async fn retire_for_reauthorization() -> tokio::sync::OwnedMutexGuard<State> {
-    let source = instance();
-    let mut state = Arc::clone(&source.state).lock_owned().await;
-    state.credentials.clear();
-    state.connections.clear();
-    state
+pub(super) async fn retire_for_reauthorization() -> tokio::sync::OwnedRwLockWriteGuard<()> {
+    instance().retire().await
 }
 
 #[cfg(test)]
@@ -200,13 +240,94 @@ mod tests {
     }
     #[tokio::test]
     async fn reauthorization_holds_source_until_new_store_commit() {
-        let guard = retire_for_reauthorization().await;
-        let source = instance();
-        assert!(source.state.try_lock().is_err());
-        assert!(guard.connections.is_empty());
-        assert!(guard.credentials.is_empty());
+        let source = MarketSource::default();
+        let guard = source.retire().await;
+        assert!(source.authorization.try_read().is_err());
+        assert!(source.state.lock().await.connections.is_empty());
+        assert!(source.state.lock().await.selections.is_empty());
         drop(guard);
+        assert!(source.authorization.try_read().is_ok());
+    }
+    #[tokio::test]
+    async fn slow_connection_does_not_block_another_workspace_and_same_owner_serializes() {
+        let source = MarketSource::default();
+        let first = selection();
+        let (_active, entry) = source
+            .acquire(&first.metadata, Some("first"))
+            .await
+            .unwrap();
+        let _slow_operation = entry.lock().await;
+        let mut other = first.metadata.clone();
+        other.workspace_id = "ws_other".into();
+        let (_other_active, other_entry) = tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            source.acquire(&other, Some("other")),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(other_entry.try_lock().is_ok());
+        let (_same_active, same_entry) = source
+            .acquire(&first.metadata, Some("second_model"))
+            .await
+            .unwrap();
+        assert!(Arc::ptr_eq(&entry, &same_entry));
+        assert!(same_entry.try_lock().is_err());
+        // Registry access stays short even while an owner performs I/O.
         assert!(source.state.try_lock().is_ok());
+    }
+
+    #[tokio::test]
+    async fn authorization_commit_waits_for_old_requests_and_discards_their_cache() {
+        let source = MarketSource::default();
+        let metadata = selection().metadata;
+        let (active, old_entry) = source.acquire(&metadata, Some("old")).await.unwrap();
+        let retirement = source.retire();
+        tokio::pin!(retirement);
+        tokio::select! {
+            biased;
+            _ = &mut retirement => panic!("must wait for the old request"),
+            _ = std::future::ready(()) => {}
+        }
+        // A queued writer excludes subsequent requests, avoiding starvation.
+        assert!(source.authorization.try_read().is_err());
+        drop(active);
+        let commit = tokio::time::timeout(std::time::Duration::from_secs(1), &mut retirement)
+            .await
+            .unwrap();
+        assert!(source.authorization.try_read().is_err());
+        assert!(source.state.lock().await.connections.is_empty());
+        assert!(source.state.lock().await.selections.is_empty());
+        drop(commit);
+        let (_new_active, new_entry) = source.acquire(&metadata, Some("new")).await.unwrap();
+        assert!(!Arc::ptr_eq(&old_entry, &new_entry));
+        assert!(new_entry.lock().await.connection.is_none());
+    }
+
+    #[tokio::test]
+    async fn connection_and_selection_registries_stay_bounded_and_retirement_reclaims_slots() {
+        let source = MarketSource::default();
+        let metadata = selection().metadata;
+        for index in 0..32 {
+            source
+                .acquire(&metadata, Some(&format!("selection_{index}")))
+                .await
+                .unwrap();
+        }
+        assert!(source.acquire(&metadata, Some("overflow")).await.is_err());
+        source
+            .acquire(&metadata, Some("selection_0"))
+            .await
+            .unwrap();
+        drop(source.retire().await);
+        for index in 0..32 {
+            let mut owner = metadata.clone();
+            owner.workspace_id = format!("ws_{index}");
+            source.acquire(&owner, None).await.unwrap();
+        }
+        assert!(source.acquire(&metadata, None).await.is_err());
+        drop(source.retire().await);
+        source.acquire(&metadata, Some("new")).await.unwrap();
     }
 }
 
@@ -215,30 +336,11 @@ pub(super) async fn options(
 ) -> Result<Vec<market_connect::WorkspaceEntitlement>, String> {
     let source = instance();
     tokio::spawn(async move {
-        let mut state = source.state.lock().await;
-        let key = serde_json::to_string(&metadata).map_err(|_| "Invalid Market identity")?;
-        if !state.connections.contains_key(&key) {
-            if state.connections.len() >= 32 {
-                return Err("Market connection limit reached".into());
-            }
-            let expected = metadata.clone();
-            if !tokio::task::spawn_blocking(move || {
-                super::enabled::read_index().map(|r| r.contains(&expected))
-            })
-            .await
-            .map_err(|_| "Market index unavailable")??
-            {
-                return Err("Market authorization is missing".into());
-            }
-            let scope = app_paths::orgii_root().to_string_lossy().into_owned();
-            state
-                .connections
-                .insert(key.clone(), Connection::restore(scope, metadata).await?);
-        }
+        let (_authorization, entry) = source.acquire(&metadata, None).await?;
+        let mut state = entry.lock().await;
         state
-            .connections
-            .get(&key)
-            .ok_or("Market connection missing")?
+            .restore(metadata)
+            .await?
             .entitlements()
             .await
             .map_err(Into::into)
@@ -251,5 +353,9 @@ pub(super) async fn options(
 // therefore supply a protocol base, rather than a workspace root.
 pub(crate) fn protocol_base_url(workspace_root: &str, agent: &str) -> String {
     let root = workspace_root.trim_end_matches('/');
-    if agent == "codex" { format!("{root}/v1") } else { root.to_owned() }
+    if agent == "codex" {
+        format!("{root}/v1")
+    } else {
+        root.to_owned()
+    }
 }

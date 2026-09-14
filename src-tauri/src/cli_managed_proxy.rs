@@ -158,8 +158,9 @@ fn proxy_unavailable_message() -> String {
     }
 }
 
+type ResolveProxyContext = dyn Fn(&str) -> Result<ProxyContext, String> + Send + Sync;
 #[derive(Clone)]
-struct ContextResolver(std::sync::Arc<dyn Fn(&str) -> Result<ProxyContext, String> + Send + Sync>);
+struct ContextResolver(std::sync::Arc<ResolveProxyContext>);
 
 fn proxy_router(resolver: ContextResolver) -> Router {
     Router::new()
