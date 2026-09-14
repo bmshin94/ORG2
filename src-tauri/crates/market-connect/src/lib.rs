@@ -307,3 +307,22 @@ mod tests {
         assert!(e.take_redemption(&callback).is_err());
     }
 }
+
+/// Buyer renewal requires native persistent credentials. Seller authorization
+/// uses an in-memory short-lived grant and has a separate capability.
+pub const fn buyer_credential_store_supported() -> bool {
+    cfg!(any(target_os = "macos", windows))
+}
+pub fn require_buyer_credential_store() -> Result<(), String> {
+    if buyer_credential_store_supported() { Ok(()) }
+    else { Err("market_buyer_credential_store_unavailable".into()) }
+}
+#[cfg(test)]
+mod platform_capability_tests {
+    #[test]
+    fn storage_gate_matches_compiled_platform_before_enrollment() {
+        assert_eq!(super::require_buyer_credential_store().is_ok(), cfg!(any(target_os = "macos", windows)));
+        #[cfg(target_os = "linux")]
+        assert_eq!(super::require_buyer_credential_store().unwrap_err(), "market_buyer_credential_store_unavailable");
+    }
+}

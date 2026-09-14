@@ -47,8 +47,16 @@ export default function ConnectionDialog({
       };
     }
     let current = true;
-    void Promise.all([loadEntries(connection), loadConfig(connection)])
-      .then(([all, status]) => {
+    // Remote availability must never gate local recovery.
+    setConfigured(false);
+    setEntries([]);
+    setEntry("");
+    setModel("");
+    setConfig(null);
+    setBusy(true);
+    setError(false);
+    void loadEntries(connection)
+      .then((all) => {
         if (!current) return;
         const agent = connection.target === "codex" ? "codex" : "claude";
         const active = all
@@ -59,6 +67,17 @@ export default function ConnectionDialog({
               (e.expires_at === null || e.expires_at > Date.now())
           );
         setEntries(active);
+        if (active.length === 1) {
+          setEntry((value) => value || active[0].entitlement_id);
+          setModel((value) => value || active[0].models[0] || "");
+        }
+      })
+      .catch(() => {
+        if (current) setError(true);
+      });
+    void loadConfig(connection)
+      .then((status) => {
+        if (!current) return;
         setConfig(status);
         // The profile stores public selection metadata, never credentials.
         if (
@@ -77,7 +96,8 @@ export default function ConnectionDialog({
               metadata?.identity_user_id === connection.identity_user_id &&
               metadata.workspace_id === connection.workspace_id &&
               metadata.target === connection.target &&
-              active.some((e) => e.entitlement_id === saved.entitlement_id)
+              typeof saved.entitlement_id === "string" &&
+              saved.entitlement_id.length > 0
             ) {
               setEntry(saved.entitlement_id);
               setModel(status.selectedModel ?? "");
@@ -87,10 +107,6 @@ export default function ConnectionDialog({
           } catch {
             /* An unrecognized profile is never reported configured. */
           }
-        }
-        if (active.length === 1) {
-          setEntry(active[0].entitlement_id);
-          setModel(active[0].models[0] ?? "");
         }
       })
       .catch(() => {
@@ -171,7 +187,7 @@ export default function ConnectionDialog({
       }
     >
       <div className="flex flex-col gap-4">
-        {configured && (
+        {configured && selected?.models.includes(model) && (
           <Suspense fallback={null}>
             <WorkspaceLaunch
               connection={connection}

@@ -11,6 +11,9 @@ import {
 import { handleMarketConnectionUrl } from "./deepLink";
 import { type Connection, agentFor, loadConnections } from "./rpc";
 
+const connectionId = (c: Connection) =>
+  JSON.stringify([c.identity_user_id, c.workspace_id, c.target]);
+
 type Saved = Connection & {
   phase: "authorization_saved" | "reauthorization_required";
 };
@@ -21,7 +24,7 @@ export default function ConnectionSettings({
 }) {
   const { t } = useTranslation("integrations");
   const [connections, setConnections] = useState<Saved[]>([]),
-    [index, setIndex] = useState("0"),
+    [selectedId, setSelectedId] = useState(""),
     [enabled, setEnabled] = useState(false),
     [error, setError] = useState(false);
   useEffect(() => {
@@ -33,8 +36,16 @@ export default function ConnectionSettings({
         .then((status) => {
           if (active && attempt === generation) {
             setEnabled(status.enabled);
-            setConnections(
-              status.connections.filter((c) => agentFor(c) === agentName)
+            const next = status.connections.filter(
+              (c) => agentFor(c) === agentName
+            );
+            setConnections(next);
+            setSelectedId((previous) =>
+              next.some((c) => connectionId(c) === previous)
+                ? previous
+                : next[0]
+                  ? connectionId(next[0])
+                  : ""
             );
             setError(false);
           }
@@ -53,19 +64,19 @@ export default function ConnectionSettings({
     };
   }, [agentName]);
   if ((!enabled || !connections.length) && !error) return null;
-  const selected = connections[Number(index)];
+  const selected = connections.find((c) => connectionId(c) === selectedId);
   return (
     <SectionContainer title="Market">
       <SectionRow label={t("marketConnection.title")} layout="vertical">
         {connections.length > 1 && (
           <Select
             ariaLabel={t("marketConnection.title")}
-            value={index}
-            options={connections.map((c, i) => ({
-              value: String(i),
+            value={selectedId}
+            options={connections.map((c) => ({
+              value: connectionId(c),
               label: c.workspace_id,
             }))}
-            onChange={(value) => setIndex(String(value))}
+            onChange={(value) => setSelectedId(String(value))}
           />
         )}
         {selected && (

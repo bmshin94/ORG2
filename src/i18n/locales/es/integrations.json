@@ -1,5 +1,6 @@
 {
   "marketConnection": {
+    "platformUnavailable": "Las conexiones de comprador de Market no están disponibles en esta plataforma porque no admite el almacenamiento seguro de credenciales",
     "authorizationSaved": "Autorización de Market guardada; falta configurar el cliente",
     "failed": "No se pudo completar la conexión a Market. Vuelve a abrir la conexión del espacio de trabajo.",
     "title": "Conectar espacio de trabajo",

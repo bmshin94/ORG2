@@ -1,5 +1,6 @@
 {
   "marketConnection": {
+    "platformUnavailable": "Market-Käuferverbindungen sind auf dieser Plattform nicht verfügbar, da die sichere Speicherung von Zugangsdaten nicht unterstützt wird",
     "authorizationSaved": "Market-Autorisierung gespeichert; die Client-Einrichtung steht noch aus",
     "failed": "Die Market-Verbindung konnte nicht abgeschlossen werden. Öffne die Arbeitsbereichsverbindung erneut.",
     "title": "Arbeitsbereich verbinden",

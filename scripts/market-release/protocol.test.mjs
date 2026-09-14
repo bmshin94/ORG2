@@ -19,6 +19,11 @@ test("emits the Console rollout wire contract for the tagged default build", () 
     protocol: 1,
     sellerProtocol: 1,
     commit,
+    capabilities: {
+      macos: { buyerPersistentCredentials: true, sellerTemporaryAuthorization: true },
+      windows: { buyerPersistentCredentials: true, sellerTemporaryAuthorization: true },
+      linux: { buyerPersistentCredentials: false, sellerTemporaryAuthorization: true },
+    },
   });
   assert.equal(
     protocolMarker({ ...input, release: "v1.4.0-beta.1" }).protocol,

@@ -270,3 +270,46 @@ describe("launch-scoped environment", () => {
     ).toThrow();
   });
 });
+
+it.each([
+  "C:/profiles/session",
+  "123",
+  "$env:PATH",
+  "$(throw 'unexpected')",
+  "",
+  "C:/my project's",
+])("always emits a PowerShell string literal for %s", (value) => {
+  expect(withCliCommandEnvironment("codex", { CODEX_HOME: value }, true)).toBe(
+    `& { $env:CODEX_HOME='${value.replace(/'/g, "''")}'; & codex }`
+  );
+});
+
+const powershellExecutable =
+  process.env.ORG2_TEST_PWSH ||
+  (process.platform === "win32" ? "powershell.exe" : undefined);
+it.skipIf(!powershellExecutable)(
+  "executes literal environment assignments in PowerShell and reaches the client body",
+  () => {
+    for (const folder of [
+      "C:/profiles/session",
+      "C:/my project's",
+      "$(throw 'must-not-run')",
+      "$env:PATH",
+      "",
+    ]) {
+      const command = withCliCommandEnvironment(
+        "{ [Console]::Write([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes([string]$env:CODEX_HOME))) }",
+        { CODEX_HOME: folder },
+        true
+      );
+      const output = execFileSync(
+        powershellExecutable!,
+        ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
+        { encoding: "utf8", timeout: 20_000 }
+      );
+      expect(Buffer.from(output.trim(), "base64").toString("utf8")).toBe(
+        folder
+      );
+    }
+  }
+);

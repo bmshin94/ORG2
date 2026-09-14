@@ -1,5 +1,6 @@
 {
   "marketConnection": {
+    "platformUnavailable": "Không thể kết nối không gian làm việc của người mua Market trên nền tảng này vì chưa hỗ trợ lưu thông tin xác thực an toàn",
     "authorizationSaved": "Đã lưu ủy quyền Market; vẫn cần thiết lập ứng dụng khách",
     "failed": "Không thể hoàn tất kết nối Market. Hãy mở lại kết nối không gian làm việc.",
     "title": "Kết nối không gian làm việc",

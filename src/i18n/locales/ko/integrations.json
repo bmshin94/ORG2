@@ -1,5 +1,6 @@
 {
   "marketConnection": {
+    "platformUnavailable": "이 플랫폼은 자격 증명의 안전한 저장을 지원하지 않아 Market 구매자 작업 공간에 연결할 수 없습니다",
     "authorizationSaved": "Market 인증이 저장되었습니다. 클라이언트 설정이 아직 필요합니다",
     "failed": "Market 연결을 완료하지 못했습니다. 워크스페이스 연결을 다시 열어 주세요.",
     "title": "워크스페이스 연결",

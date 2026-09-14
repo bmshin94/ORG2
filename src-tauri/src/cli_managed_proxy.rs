@@ -158,12 +158,11 @@ fn proxy_unavailable_message() -> String {
     }
 }
 
-async fn run_proxy_server() -> Result<(), String> {
-    let addr = std::net::SocketAddr::from((
-        [127, 0, 0, 1],
-        agent_cli::managed_config::managed_proxy_port(),
-    ));
-    let app = Router::new()
+#[derive(Clone)]
+struct ContextResolver(std::sync::Arc<dyn Fn(&str) -> Result<ProxyContext, String> + Send + Sync>);
+
+fn proxy_router(resolver: ContextResolver) -> Router {
+    Router::new()
         .route("/health", get(health_handler))
         .route("/proxy/{token}/v1", any(proxy_v1_root_handler))
         .route("/proxy/{token}/v1/{*path}", any(proxy_v1_handler))
@@ -172,10 +171,16 @@ async fn run_proxy_server() -> Result<(), String> {
         .route("/cli/{agent}/{token}/v1", any(cli_v1_root_handler))
         .route("/cli/{agent}/{token}/v1/{*path}", any(cli_v1_handler))
         .route("/cli/{agent}/{token}/claude", any(cli_claude_root_handler))
-        .route(
-            "/cli/{agent}/{token}/claude/{*path}",
-            any(cli_claude_handler),
-        );
+        .route("/cli/{agent}/{token}/claude/{*path}", any(cli_claude_handler))
+        .layer(axum::Extension(resolver))
+}
+
+async fn run_proxy_server() -> Result<(), String> {
+    let addr = std::net::SocketAddr::from((
+        [127, 0, 0, 1],
+        agent_cli::managed_config::managed_proxy_port(),
+    ));
+    let app = proxy_router(ContextResolver(std::sync::Arc::new(resolve_proxy_context)));
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
@@ -281,7 +286,10 @@ async fn proxy_agent_handler(
     path: String,
     request: Request<Body>,
 ) -> Response<Body> {
-    let mut context = match resolve_proxy_context(agent_name) {
+    let resolved = request.extensions().get::<ContextResolver>()
+        .ok_or_else(|| "Proxy context resolver unavailable".to_string())
+        .and_then(|resolver| (resolver.0)(agent_name));
+    let mut context = match resolved {
         Ok(context) => context,
         Err(err) => {
             return json_error(StatusCode::PRECONDITION_FAILED, err);
@@ -965,6 +973,52 @@ fn json_error(status: StatusCode, message: String) -> Response<Body> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[cfg(feature = "market-connect")]
+    #[tokio::test]
+    async fn codex_router_forwards_workspace_v1_uri_and_query_to_upstream() {
+        crate::test_utils::install_crypto_provider_for_tests();
+        let (observed, mut received) = tokio::sync::mpsc::channel(4);
+        let upstream = Router::new().fallback(any(move |request: Request<Body>| {
+            let observed = observed.clone();
+            async move {
+                let uri = request.uri().to_string();
+                let auth = request.headers().get("authorization").unwrap().to_str().unwrap().to_owned();
+                observed.send((uri, auth)).await.unwrap();
+                Json(json!({"ok":true}))
+            }
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let upstream_root = format!("http://{}/w/ws_route_test", listener.local_addr().unwrap());
+        let upstream_task = tokio::spawn(async move { axum::serve(listener, upstream).await.unwrap(); });
+        let context = ProxyContext {
+            authentication: Authentication::Bearer,
+            key_id: "test-static-selection".into(), provider: "market".into(),
+            model: "test-model".into(), api_key: "synthetic-bearer".into(),
+            upstream_base_url: crate::market_connection::source::protocol_base_url(&upstream_root, "codex"),
+            proxy_token: "synthetic-local-token".into(), protocol: ProxyProtocol::OpenAi,
+        };
+        let app = proxy_router(ContextResolver(std::sync::Arc::new(move |agent| {
+            assert_eq!(agent, "codex");
+            Ok(context.clone())
+        })));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let proxy_url = format!("http://{}", listener.local_addr().unwrap());
+        let proxy_task = tokio::spawn(async move { axum::serve(listener, app).await.unwrap(); });
+        let client = reqwest::Client::new();
+        for path in ["responses", "responses?stream=true"] {
+            let response = client.post(format!("{proxy_url}/cli/codex/synthetic-local-token/v1/{path}"))
+                .json(&json!({"model":"orgii-current-model","input":"test"})).send().await.unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let (uri, auth) = tokio::time::timeout(Duration::from_secs(5), received.recv()).await.unwrap().unwrap();
+            assert_eq!(uri, format!("/w/ws_route_test/v1/{path}"));
+            assert_eq!(auth, "Bearer synthetic-bearer");
+        }
+        let rejected = client.post(format!("{proxy_url}/cli/codex/wrong-token/v1/responses")).send().await.unwrap();
+        assert_eq!(rejected.status(), StatusCode::UNAUTHORIZED);
+        assert!(received.try_recv().is_err());
+        proxy_task.abort(); upstream_task.abort();
+    }
 
     #[test]
     fn rewrites_placeholder_model() {

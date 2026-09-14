@@ -13,6 +13,8 @@ const moduleStatus = defineProcedure("market_connection_status")
   .output(
     z.object({
       enabled: z.boolean(),
+      buyer_persistent_credentials: z.boolean(),
+      seller_temporary_authorization: z.boolean(),
       connections: z.array(
         connectionSchema.extend({
           phase: z.enum(["authorization_saved", "reauthorization_required"]),

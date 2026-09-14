@@ -226,7 +226,9 @@ pub fn restore_if_selected(
         .and_then(|s| s.selected_key_id.as_deref())
         != Some(expected_key)
     {
-        return Err("Client selection changed; refresh before disconnecting".into());
+        // Already restored or switched: never touch the newer configuration,
+        // but allow the caller to finish removing its old grant/index.
+        return status_for_unlocked(agent_name);
     }
     restore_agent_default_unlocked(agent_name, false)
 }

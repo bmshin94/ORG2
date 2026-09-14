@@ -14,7 +14,13 @@ export function protocolMarker({ release, commit, tagCommit, features }) {
     !features?.["market-connect"]?.includes("dep:market-connect")
   )
     throw new Error("Default desktop build does not include Market protocol");
-  return { release, protocol: 1, sellerProtocol: 1, commit };
+  return { release, protocol: 1, sellerProtocol: 1, commit,
+    capabilities: {
+      macos: { buyerPersistentCredentials: true, sellerTemporaryAuthorization: true },
+      windows: { buyerPersistentCredentials: true, sellerTemporaryAuthorization: true },
+      linux: { buyerPersistentCredentials: false, sellerTemporaryAuthorization: true },
+    },
+  };
 }
 
 if (

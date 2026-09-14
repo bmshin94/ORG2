@@ -967,7 +967,8 @@ fn source_disconnect_refuses_to_restore_a_newer_selection() {
     manifest.mode = CliConfigMode::OrgiiManaged;
     manifest.selected_key_id = Some("new-source".into());
     write_manifest(&manifest).unwrap();
-    assert!(restore_if_selected(CODEX_AGENT, "old-source").is_err());
+    assert!(restore_if_selected(CODEX_AGENT, "old-source").is_ok());
+    assert!(restore_if_selected(CODEX_AGENT, "old-source").is_ok());
     assert_eq!(
         std::fs::read(&target_path).unwrap(),
         b"new-selected-configuration"
@@ -1013,9 +1014,13 @@ fn managed_launch_freezes_proxy_generation_and_releases_only_its_session() {
         assert!(launch::prepare(agent, "key-1", "gpt-test", "cli_stale").is_err());
         assert_eq!(std::fs::read_to_string(&config_path).unwrap(), original);
         assert!(launch::release("../profiles").is_err());
+        let history = directory.join("sessions").join("native-session.jsonl");
+        std::fs::create_dir_all(history.parent().unwrap()).unwrap();
+        std::fs::write(&history, b"persistent native transcript").unwrap();
         launch::release(&session_id).unwrap();
         launch::release(&session_id).unwrap();
-        assert!(!directory.exists());
+        assert!(!config_path.exists());
+        assert_eq!(std::fs::read(&history).unwrap(), b"persistent native transcript");
         assert_eq!(std::fs::read(&target_path).unwrap(), b"current config");
     }
 }

@@ -56,7 +56,17 @@ fn includes_account_and_hosted_managed_codex_rollouts() {
     std::fs::create_dir_all(&account_sessions).unwrap();
     std::fs::create_dir_all(&hosted_sessions).unwrap();
 
-    let dirs = codex_managed_sessions_dirs(&account_root, &hosted_root);
+    let launch_root = temp.0.join("launches");
+    let retained_sessions = launch_root.join("closed-session").join("sessions");
+    std::fs::create_dir_all(&retained_sessions).unwrap();
+    let transcript = retained_sessions.join("retained.jsonl");
+    std::fs::write(&transcript, b"retained native transcript").unwrap();
+    // No config or ownership marker remains after terminal release.
+    let dirs = codex_managed_sessions_dirs(&account_root, &hosted_root, &launch_root);
+    assert!(dirs.contains(&retained_sessions));
+    assert_eq!(std::fs::read(&transcript).unwrap(), b"retained native transcript");
+    // Discovery has no process-local registry and works again after restart.
+    assert_eq!(dirs, codex_managed_sessions_dirs(&account_root, &hosted_root, &launch_root));
 
     assert!(dirs.contains(&account_sessions));
     assert!(dirs.contains(&hosted_sessions));
@@ -3220,4 +3230,36 @@ fn native_function_calls_with_response_ids_still_normalize() {
     assert_eq!(shell.args["cwd"], "/tmp");
     assert!(chunks.iter().all(|chunk| chunk.function != "spawn_agent" && chunk.function != "shell"));
     std::fs::remove_dir_all(&temp_dir).unwrap();
+}
+
+#[test]
+fn retained_launch_history_survives_index_restart_and_resolves_native_resume_identity() {
+    let root = std::env::temp_dir().join(format!("org2-retained-history-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+    let launches = root.join("launches");
+    let sessions = launches.join("closed-launch").join("sessions");
+    std::fs::create_dir_all(&sessions).unwrap();
+    let native_id = "0236a8cf-8dbb-4c52-9555-f5f54438ceb1";
+    let stem = format!("rollout-2026-08-28T17-12-59-{native_id}");
+    let transcript = sessions.join(format!("{stem}.jsonl"));
+    let content = concat!(
+        r#"{"timestamp":"2026-08-28T17:12:59Z","type":"session_meta","payload":{"id":"0236a8cf-8dbb-4c52-9555-f5f54438ceb1","originator":"cli","cwd":"/tmp/retained-project"}}"#, "\n",
+        r#"{"timestamp":"2026-08-28T17:13:00Z","type":"event_msg","payload":{"type":"user_message","message":"retained work"}}"#, "\n"
+    );
+    std::fs::write(&transcript, content).unwrap();
+    let database = root.join("history.sqlite");
+    for _ in 0..2 {
+        // A fresh connection models application restart, not an in-memory cache.
+        let mut conn = rusqlite::Connection::open(&database).unwrap();
+        crate::store::sqlite::SqliteRecordStore::init_tables(&conn).unwrap();
+        crate::store::sqlite::SqliteRecordStore::init_source_cache_tables(&conn).unwrap();
+        let dirs = codex_managed_sessions_dirs(&root.join("accounts"), &root.join("hosted"), &launches);
+        index::sync_codex_app_cache_from_dirs(&mut conn, &dirs).unwrap();
+        let (plan, cached) = crate::sources::cli_resume::cli_resume_plan_for_cached_session(&conn, &format!("codexapp-{stem}")).unwrap().unwrap();
+        assert_eq!(plan.native_session_id, native_id);
+        assert_eq!(plan.resume_args, vec!["resume", native_id]);
+        assert_eq!(plan.cwd.as_deref(), Some("/tmp/retained-project"));
+        assert_eq!(cached.source_path, transcript.to_string_lossy());
+        assert_eq!(std::fs::read_to_string(&transcript).unwrap(), content);
+    }
+    std::fs::remove_dir_all(root).unwrap();
 }

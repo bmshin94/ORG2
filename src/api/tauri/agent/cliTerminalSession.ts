@@ -209,7 +209,9 @@ export function withCliCommandEnvironment(
   if (!entries.length) return command;
   if (windows) {
     const assignments = entries
-      .map(([name, value]) => `$env:${name}=${quoteShellArg(value, true)}`)
+      // Assignment RHS uses expression mode, even when a command argument
+      // containing the same path would not need quotes.
+      .map(([name, value]) => `$env:${name}='${value.replace(/'/g, "''")}'`)
       .join("; ");
     return `& { ${assignments}; & ${command} }`;
   }
