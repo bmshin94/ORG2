@@ -1,4 +1,5 @@
 mod execution_profile;
+pub(crate) mod mcp;
 pub(crate) use execution_profile::prepare_execution_profile;
 mod session_routes;
 use crate::dynamic_credentials::Authentication;
@@ -168,6 +169,7 @@ struct ContextResolver(std::sync::Arc<ResolveProxyContext>);
 fn proxy_router(resolver: ContextResolver) -> Router {
     Router::new()
         .route("/health", get(health_handler))
+        .route("/cli/{agent}/mcp", axum::routing::post(mcp::handle))
         .route("/proxy/{token}/v1", any(proxy_v1_root_handler))
         .route("/proxy/{token}/v1/{*path}", any(proxy_v1_handler))
         .route("/proxy/{token}/claude", any(proxy_claude_root_handler))

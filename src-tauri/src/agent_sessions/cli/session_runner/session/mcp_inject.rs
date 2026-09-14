@@ -55,20 +55,51 @@ impl CodexMcpProfileFile {
 }
 
 impl SessionMcpServers {
-    pub(super) fn resolve(
+    pub(super) fn resolve_with_connection(
         working_dir: &str,
         agent_definition_id: Option<&str>,
+        connection: Option<McpServerConfig>,
     ) -> Result<Self, SessionMcpPolicyError> {
         let policy = SessionMcpPolicy::resolve(agent_definition_id)?;
+        let loaded = McpConfigFile::load_merged_with_workspace_scope(
+            Some(Path::new(working_dir)),
+            policy.load_workspace_resources,
+        );
+        if let Some(connection) = connection {
+            let config =
+                loaded.map_err(|message| SessionMcpPolicyError::ConfigLoadFailed { message })?;
+            return Self::with_connection(
+                config,
+                &policy.disabled_servers,
+                &policy.disabled_tools,
+                connection,
+            );
+        }
         Self::from_load_result(
-            McpConfigFile::load_merged_with_workspace_scope(
-                Some(Path::new(working_dir)),
-                policy.load_workspace_resources,
-            ),
+            loaded,
             &policy.disabled_servers,
             &policy.disabled_tools,
             policy.requires_mcp_config,
         )
+    }
+
+    fn with_connection(
+        mut config: McpConfigFile,
+        disabled_servers: &HashSet<String>,
+        disabled_tools: &HashSet<String>,
+        connection: McpServerConfig,
+    ) -> Result<Self, SessionMcpPolicyError> {
+        // Run the same Agent policy as all other servers; never overwrite a
+        // user-defined server or silently drop the purchased connection.
+        if config.mcp_servers.contains_key("org2_market") {
+            return Err(SessionMcpPolicyError::ConnectionUnavailable);
+        }
+        config.mcp_servers.insert("org2_market".into(), connection);
+        let resolved = Self::from_config(config, disabled_servers, disabled_tools);
+        if !resolved.servers.contains_key("org2_market") {
+            return Err(SessionMcpPolicyError::ConnectionUnavailable);
+        }
+        Ok(resolved)
     }
 
     fn from_load_result(
@@ -453,6 +484,7 @@ impl SessionMcpPolicy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum SessionMcpPolicyError {
     InvalidAgentDefinitionId,
+    ConnectionUnavailable,
     UnknownAgentDefinition { id: String },
     ConfigLoadFailed { message: String },
 }
@@ -460,6 +492,7 @@ pub(super) enum SessionMcpPolicyError {
 impl std::fmt::Display for SessionMcpPolicyError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::ConnectionUnavailable => write!(formatter, "CLI_MCP_POLICY_ERR:CONNECTION_UNAVAILABLE: connection server conflicts with the MCP configuration or Agent policy"),
             Self::InvalidAgentDefinitionId => write!(
                 formatter,
                 "CLI_MCP_POLICY_ERR:INVALID_AGENT_DEFINITION_ID: the session carries an empty agent definition id"
@@ -611,6 +644,60 @@ mod tests {
             "url": url,
         }))
         .expect("streamable HTTP config")
+    }
+
+    #[test]
+    fn connection_server_merges_into_each_native_transport_without_bypassing_policy() {
+        let connection =
+            crate::cli_managed_proxy::mcp::server_config("codex", "local-only-capability");
+        let config = || config_with(vec![("docs", stdio("docs-server"))]);
+        let resolved = SessionMcpServers::with_connection(
+            config(),
+            &HashSet::new(),
+            &HashSet::new(),
+            connection.clone(),
+        )
+        .unwrap();
+        let claude = resolved.claude_mcp_json();
+        assert_eq!(claude["mcpServers"]["docs"]["command"], "docs-server");
+        assert_eq!(claude["mcpServers"]["org2_market"]["type"], "http");
+        assert_eq!(
+            claude["mcpServers"]["org2_market"]["headers"]["Authorization"],
+            "Bearer local-only-capability"
+        );
+        let codex = resolved.codex_app_server_config().unwrap();
+        assert_eq!(
+            codex["mcp_servers"]["org2_market"]["http_headers"]["Authorization"],
+            "Bearer local-only-capability"
+        );
+        assert!(resolved
+            .codex_config_entries()
+            .iter()
+            .any(|line| line.contains("org2_market") && line.contains("http_headers")));
+        assert!(!resolved
+            .redact_secrets_from_text("failed Bearer local-only-capability")
+            .contains("local-only-capability"));
+        assert!(SessionMcpServers::with_connection(
+            config(),
+            &HashSet::from(["org2_market".into()]),
+            &HashSet::new(),
+            connection.clone()
+        )
+        .is_err());
+        assert!(SessionMcpServers::with_connection(
+            config(),
+            &HashSet::new(),
+            &HashSet::from(["mcp__org2_market__private".into()]),
+            connection.clone()
+        )
+        .is_err());
+        assert!(SessionMcpServers::with_connection(
+            config_with(vec![("org2_market", stdio("user-server"))]),
+            &HashSet::new(),
+            &HashSet::new(),
+            connection
+        )
+        .is_err());
     }
 
     #[test]

@@ -718,7 +718,10 @@ pub(crate) async fn run_session_with_ide_context(
     let additional_dirs: &[String] = session.additional_directories.as_deref().unwrap_or(&[]);
 
     let session_mcp =
-        mcp_inject::SessionMcpServers::resolve(working_dir, session.agent_definition_id.as_deref())
+        mcp_inject::SessionMcpServers::resolve_with_connection(
+            working_dir, session.agent_definition_id.as_deref(),
+            managed_execution.as_ref().and_then(|execution| execution.mcp_server.clone()),
+        )
             .map_err(|err| format!("Failed to resolve external CLI MCP policy: {err}"))?;
     // Keep the guard alive through spawn, transport retries, and finalization.
     // Its TempPath removes the secret-bearing file on success, error, or

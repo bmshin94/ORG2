@@ -26,6 +26,10 @@ pub struct Credential {
 pub trait Source: Send + Sync {
     fn namespace(&self) -> &'static str;
     fn destination(&self, selection: &str, agent: &str) -> Result<Destination, String>;
+    /// Optional stateless MCP endpoint, using this source's refreshed credential.
+    fn mcp_endpoint(&self, _selection: &str, _agent: &str) -> Result<Option<String>, String> {
+        Ok(None)
+    }
     fn credential<'a>(
         &'a self,
         selection: &'a str,

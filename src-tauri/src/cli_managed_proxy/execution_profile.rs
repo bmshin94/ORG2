@@ -21,6 +21,7 @@ impl Drop for RouteOwner {
 
 pub(crate) struct ExecutionProfile {
     pub profile: ManagedLaunchProfile,
+    pub mcp_server: Option<agent_core::mcp::config::McpServerConfig>,
     _owner: RouteOwner,
 }
 
@@ -44,12 +45,17 @@ pub(crate) async fn prepare_execution_profile(
         .ok_or("Missing source model")?;
     let context =
         resolve_proxy_context_for_selection(&agent, Some(&selection), Some(&model), String::new())?;
-    crate::dynamic_credentials::source(&selection)?.ok_or("Dynamic source required")?;
+    let mcp_enabled = crate::dynamic_credentials::source(&selection)?
+        .ok_or("Dynamic source required")?
+        .mcp_endpoint(&selection, &agent)?
+        .is_some();
     ensure_managed_proxy_running().await?;
     let id = session.session_id.clone();
-    tokio::task::spawn_blocking(move || prepare_owned(id, selection, agent, model, context))
-        .await
-        .map_err(|_| "Execution profile task failed")?
+    tokio::task::spawn_blocking(move || {
+        prepare_owned(id, selection, agent, model, context, mcp_enabled)
+    })
+    .await
+    .map_err(|_| "Execution profile task failed")?
 }
 
 fn prepare_owned(
@@ -58,6 +64,7 @@ fn prepare_owned(
     agent: String,
     model: String,
     context: super::ProxyContext,
+    mcp_enabled: bool,
 ) -> Result<Option<ExecutionProfile>, String> {
     let token = session_routes::reserve(&id, &agent, context)?;
     let mut owner = RouteOwner {
@@ -84,8 +91,10 @@ fn prepare_owned(
         &owner.token,
     )?;
     owner.cleanup_profile = true;
+    let mcp_server = mcp_enabled.then(|| super::mcp::server_config(&agent, &owner.token));
     Ok(Some(ExecutionProfile {
         profile,
+        mcp_server,
         _owner: owner,
     }))
 }
@@ -124,10 +133,22 @@ mod tests {
                     agent.into(),
                     "model".into(),
                     context(agent),
+                    true,
                 )
             };
             let first = prepare().unwrap().unwrap();
             let token = first._owner.token.clone();
+            let mcp = first.mcp_server.as_ref().expect("source MCP server");
+            assert_eq!(
+                mcp.headers.as_ref().unwrap()["Authorization"],
+                format!("Bearer {token}")
+            );
+            assert!(!first.profile.args.iter().any(|arg| arg.contains(&token)));
+            assert!(!first
+                .profile
+                .env
+                .values()
+                .any(|value| value.contains(&token)));
             assert!(session_routes::resolve(agent, &token).unwrap().is_some());
             assert!(prepare().is_err());
             let home = std::path::PathBuf::from(first.profile.env.values().next().unwrap());
@@ -164,7 +185,8 @@ mod tests {
                 "test:other".into(),
                 agent.into(),
                 "model".into(),
-                context(agent)
+                context(agent),
+                false,
             )
             .is_err());
             // A rejected reconstruction must release its reservation for a retry.

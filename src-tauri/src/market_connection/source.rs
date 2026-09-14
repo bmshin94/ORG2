@@ -192,6 +192,13 @@ impl Source for MarketSource {
             ),
         })
     }
+    fn mcp_endpoint(&self, key: &str, agent: &str) -> Result<Option<String>, String> {
+        let selection = Selection::parse(key, agent)?;
+        Ok(Some(format!(
+            "https://org2-market.fly.dev/v1/skill/mcp/{}",
+            selection.metadata.workspace_id
+        )))
+    }
     fn credential<'a>(
         &'a self,
         key: &'a str,
