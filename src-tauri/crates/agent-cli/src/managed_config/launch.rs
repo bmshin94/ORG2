@@ -5,7 +5,7 @@ use super::{
     operations::{managed_selection_for_agent_unlocked, status_for_unlocked},
     recover_pending_transaction_unlocked, target_lock, CliConfigMode,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::PathBuf};
 
 #[derive(Serialize)]
@@ -14,6 +14,10 @@ pub struct ManagedLaunchProfile {
     pub args: Vec<String>,
     pub env: BTreeMap<String, String>,
 }
+#[derive(Serialize, Deserialize)]
+struct OwnedConfig { filename: String, hash: String }
+const OWNED_CONFIG: &str = ".org2-launch-config.json";
+
 fn profile_dir(session_id: &str) -> Result<PathBuf, String> {
     if session_id.is_empty()
         || session_id.len() > 128
@@ -23,9 +27,7 @@ fn profile_dir(session_id: &str) -> Result<PathBuf, String> {
     {
         return Err("Invalid launch session".into());
     }
-    Ok(app_paths::orgii_root()
-        .join("managed-cli-launches")
-        .join(session_id))
+    Ok(app_paths::managed_cli_launch_root().join(session_id))
 }
 
 pub fn prepare(
@@ -70,6 +72,8 @@ pub fn prepare(
     // Bound abandoned profiles without introducing a background cleanup timer.
     if std::fs::read_dir(parent)
         .map_err(|e| e.to_string())?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().join(OWNED_CONFIG).exists())
         .take(256)
         .count()
         >= 256
@@ -86,6 +90,10 @@ pub fn prepare(
         }
         let config = directory.join(filename);
         file_io::write_sensitive_file_atomic(&config, content.as_bytes())?;
+        let marker = serde_json::to_vec(&OwnedConfig {
+            filename: filename.into(), hash: file_io::sha256_bytes(content.as_bytes()),
+        }).map_err(|e| e.to_string())?;
+        file_io::write_sensitive_file_atomic(&directory.join(OWNED_CONFIG), &marker)?;
         let args = if agent == "claude_code" {
             vec![
                 "--settings".into(),
@@ -102,16 +110,38 @@ pub fn prepare(
         })
     })();
     if result.is_err() {
-        let _ = std::fs::remove_dir_all(&directory);
+        // A failed preparation must not recursively delete any client data.
+        let _ = std::fs::remove_file(directory.join(filename));
+        let _ = std::fs::remove_file(directory.join(OWNED_CONFIG));
+        let _ = std::fs::remove_dir(&directory);
     }
     result
 }
 
 pub fn release(session_id: &str) -> Result<(), String> {
     let directory = profile_dir(session_id)?;
-    match std::fs::remove_dir_all(directory) {
+    let marker = directory.join(OWNED_CONFIG);
+    let bytes = match std::fs::read(&marker) {
+        Ok(bytes) => bytes,
+        // Older unmarked homes must be retained: ownership is not proven.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => return Err(e.to_string()),
+    };
+    let owned: OwnedConfig = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    if !matches!(owned.filename.as_str(), "config.toml" | "settings.json") {
+        return Err("Invalid owned launch configuration".into());
+    }
+    let config = directory.join(&owned.filename);
+    if let Some(hash) = file_io::file_hash(&config)? {
+        if hash != owned.hash { return Err("Launch configuration was externally modified".into()); }
+        std::fs::remove_file(config).map_err(|e| e.to_string())?;
+    }
+    std::fs::remove_file(marker).map_err(|e| e.to_string())?;
+    // Only an empty directory may be removed. Sessions/history and all other
+    // native state remain in their original home for later history discovery.
+    match std::fs::remove_dir(directory) {
         Ok(()) => Ok(()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) if matches!(e.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::DirectoryNotEmpty) => Ok(()),
         Err(e) => Err(e.to_string()),
     }
 }

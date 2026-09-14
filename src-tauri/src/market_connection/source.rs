@@ -70,10 +70,10 @@ impl Source for MarketSource {
         Ok(Destination {
             provider: "market".into(),
             authentication: Authentication::Bearer,
-            base_url: format!(
+            base_url: protocol_base_url(&format!(
                 "https://org2-market.fly.dev/w/{}",
                 selection.metadata.workspace_id
-            ),
+            ), agent),
         })
     }
     fn credential<'a>(
@@ -137,7 +137,7 @@ impl Source for MarketSource {
                     destination: Destination {
                         provider: "market".into(),
                         authentication: Authentication::Bearer,
-                        base_url: credential.base_url().into(),
+                        base_url: protocol_base_url(credential.base_url(), agent),
                     },
                     secret: credential.bearer().into(),
                 })
@@ -245,4 +245,11 @@ pub(super) async fn options(
     })
     .await
     .map_err(|_| "Market workspace request failed")?
+}
+
+// The generic Codex router strips its local /v1 prefix. Dynamic sources
+// therefore supply a protocol base, rather than a workspace root.
+pub(crate) fn protocol_base_url(workspace_root: &str, agent: &str) -> String {
+    let root = workspace_root.trim_end_matches('/');
+    if agent == "codex" { format!("{root}/v1") } else { root.to_owned() }
 }

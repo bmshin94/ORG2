@@ -308,6 +308,11 @@ pub(super) fn claude_projects_dirs() -> Result<Vec<PathBuf>, String> {
             &["projects"],
         ),
     );
+    dirs.extend(
+        crate::sources::imported_history::managed_roots::profile_root_children(
+            &app_paths::managed_cli_launch_root(), &["projects"],
+        ),
+    );
     Ok(dirs)
 }
 

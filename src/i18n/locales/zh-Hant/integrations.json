@@ -1,5 +1,6 @@
 {
   "marketConnection": {
+    "platformUnavailable": "目前平台不支援安全儲存憑證，暫時無法連接 Market 買家工作區",
     "authorizationSaved": "Market 授權已儲存，用戶端設定尚未完成",
     "failed": "Market 連線未完成，請重新開啟工作區連線",
     "title": "連接工作區",

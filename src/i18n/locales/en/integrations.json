@@ -1,5 +1,6 @@
 {
   "marketConnection": {
+    "platformUnavailable": "Market buyer connections are not available on this platform because secure credential storage is not supported",
     "authorizationSaved": "Market authorization saved; client setup is still required",
     "failed": "Market connection could not be completed. Open the workspace connection again.",
     "title": "Connect workspace",

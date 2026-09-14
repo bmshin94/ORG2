@@ -3,7 +3,9 @@
 use serde::Serialize;
 pub mod seller;
 #[cfg(feature = "market-connect")]
-mod source;
+mod disconnect_steps;
+#[cfg(feature = "market-connect")]
+pub(crate) mod source;
 
 pub(crate) fn register_source() -> Result<(), String> {
     #[cfg(feature = "market-connect")]
@@ -22,6 +24,8 @@ pub struct ConnectionView {
 #[derive(Serialize)]
 pub struct ModuleStatus {
     enabled: bool,
+    buyer_persistent_credentials: bool,
+    seller_temporary_authorization: bool,
     connections: Vec<ConnectionView>,
 }
 
@@ -198,6 +202,7 @@ mod enabled {
         }
     }
     pub fn begin(raw: String) -> Result<String, String> {
+        market_connect::require_buyer_credential_store()?;
         let selection =
             market_connect::parse_selection(&raw).ok_or("invalid_market_connection_link")?;
         owner()
@@ -214,6 +219,8 @@ mod enabled {
         Ok(())
     }
     pub async fn complete(raw: String) -> Result<ConnectionView, String> {
+        // Also gate cold callbacks before consuming or exchanging a code.
+        market_connect::require_buyer_credential_store()?;
         let redemption = owner()
             .lock()
             .map_err(|_| "market_connection_unavailable")?
@@ -277,18 +284,17 @@ mod enabled {
                 .lock()
                 .map_err(|_| "market_connection_unavailable")?;
             let mut records = read_index()?;
-            if !records.contains(&metadata) {
-                return Err("Market authorization is missing".into());
-            }
-            // All external changes are checked before removing a usable grant.
-            agent_cli::managed_config::restore_if_selected(&agent, &key)?;
-            let scope = app_paths::orgii_root().to_string_lossy().into_owned();
-            market_connect::Grant::remove(&scope, &metadata)?;
+            // Prepare the intended index before cleanup; retain unrelated entries.
             records.retain(|record| record != &metadata);
-            let bytes =
-                serde_json::to_vec(&records).map_err(|_| "market_connection_index_invalid")?;
-            agent_cli::managed_config::write_cli_profile_file_atomic(&index_path(), &bytes)
-                .map_err(|_| "market_connection_index_unavailable".into())
+            let bytes = serde_json::to_vec(&records)
+                .map_err(|_| "market_connection_index_invalid")?;
+            let scope = app_paths::orgii_root().to_string_lossy().into_owned();
+            super::disconnect_steps::disconnect_steps(
+                || agent_cli::managed_config::restore_if_selected(&agent, &key).map(|_| ()),
+                || market_connect::Grant::remove(&scope, &metadata).map_err(String::from),
+                || agent_cli::managed_config::write_cli_profile_file_atomic(&index_path(), &bytes)
+                    .map_err(|_| "market_connection_index_unavailable".into()),
+            )
         })
         .await
         .map_err(|_| "market_connection_unavailable")?
@@ -297,6 +303,8 @@ mod enabled {
         tokio::task::spawn_blocking(|| {
             Ok(ModuleStatus {
                 enabled: true,
+                buyer_persistent_credentials: market_connect::buyer_credential_store_supported(),
+                seller_temporary_authorization: true,
                 connections: read_index()?
                     .into_iter()
                     .map(|record| {
@@ -331,6 +339,8 @@ mod enabled {
     pub async fn status() -> Result<ModuleStatus, String> {
         Ok(ModuleStatus {
             enabled: false,
+            buyer_persistent_credentials: false,
+            seller_temporary_authorization: false,
             connections: Vec::new(),
         })
     }

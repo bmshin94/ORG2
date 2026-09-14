@@ -140,3 +140,36 @@ it("reopens a matching saved profile as configured and disconnects its exact ent
   expect(api.disconnect).toHaveBeenCalledWith(connection, "ent_one");
   expect(close).toHaveBeenCalledOnce();
 });
+
+it.each(["offline", "pending", "expired"])(
+  "keeps local disconnect available when purchases are %s",
+  async (state) => {
+    const key =
+      "market:" +
+      Buffer.from(
+        JSON.stringify({ metadata: connection, entitlement_id: "ent_one" })
+      ).toString("base64url");
+    api.config.mockResolvedValue({
+      ...config,
+      mode: "orgii_managed",
+      selectedProvider: "market",
+      selectedKeyId: key,
+      selectedModel: "gpt-test",
+    });
+    if (state === "offline")
+      api.entries.mockRejectedValue(new Error("offline"));
+    else if (state === "pending")
+      api.entries.mockReturnValue(new Promise(() => {}));
+    else api.entries.mockResolvedValue([]);
+    api.disconnect.mockResolvedValue(undefined);
+    await act(async () =>
+      root.render(
+        createElement(ConnectionDialog, { connection, onClose: () => {} })
+      )
+    );
+    expect(button("marketConnection.disconnect").disabled).toBe(false);
+    await act(async () => button("marketConnection.disconnect").click());
+    expect(api.disconnect).toHaveBeenCalledWith(connection, "ent_one");
+    expect(api.apply).not.toHaveBeenCalled();
+  }
+);

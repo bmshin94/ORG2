@@ -74,9 +74,21 @@ export function handleMarketConnectionUrl(raw: string): boolean {
       } else {
         throw new Error("invalid_market_connection_link");
       }
-    } catch {
-      // Native errors are sanitized; do not log the callback or nested IPC cause.
-      Message.error(i18n.t("integrations:marketConnection.failed"));
+    } catch (error) {
+      // Inspect only the known capability code; never display callback/IPC data.
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : "";
+      Message.error(
+        i18n.t(
+          message.includes("market_buyer_credential_store_unavailable")
+            ? "integrations:marketConnection.platformUnavailable"
+            : "integrations:marketConnection.failed"
+        )
+      );
     } finally {
       busy = false;
       const next = queuedCallback;

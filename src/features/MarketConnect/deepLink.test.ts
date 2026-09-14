@@ -82,3 +82,18 @@ describe("installed ORG2 Market handoff", () => {
     );
   });
 });
+
+it("reports unsupported buyer credential storage without opening authorization", async () => {
+  vi.clearAllMocks();
+  mocks.invoke.mockRejectedValueOnce(
+    new Error("market_buyer_credential_store_unavailable")
+  );
+  handleMarketConnectionUrl(selection);
+  await vi.waitFor(() =>
+    expect(mocks.error).toHaveBeenCalledWith(
+      "integrations:marketConnection.platformUnavailable"
+    )
+  );
+  expect(mocks.open).not.toHaveBeenCalled();
+  expect(mocks.success).not.toHaveBeenCalled();
+});
