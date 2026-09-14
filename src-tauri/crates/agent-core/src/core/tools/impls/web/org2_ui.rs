@@ -36,13 +36,11 @@ impl Tool for Org2UiTool {
         let request_id = if ctx.call_id.is_empty() {
             uuid::Uuid::new_v4().to_string()
         } else {
-            format!(
-                "{:x}",
-                Sha256::digest(
-                    format!("{}:{}{}", ctx.session_id.len(), ctx.session_id, ctx.call_id)
-                        .as_bytes()
-                )
-            )
+            // Call IDs are scoped to a turn; another turn may reuse one.
+            let identity =
+                serde_json::to_vec(&(&ctx.session_id, &ctx.turn_intent_id, &ctx.call_id))
+                    .expect("host identity strings serialize");
+            format!("{:x}", Sha256::digest(identity))
         };
         let call = agent_tools::prepare(self.0, params, Some(&target), &request_id)
             .map_err(ToolError::InvalidParams)?;
@@ -182,12 +180,19 @@ mod tests {
         let mut ctx = CallContext::trusted_sde();
         ctx.session_id = "calling-session".into();
         ctx.call_id = "host-call".into();
+        ctx.turn_intent_id = "turn-one".into();
         let result: Value =
             serde_json::from_str(&tool.execute_text(args.clone(), &ctx).await.unwrap()).unwrap();
         let replay: Value =
-            serde_json::from_str(&tool.execute_text(args, &ctx).await.unwrap()).unwrap();
+            serde_json::from_str(&tool.execute_text(args.clone(), &ctx).await.unwrap()).unwrap();
         assert_eq!(result, replay);
         assert_eq!(count.load(Ordering::SeqCst), 1);
+        ctx.turn_intent_id = "turn-two".into();
+        let next_turn: Value =
+            serde_json::from_str(&tool.execute_text(args, &ctx).await.unwrap()).unwrap();
+        assert_ne!(next_turn["requestId"], result["requestId"]);
+        assert_eq!(next_turn["status"], "applied");
+        assert_eq!(count.load(Ordering::SeqCst), 2);
         let receipt_tool = Org2UiTool(Kind::Result);
         let receipt_args = json!({"requestId":result["requestId"]});
         assert_eq!(
