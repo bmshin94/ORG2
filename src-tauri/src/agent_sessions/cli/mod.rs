@@ -17,6 +17,7 @@ pub mod hook_approvals;
 pub mod interactions;
 mod interactions_protocol;
 pub mod launch_profile_store;
+pub(crate) mod mcp_config;
 mod native_ir;
 pub mod native_materializer;
 mod native_store;

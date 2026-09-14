@@ -1,4 +1,5 @@
 mod execution_profile;
+mod tui_mcp;
 pub(crate) mod mcp;
 pub(crate) use execution_profile::prepare_execution_profile;
 mod session_routes;
@@ -1234,7 +1235,8 @@ pub async fn cli_config_prepare_launch(agent_name: String, selection: String, mo
             return Err("Launch session does not match the client".into());
         }
         if model.is_empty() || model.len() > 256 { return Err("Invalid launch model".into()); }
-        crate::dynamic_credentials::source(&selection)?.ok_or("Dynamic credential source required")?;
+        let mcp_enabled = crate::dynamic_credentials::source(&selection)?.ok_or("Dynamic credential source required")?
+            .mcp_endpoint(&selection, &agent_name)?.is_some();
         let context = resolve_proxy_context_for_selection(&agent_name, Some(&selection), Some(&model), String::new())?;
         let restoring = session.credential_source.is_some();
         // Validate the source above before persisting its non-secret identity.
@@ -1248,14 +1250,32 @@ pub async fn cli_config_prepare_launch(agent_name: String, selection: String, mo
             let saved = crate::agent_sessions::cli::persistence::credential_source(&session_id)?
                 .ok_or("Session credential source was not persisted")?;
             if saved != selection { return Err("Session credential source changed".into()); }
-            if restoring {
+            let mut profile = if restoring {
                 agent_cli::managed_config::launch::restore_with_proxy_token(
                     &agent_name, &model, &session_id,
                     &agent_cli::managed_config::managed_proxy_url(), &token)
             } else {
                 agent_cli::managed_config::launch::prepare_with_proxy_token(
                     &agent_name, &selection, &model, &session_id, Some(&token))
+            }?;
+            if mcp_enabled {
+                let attached = (|| {
+                    let working_dir = session.worktree_path.as_deref()
+                        .filter(|path| !path.is_empty() && std::path::Path::new(path).is_dir())
+                        .or(session.repo_path.as_deref()).ok_or("Missing session workspace")?;
+                    let files = tui_mcp::prepare(&agent_name, working_dir,
+                        session.agent_definition_id.as_deref(), mcp::server_config(&agent_name, &token), &mut profile)?;
+                    session_routes::attach_mcp(&token, files)
+                })();
+                if let Err(error) = attached {
+                    // Only remove the configuration proven owned by this launch.
+                    // Native histories remain in the retained home.
+                    agent_cli::managed_config::launch::release(&session_id)
+                        .map_err(|cleanup| format!("{error}; launch cleanup failed: {cleanup}"))?;
+                    return Err(error);
+                }
             }
+            Ok(profile)
         })();
         if result.is_err() { session_routes::release(&session_id)?; }
         result

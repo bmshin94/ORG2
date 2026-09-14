@@ -12,6 +12,7 @@ struct Route {
     session: String,
     agent: String,
     context: ProxyContext,
+    _mcp_files: Option<super::tui_mcp::Files>,
 }
 #[derive(Default)]
 struct Routes {
@@ -38,6 +39,7 @@ impl Routes {
                 session: session.into(),
                 agent: agent.into(),
                 context,
+                _mcp_files: None,
             },
         );
         Ok(token)
@@ -52,8 +54,17 @@ impl Routes {
             .map(|route| Some(route.context.clone()))
             .ok_or_else(|| "Client session route is unavailable".into())
     }
-    fn release(&mut self, session: &str) {
-        self.entries.retain(|_, route| route.session != session);
+    fn release(&mut self, session: &str) -> Vec<Route> {
+        let tokens: Vec<_> = self
+            .entries
+            .iter()
+            .filter(|(_, route)| route.session == session)
+            .map(|(token, _)| token.clone())
+            .collect();
+        tokens
+            .into_iter()
+            .filter_map(|token| self.entries.remove(&token))
+            .collect()
     }
 }
 static ROUTES: OnceLock<Mutex<Routes>> = OnceLock::new();
@@ -70,10 +81,25 @@ pub(super) fn resolve(agent: &str, token: &str) -> Result<Option<ProxyContext>, 
     routes()?.resolve(agent, token)
 }
 pub(super) fn release_token(token: &str) -> Result<bool, String> {
-    Ok(routes()?.entries.remove(token).is_some())
+    let removed = routes()?.entries.remove(token);
+    // File guards drop after the registry lock is released.
+    Ok(removed.is_some())
+}
+pub(super) fn attach_mcp(token: &str, files: super::tui_mcp::Files) -> Result<(), String> {
+    let mut routes = routes()?;
+    let route = routes
+        .entries
+        .get_mut(token)
+        .ok_or("Client session route is unavailable")?;
+    if route._mcp_files.is_some() {
+        return Err("Client session MCP is already attached".into());
+    }
+    route._mcp_files = Some(files);
+    Ok(())
 }
 pub(super) fn release(session: &str) -> Result<(), String> {
-    routes()?.release(session);
+    let removed = routes()?.release(session);
+    drop(removed);
     Ok(())
 }
 

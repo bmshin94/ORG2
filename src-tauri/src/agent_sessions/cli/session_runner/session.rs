@@ -32,7 +32,7 @@ use super::oauth_setup::{
     is_cli_oauth_retry_eligible, refresh_cli_oauth_for_retry, sanitize_cli_oauth_env_for_child,
 };
 
-mod mcp_inject;
+use crate::agent_sessions::cli::mcp_config as mcp_inject;
 mod skills_resolve;
 mod spawn_retry;
 mod transport_acp;
