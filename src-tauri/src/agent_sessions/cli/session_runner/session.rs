@@ -783,6 +783,12 @@ pub(crate) async fn run_session_with_ide_context(
         cmd_parts.splice(1..1, execution.profile.args.clone());
     }
 
+    // Project registration and thread/start must use the same native store.
+    // A managed Market session owns its home, including its project catalog.
+    let codex_native_store = managed_execution.as_ref()
+        .and_then(|execution| execution.profile.env.get("CODEX_HOME"))
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| app_paths::native_transcript_home_dir().join(".codex"));
     if use_codex_app_server {
         // Native rollouts and their pagination index belong to the same store.
         // Keep CODEX_HOME account-scoped for auth/config, but use the native
@@ -791,9 +797,7 @@ pub(crate) async fn run_session_with_ide_context(
         scope_native_codex_store(
             &mut cmd_parts,
             &super::super::parsers::codex_app_server::native_codex_app_server_command(),
-            &managed_execution.as_ref().and_then(|e| e.profile.env.get("CODEX_HOME"))
-                .map(std::path::PathBuf::from)
-                .unwrap_or_else(|| app_paths::native_transcript_home_dir().join(".codex")),
+            &codex_native_store,
         );
     }
 
@@ -1016,7 +1020,7 @@ pub(crate) async fn run_session_with_ide_context(
     // Project registration belongs to the native Desktop catalog. Resolve only
     // for fresh threads; resumes retain their existing project assignment.
     let codex_project_id = if use_codex_app_server && cli_resume_id.is_none() {
-        let native_home = app_paths::native_transcript_home_dir().join(".codex");
+        let native_home = codex_native_store.clone();
         let project_root = std::path::PathBuf::from(base_working_dir);
         Some(
             tokio::task::spawn_blocking(move || {
