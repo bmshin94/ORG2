@@ -11,6 +11,7 @@ import { type TodoEntry, projectApi } from "@src/api/http/project";
 import { storePillText } from "@src/config/pillTokens";
 import { mainPaneTabsAtom } from "@src/store/workstation/tabs";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
+import { getBrowserSessionWebviewLabel } from "@src/util/platform/tauri/browserSessionLabel";
 
 export { capPillText } from "@src/config/pillTokens";
 
@@ -49,7 +50,7 @@ export function loadBrowserPillContent(tabId: string, pillPath: string): void {
     );
   const url =
     typeof mainPaneTab?.data.url === "string" ? mainPaneTab.data.url : "";
-  const webviewLabel = `browser-session-${tabId}`;
+  const webviewLabel = getBrowserSessionWebviewLabel(tabId);
 
   const promise = invoke<string>("get_full_html_document", {
     label: webviewLabel,

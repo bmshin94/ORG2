@@ -40,6 +40,7 @@ import {
 import { ROUTES } from "@src/config/routes";
 import { clearSessionAtom } from "@src/engines/SessionCore/core/atoms";
 import { preloadRouteByPath } from "@src/router/lazy/preload";
+import { navigateApp } from "@src/router/navigateApp";
 import {
   activeSessionIdAtom,
   promoteActiveSessionCreatorDraftAtom,
@@ -48,6 +49,7 @@ import {
   workstationActiveSessionIdAtom,
 } from "@src/store/session";
 import { resetChatPanelSessionSurfaceAtom } from "@src/store/ui/chatPanel/surfaceAtoms";
+import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
 // ============================================
 // Types
@@ -115,6 +117,10 @@ export function useAppNavigation(): UseAppNavigationReturn {
    */
   const navigateTo = useCallback(
     (path: string, options?: NavigateOptions) => {
+      if (isStationWindow()) {
+        navigateApp(path, options?.replace);
+        return;
+      }
       promoteActiveSessionCreatorDraft();
       preloadRouteByPath(path);
       navigate(path, {

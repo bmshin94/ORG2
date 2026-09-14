@@ -28,6 +28,12 @@ Ten-layer coverage:
 
 Unrelated database, sync, React component and provider refactors are intentionally outside scope. No production action controls were added or changed in this increment.
 
+## Integration findings
+
+The full agent-core suite exposed missing tool detail metadata and incomplete canonical-name/renderer classification for the eight new tools. The metadata now reuses each shared description for its detail text. The canonical inventory lists all eight names; the renderer ledger explicitly keeps their bounded state/receipt text in the same generic block as `control_orgii`, since it is neither a process stream nor an artifact payload. Existing full-suite assertions are retained.
+
+Integrating develop also required preserving separate reload cleanup: only main-window reload disconnects the UI broker; station-window reload uses the upstream window-scoped browser cleanup. The UI runtime fixture now supplies the upstream `isStationWindow` identity export. The four frontend suites pass 23 tests with the updated Vitest version; shared/CLI suites pass 28 tests after integration. Native boundary tests pass 3 tests; the full native suite is rerun after the metadata repair.
+
 ## Lifecycle review
 
 | Area               | Verdict | Evidence                                                                           | Change or reason kept                                                                  | Verification                                                                                                               |

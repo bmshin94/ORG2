@@ -124,14 +124,8 @@ const AgentOrgGroupProjectionView: React.FC<
       ].join(":"),
     [items, tailContentFingerprint, tailItem]
   );
-  const localSubmitKey = useMemo(
-    () =>
-      items
-        .filter((item) => item.id.startsWith("optimistic:"))
-        .map((item) => item.id)
-        .join("|") || null,
-    [items]
-  );
+  // ChatView explicitly follows before Send. Pending-row acknowledgement is
+  // projection maintenance, not a new submission or permission to move a reader.
   const {
     followTail,
     handleScroll,
@@ -142,7 +136,6 @@ const AgentOrgGroupProjectionView: React.FC<
     sessionKey: viewportSessionKey,
     contentKey,
     itemCount: items.length,
-    localSubmitKey,
   });
 
   useEffect(() => {

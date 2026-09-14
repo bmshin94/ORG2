@@ -1,30 +1,13 @@
-import { invoke } from "@tauri-apps/api/core";
-import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useAtomValue } from "jotai";
-import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import { IMPORTED_HISTORY_SOURCE_DESCRIPTORS } from "@src/api/tauri/externalHistory/imported/descriptors";
-import {
-  type CoreSessionSummary,
-  getOrgtrackSessionSummary,
-} from "@src/api/tauri/lineage";
-import { isHostedKey } from "@src/api/tauri/session";
-import AnyIcon from "@src/components/AnyIcon";
-import Button from "@src/components/Button";
-import {
-  HoverCardPanel,
-  HoverCardRow,
-} from "@src/components/HoverCard/HoverCardBase";
+import { HoverCardPanel } from "@src/components/HoverCard/HoverCardBase";
 import {
   HoverCardMetadataRow,
   HoverCardMetadataValue,
 } from "@src/components/HoverCard/HoverCardMetadataRow";
-import { HOVER_CARD } from "@src/components/HoverCard/tokens";
-import ModelIcon from "@src/components/ModelIcon";
-import { resolveAgentIcon } from "@src/config/agentIcons";
 import TaskImpactLine from "@src/features/KanbanBoard/components/TaskImpactLine";
-import type { KanbanTask } from "@src/features/KanbanBoard/types";
 import { useRepoSelection } from "@src/hooks/git/useRepoSelection";
 import { createLogger } from "@src/hooks/logger";
 import { useResolvedModelLabel } from "@src/hooks/models";
@@ -33,18 +16,10 @@ import { useKeyedCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import {
   Clock01Icon,
   FileDiffIcon,
-  FingerPrintIcon,
-  FloppyDiskIcon,
   GitCommitVerticalIcon,
   GitForkIcon,
-  GripIcon,
-  HugeiconsIcon,
-  Tick01Icon,
-  Timer01Icon,
-  WorkflowCircle05Icon,
 } from "@src/icons";
 import { workspaceGitStatusMapAtom } from "@src/store/git/gitStatusAtom";
-import type { LastModelSelection } from "@src/store/session/creatorDefaultModelAtom";
 import { sessionByIdAtom } from "@src/store/session/sessionAtom/atoms";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace/derived";
 import { copyText } from "@src/util/data/clipboard";
@@ -55,17 +30,26 @@ import {
 import { formatBranchLabel } from "@src/util/git/branchLabel";
 import { basename } from "@src/util/path";
 import { getFileManagerRevealLabelKey } from "@src/util/platform/fileManagerLabels";
-import {
-  isCliSession,
-  isHumanSession,
-} from "@src/util/session/sessionDispatch";
-import {
-  type SessionDisplayMetadata,
-  resolveSessionDisplayMetadata,
-} from "@src/util/session/sessionDisplayMetadata";
+import { isHumanSession } from "@src/util/session/sessionDispatch";
+import { resolveSessionDisplayMetadata } from "@src/util/session/sessionDisplayMetadata";
 import { formatDuration } from "@src/util/time/formatDuration";
 
-import { COPIED_FLASH_MS, formatCompactSessionId } from "./sessionIdFormat";
+import {
+  SessionHoverCardActivityRow,
+  SessionHoverCardAgentRow,
+  SessionHoverCardRepoBranchRow,
+  SessionHoverCardStorageRow,
+} from "./SessionHoverCardRows";
+import {
+  getAgentSessionInfo,
+  normalizePath,
+} from "./sessionHoverCardContentHelpers";
+import {
+  buildHoverCardImpactTask,
+  resolveHoverCardLastModel,
+} from "./sessionHoverCardDerivations";
+import { COPIED_FLASH_MS } from "./sessionIdFormat";
+import { useSessionHoverCardSources } from "./useSessionHoverCardSources";
 import {
   type SessionTurnOverview,
   useSessionTurnOverview,
@@ -73,105 +57,8 @@ import {
 
 const logger = createLogger("SessionHoverCard");
 
-interface AgentSessionInfo {
-  icon: React.ReactNode;
-  label: string;
-  textClassName?: string;
-}
-
 interface SessionHoverCardContentProps {
   sessionId: string;
-}
-
-/** Mirror of the `cli_agent_transcript_path` command payload. */
-interface CliTranscriptLocation {
-  /** True when the transcript of record lives in the CLI's native store. */
-  native: boolean;
-  /** Resolved native store path, when the imported-history cache has it. */
-  path: string | null;
-}
-
-/**
- * Minimal mirror of the `cli_agent_status` command payload (`CodeSession`,
- * camelCase). Only the bound native CLI id is read here.
- */
-interface CliAgentStatusPayload {
-  /** The CLI's own session id (e.g. Claude jsonl stem), once bound. */
-  cliSessionId?: string | null;
-}
-
-const PATH_ROW_CLASS_NAME =
-  "block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-left text-text-2 underline-offset-2 transition-colors hover:text-accent-9 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-8";
-/** Inline link used for text that sits beside other text inside a row. */
-const INLINE_LINK_CLASS_NAME =
-  "text-text-2 underline-offset-2 transition-colors hover:text-accent-9 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-8";
-/** Trailing icon-only affordance that reveals a path in the file manager. */
-const REVEAL_ICON_BUTTON_CLASS_NAME =
-  "flex shrink-0 items-center rounded text-text-4 transition-colors hover:text-accent-9 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-8";
-const COMPACT_PATH_MAX_CHARS = 44;
-
-function formatCompactPath(path: string): string {
-  const compactPath = path.replace(/^\/Users\/[^/]+/u, "~");
-  if (compactPath.length <= COMPACT_PATH_MAX_CHARS) return compactPath;
-
-  const parts = compactPath.split("/").filter(Boolean);
-  if (parts.length <= 3) return compactPath;
-
-  const prefix = compactPath.startsWith("~/") ? "~/" : "/";
-  const start = compactPath.startsWith("~/")
-    ? parts[0]
-    : parts.slice(0, 2).join("/");
-  const endParts = parts.slice(-2);
-  const end = endParts.join("/");
-  const candidate = `${prefix}${start === "~" ? "" : `${start}/`}.../${end}`;
-
-  if (candidate.length <= COMPACT_PATH_MAX_CHARS) return candidate;
-  return `${prefix}.../${parts.at(-1) ?? compactPath}`;
-}
-
-function normalizePath(path: string): string {
-  return path.replace(/\/+$/u, "");
-}
-
-/**
- * Strip the imported-history prefix (`claudecodeapp-`, `codexapp-`,
- * `cursoride-`, ...) and return the RAW source-store session id — the value
- * that matches the CLI's own tooling (Claude jsonl stem, Codex rollout id,
- * opencode `ses_` id, Cursor composer UUID). Returns `null` for
- * non-imported sessions.
- */
-function getImportedRawSessionId(sessionId: string): string | null {
-  for (const descriptor of IMPORTED_HISTORY_SOURCE_DESCRIPTORS) {
-    if (sessionId.startsWith(descriptor.prefix)) {
-      const raw = sessionId.slice(descriptor.prefix.length);
-      return raw.length > 0 ? raw : null;
-    }
-  }
-  return null;
-}
-
-function handleRevealPath(path: string): void {
-  void revealItemInDir(path).catch((error: unknown) => {
-    logger.warn("failed to reveal session path", { error, path });
-  });
-}
-
-function getAgentSessionInfo(
-  display: SessionDisplayMetadata
-): AgentSessionInfo {
-  const agentIcon = resolveAgentIcon(display.agentIconId);
-
-  return {
-    icon: (
-      <AnyIcon
-        icon={agentIcon}
-        size={HOVER_CARD.iconSize}
-        strokeWidth={HOVER_CARD.iconStrokeWidth}
-      />
-    ),
-    label: display.agentLabel,
-    textClassName: "text-text-1",
-  };
 }
 
 export const SessionHoverCardContent: React.FC<SessionHoverCardContentProps> =
@@ -197,16 +84,6 @@ export const SessionHoverCardContent: React.FC<SessionHoverCardContentProps> =
     const repoPath = session?.repoPath;
     const storagePath = session?.storagePath;
     const cliAgentType = session?.cliAgentType;
-    const [orgtrackSummary, setOrgtrackSummary] =
-      useState<CoreSessionSummary | null>(null);
-    const [transcriptLocationState, setTranscriptLocationState] = useState<{
-      sessionId: string;
-      location: CliTranscriptLocation;
-    } | null>(null);
-    const [boundCliIdState, setBoundCliIdState] = useState<{
-      sessionId: string;
-      cliSessionId: string | null;
-    } | null>(null);
     const copyUnderlyingId = useCallback(
       async (value: string) => {
         try {
@@ -224,185 +101,29 @@ export const SessionHoverCardContent: React.FC<SessionHoverCardContentProps> =
       handleCopy: handleCopyUnderlyingId,
     } = useKeyedCopyCheck(copyUnderlyingId, { durationMs: COPIED_FLASH_MS });
 
-    useEffect(() => {
-      let cancelled = false;
+    const { orgtrackSummary, transcriptLocation, underlyingSessionId } =
+      useSessionHoverCardSources({ sessionId, cliAgentType });
 
-      getOrgtrackSessionSummary(sessionId)
-        .then((summary) => {
-          if (!cancelled) setOrgtrackSummary(summary);
-        })
-        .catch((error: unknown) => {
-          logger.warn("failed to load orgtrack session summary", {
-            error,
-            sessionId,
-          });
-          if (!cancelled) setOrgtrackSummary(null);
-        });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [sessionId]);
-
-    // Native-transcript sessions keep their transcript in the CLI's own
-    // store, not sessions.db — resolve the real location for the storage row.
-    useEffect(() => {
-      let cancelled = false;
-      if (!cliAgentType) return undefined;
-
-      invoke<CliTranscriptLocation>("cli_agent_transcript_path", { sessionId })
-        .then((location) => {
-          if (!cancelled) setTranscriptLocationState({ sessionId, location });
-        })
-        .catch((error: unknown) => {
-          logger.warn("failed to resolve session transcript path", {
-            error,
-            sessionId,
-          });
-        });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [cliAgentType, sessionId]);
-
-    // Managed CLI sessions (`cliagent-*`): the bound native CLI id lives on
-    // the `code_sessions` row already returned by `cli_agent_status` — no
-    // new backend surface needed.
-    useEffect(() => {
-      let cancelled = false;
-      if (!isCliSession(sessionId)) return undefined;
-
-      invoke<CliAgentStatusPayload | null>("cli_agent_status", { sessionId })
-        .then((status) => {
-          if (!cancelled) {
-            setBoundCliIdState({
-              sessionId,
-              cliSessionId: status?.cliSessionId ?? null,
-            });
-          }
-        })
-        .catch((error: unknown) => {
-          logger.warn("failed to load bound cli session id", {
-            error,
-            sessionId,
-          });
-        });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [sessionId]);
-
-    const transcriptLocation =
-      transcriptLocationState?.sessionId === sessionId
-        ? transcriptLocationState.location
-        : null;
-
-    // The session's underlying id in its source store, for non-org2-native
-    // sessions: imported external rows expose the prefix-stripped raw id;
-    // managed CLI rows expose the bound native CLI id (null until the first
-    // turn binds one). Pure Rust-agent sessions stay null — row hidden.
-    const underlyingSessionId = useMemo(() => {
-      const importedRawId = getImportedRawSessionId(sessionId);
-      if (importedRawId) return importedRawId;
-      if (boundCliIdState?.sessionId === sessionId) {
-        return boundCliIdState.cliSessionId;
-      }
-      return null;
-    }, [boundCliIdState, sessionId]);
-
-    const lastModel: LastModelSelection | null = useMemo(() => {
-      if (humanSession) return null;
-      if (!session) return creatorDefaultLastModel;
-      if (session.importedFrom) {
-        return sessionDisplay?.modelName
-          ? {
-              model: sessionDisplay.modelName,
-              cliAgentType: sessionDisplay.cliAgentType,
-            }
-          : null;
-      }
-      const keySource = session.keySource ?? creatorDefaultLastModel?.keySource;
-      const hosted = isHostedKey(keySource);
-      return {
-        ...creatorDefaultLastModel,
-        keySource,
-        cliAgentType:
-          session.cliAgentType ?? creatorDefaultLastModel?.cliAgentType,
-        tier: session.tier ?? creatorDefaultLastModel?.tier,
-        model: hosted
-          ? undefined
-          : (session.model ?? creatorDefaultLastModel?.model),
-        listingModel: hosted
-          ? (session.model ?? creatorDefaultLastModel?.listingModel)
-          : undefined,
-        selectedAccountId:
-          session.accountId ?? creatorDefaultLastModel?.selectedAccountId,
-      };
-    }, [creatorDefaultLastModel, humanSession, session, sessionDisplay]);
+    const lastModel = useMemo(
+      () =>
+        resolveHoverCardLastModel({
+          humanSession,
+          session,
+          creatorDefaultLastModel,
+          sessionDisplay,
+        }),
+      [creatorDefaultLastModel, humanSession, session, sessionDisplay]
+    );
 
     const { label: resolvedModelLabel, title: resolvedModelTitle } =
       useResolvedModelLabel(lastModel, []);
     const modelLabel = humanSession ? null : resolvedModelLabel;
     const modelTitle = humanSession ? null : resolvedModelTitle;
 
-    const impactTask = useMemo<KanbanTask | null>(() => {
-      if (!session) return null;
-      const sourceFilesChanged =
-        session.filesChanged && session.filesChanged > 0
-          ? session.filesChanged
-          : (session.touchedFiles?.length ?? 0);
-      const sourceLinesAdded = session.linesAdded ?? 0;
-      const sourceLinesRemoved = session.linesRemoved ?? 0;
-      const hasSummaryImpact = Boolean(
-        orgtrackSummary &&
-        (orgtrackSummary.filesChanged > 0 ||
-          orgtrackSummary.linesAdded > 0 ||
-          orgtrackSummary.linesRemoved > 0 ||
-          orgtrackSummary.relatedCommits > 0)
-      );
-      const filesChanged = hasSummaryImpact
-        ? (orgtrackSummary?.filesChanged ?? 0)
-        : sourceFilesChanged;
-      const linesAdded = hasSummaryImpact
-        ? (orgtrackSummary?.linesAdded ?? 0)
-        : sourceLinesAdded;
-      const linesRemoved = hasSummaryImpact
-        ? (orgtrackSummary?.linesRemoved ?? 0)
-        : sourceLinesRemoved;
-      const relatedCommits = hasSummaryImpact
-        ? (orgtrackSummary?.relatedCommits ?? 0)
-        : 0;
-      const committedRatePercent = hasSummaryImpact
-        ? (orgtrackSummary?.committedRatePercent ?? 0)
-        : 0;
-      if (
-        filesChanged === 0 &&
-        linesAdded === 0 &&
-        linesRemoved === 0 &&
-        relatedCommits === 0
-      ) {
-        return null;
-      }
-
-      return {
-        id: session.session_id,
-        title: session.name || session.session_id,
-        status: "in_progress",
-        impact: {
-          filesChanged,
-          linesAdded,
-          linesRemoved,
-          relatedCommits,
-          committedFiles: Math.round(
-            (filesChanged * committedRatePercent) / 100
-          ),
-          committedRatePercent,
-          touchedFiles: session.touchedFiles,
-        },
-      };
-    }, [orgtrackSummary, session]);
+    const impactTask = useMemo(
+      () => buildHoverCardImpactTask(session, orgtrackSummary),
+      [orgtrackSummary, session]
+    );
 
     if (!session) return null;
     const resolvedSessionDisplay =
@@ -465,100 +186,20 @@ export const SessionHoverCardContent: React.FC<SessionHoverCardContentProps> =
 
     return (
       <HoverCardPanel title={session.name || session.session_id}>
-        <HoverCardRow
-          icon={agentSessionInfo.icon}
-          iconClassName={agentSessionInfo.textClassName}
-        >
-          <div
-            className={`flex min-w-0 items-center truncate ${agentSessionInfo.textClassName ?? "text-text-2"}`}
-            title={
-              modelTitle
-                ? `${agentSessionInfo.label} · ${modelTitle}`
-                : undefined
-            }
-          >
-            <span className="truncate">{agentSessionInfo.label}</span>
-            {modelLabel && (
-              <>
-                <span className="mx-1 text-text-4">·</span>
-                <span className="mr-1 flex shrink-0 items-center">
-                  {modelIconName ? (
-                    <ModelIcon
-                      modelName={modelIconName}
-                      agentType={modelIconAgent}
-                      size={HOVER_CARD.iconSize}
-                    />
-                  ) : (
-                    <HugeiconsIcon
-                      icon={GripIcon}
-                      data-icon="grip"
-                      size={HOVER_CARD.iconSize}
-                      strokeWidth={HOVER_CARD.iconStrokeWidth}
-                    />
-                  )}
-                </span>
-                <span className="truncate">{modelLabel}</span>
-              </>
-            )}
-          </div>
-        </HoverCardRow>
+        <SessionHoverCardAgentRow
+          agentSessionInfo={agentSessionInfo}
+          modelLabel={modelLabel}
+          modelTitle={modelTitle}
+          modelIconName={modelIconName}
+          modelIconAgent={modelIconAgent}
+        />
         {(repoName || branchLabel) && (
-          <HoverCardMetadataRow
-            icon={WorkflowCircle05Icon}
-            dataIcon="git-branch"
-          >
-            <div
-              className="flex min-w-0 items-center text-text-2"
-              data-testid="session-hover-repo-branch"
-              title={[repoName, branchLabel].filter(Boolean).join(" · ")}
-            >
-              {repoName &&
-                (repoPath ? (
-                  <Button
-                    layout="custom"
-                    appearance="custom"
-                    htmlType="button"
-                    className={`${INLINE_LINK_CLASS_NAME} min-w-0 truncate text-left ${
-                      branchLabel ? "max-w-[calc(50%-6px)]" : "flex-1"
-                    }`}
-                    data-testid="session-hover-workspace"
-                    title={`${revealLabel} · ${repoPath}`}
-                    aria-label={`${revealLabel} ${repoPath}`}
-                    onClick={() => handleRevealPath(repoPath)}
-                  >
-                    {repoName}
-                  </Button>
-                ) : (
-                  <span
-                    className={
-                      branchLabel
-                        ? "max-w-[calc(50%-6px)] min-w-0 truncate"
-                        : "min-w-0 flex-1 truncate"
-                    }
-                    data-testid="session-hover-workspace"
-                    title={repoName}
-                  >
-                    {repoName}
-                  </span>
-                ))}
-              {repoName && branchLabel && (
-                <span className="mx-1 shrink-0 text-text-4">·</span>
-              )}
-              {branchLabel && (
-                <span
-                  className={
-                    repoName
-                      ? "max-w-[calc(50%-6px)] min-w-0 truncate"
-                      : "min-w-0 flex-1 truncate"
-                  }
-                  data-testid="session-hover-branch"
-                  title={branchLabel}
-                >
-                  {branchLabel}
-                </span>
-              )}
-            </div>
-          </HoverCardMetadataRow>
+          <SessionHoverCardRepoBranchRow
+            repoName={repoName}
+            repoPath={repoPath}
+            branchLabel={branchLabel}
+            revealLabel={revealLabel}
+          />
         )}
         {worktreeBranchLabel && worktreeBranchLabel !== branchLabel && (
           <HoverCardMetadataRow icon={GitForkIcon} dataIcon="git-fork">
@@ -572,93 +213,13 @@ export const SessionHoverCardContent: React.FC<SessionHoverCardContentProps> =
           </HoverCardMetadataRow>
         )}
         {(underlyingSessionId || storageRowPath || isNativeTranscript) && (
-          <HoverCardRow
-            icon={
-              underlyingSessionId ? (
-                <HugeiconsIcon
-                  icon={FingerPrintIcon}
-                  data-icon="fingerprint"
-                  size={HOVER_CARD.iconSize}
-                  strokeWidth={HOVER_CARD.iconStrokeWidth}
-                />
-              ) : (
-                <HugeiconsIcon
-                  icon={FloppyDiskIcon}
-                  data-icon="save"
-                  size={HOVER_CARD.iconSize}
-                  strokeWidth={HOVER_CARD.iconStrokeWidth}
-                />
-              )
-            }
-          >
-            <div className="flex min-w-0 items-center gap-1">
-              {underlyingSessionId ? (
-                <Button
-                  layout="custom"
-                  appearance="custom"
-                  htmlType="button"
-                  className={`${PATH_ROW_CLASS_NAME} min-w-0 flex-1`}
-                  title={underlyingSessionId}
-                  aria-label={`${t("common:actions.copy")} ${t(
-                    "history.detail.sessionId"
-                  )}`}
-                  onClick={() => handleCopyUnderlyingId(underlyingSessionId)}
-                >
-                  <HoverCardMetadataValue label={t("history.detail.sessionId")}>
-                    {formatCompactSessionId(underlyingSessionId)}
-                  </HoverCardMetadataValue>
-                  {copiedUnderlyingId === underlyingSessionId && (
-                    <HugeiconsIcon
-                      icon={Tick01Icon}
-                      data-icon="check"
-                      size={HOVER_CARD.compactIconSize}
-                      strokeWidth={HOVER_CARD.feedbackStrokeWidth}
-                      className="ml-1 inline-block align-[-1px] text-success-6"
-                      aria-hidden="true"
-                    />
-                  )}
-                </Button>
-              ) : storageRowPath ? (
-                <Button
-                  layout="custom"
-                  appearance="custom"
-                  htmlType="button"
-                  className={`${PATH_ROW_CLASS_NAME} min-w-0 flex-1`}
-                  title={`${revealLabel} · ${storageRowPath}`}
-                  aria-label={`${revealLabel} ${storageRowPath}`}
-                  onClick={() => handleRevealPath(storageRowPath)}
-                >
-                  {formatCompactPath(storageRowPath)}
-                </Button>
-              ) : (
-                <span className="min-w-0 flex-1 truncate text-text-2">
-                  {t("history.detail.cliNativeStore")}
-                </span>
-              )}
-              {/* Transcript file for a row already spoken for by the id. */}
-              {underlyingSessionId && storageRowPath && (
-                <Button
-                  variant="tertiary"
-                  appearance="ghost"
-                  size="mini"
-                  iconOnly
-                  icon={
-                    <HugeiconsIcon
-                      icon={FloppyDiskIcon}
-                      data-icon="save"
-                      size={HOVER_CARD.compactIconSize}
-                      strokeWidth={HOVER_CARD.iconStrokeWidth}
-                    />
-                  }
-                  htmlType="button"
-                  className={REVEAL_ICON_BUTTON_CLASS_NAME}
-                  title={`${revealLabel} · ${storageRowPath}`}
-                  aria-label={`${revealLabel} ${storageRowPath}`}
-                  onClick={() => handleRevealPath(storageRowPath)}
-                />
-              )}
-            </div>
-          </HoverCardRow>
+          <SessionHoverCardStorageRow
+            underlyingSessionId={underlyingSessionId}
+            storageRowPath={storageRowPath}
+            copiedUnderlyingId={copiedUnderlyingId}
+            onCopyUnderlyingId={handleCopyUnderlyingId}
+            revealLabel={revealLabel}
+          />
         )}
         {impactTask && (
           <HoverCardMetadataRow icon={FileDiffIcon} dataIcon="file-diff">
@@ -667,34 +228,10 @@ export const SessionHoverCardContent: React.FC<SessionHoverCardContentProps> =
         )}
         {(workedDurationLabel ||
           (turnOverview && turnOverview.turnCount > 0)) && (
-          <HoverCardMetadataRow icon={Timer01Icon} dataIcon="timer">
-            <div
-              className="truncate text-text-2"
-              title={workedDurationLabel ?? undefined}
-            >
-              <span className="text-text-3">
-                {workedDurationLabel
-                  ? t("history.detail.agentWorked")
-                  : t("history.detail.rounds")}
-              </span>
-              {workedDurationLabel && (
-                <>
-                  <span className="mx-1 text-text-4">·</span>
-                  <span>{workedDurationLabel}</span>
-                </>
-              )}
-              {turnOverview && turnOverview.turnCount > 0 && (
-                <>
-                  <span className="mx-1 text-text-4">·</span>
-                  <span>
-                    {t("history.detail.roundCount", {
-                      count: turnOverview.turnCount,
-                    })}
-                  </span>
-                </>
-              )}
-            </div>
-          </HoverCardMetadataRow>
+          <SessionHoverCardActivityRow
+            workedDurationLabel={workedDurationLabel}
+            turnOverview={turnOverview}
+          />
         )}
         <HoverCardMetadataRow icon={Clock01Icon} dataIcon="clock">
           <div className="truncate text-text-2" title={createdLabel}>

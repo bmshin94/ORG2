@@ -17,6 +17,7 @@
  * handler so a crash or programmatic close still reports.
  */
 import { emitTo } from "@tauri-apps/api/event";
+import { Window } from "@tauri-apps/api/window";
 
 import type { StationMode } from "@src/types/ui/workstation";
 import { invokeTauri } from "@src/util/platform/tauri/init";
@@ -30,9 +31,32 @@ export const STATION_WINDOW_SESSION_EVENT = "orgii:station-window:session";
  *  Payload: the window label. Must match `STATION_WINDOW_CLOSED_EVENT` in
  *  the Rust `app-window` crate. */
 export const STATION_WINDOW_CLOSED_EVENT = "orgii:station-window-closed";
+export const STATION_WINDOW_READY_EVENT = "orgii:station-window:ready";
+export const STATION_WINDOW_MAIN_NAVIGATE_EVENT =
+  "orgii:station-window:main-navigate";
+
+export interface StationWindowMainNavigation {
+  path: string;
+  replace?: boolean;
+  action?: "open-kanban";
+}
+
+/** Chat/settings surfaces belong to main; never mount its shell in a station. */
+export async function navigateInMainWindow(
+  payload: StationWindowMainNavigation
+): Promise<void> {
+  await emitTo("main", STATION_WINDOW_MAIN_NAVIGATE_EVENT, payload);
+  const main = await Window.getByLabel("main");
+  if (main) {
+    await main.show();
+    await main.setFocus();
+  }
+}
 
 export interface StationWindowSessionPayload {
   sessionId: string | null;
+  /** Only explicit detach/open requests reset the selected station. */
+  stationMode?: StationMode;
 }
 
 export interface OpenStationWindowOptions {
@@ -70,12 +94,26 @@ export async function openStationWindow(
  */
 export async function emitStationWindowSession(
   stationMode: StationMode,
-  sessionId: string | null
+  sessionId: string | null,
+  options?: { selectStation?: boolean }
 ): Promise<void> {
-  const payload: StationWindowSessionPayload = { sessionId };
+  const payload: StationWindowSessionPayload = {
+    sessionId,
+    ...(options?.selectStation ? { stationMode } : {}),
+  };
   await emitTo(
     getStationWindowLabel(stationMode),
     STATION_WINDOW_SESSION_EVENT,
     payload
+  );
+}
+
+export async function requestStationWindowSession(
+  stationMode: StationMode
+): Promise<void> {
+  await emitTo(
+    "main",
+    STATION_WINDOW_READY_EVENT,
+    getStationWindowLabel(stationMode)
   );
 }

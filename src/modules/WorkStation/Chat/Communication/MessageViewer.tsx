@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import type { AgentOrgRunMemberView, AgentOrgTask } from "@src/api/tauri/agent";
 import Button from "@src/components/Button";
+import { ViewportLayoutMutationProvider } from "@src/components/ViewportLayoutMutationContext";
 import { useChatSearchPanePresentation } from "@src/engines/ChatPanel/ChatHistory/hooks/chatSearch";
 import { useTranscriptViewport } from "@src/engines/ChatPanel/ChatHistory/viewport/useTranscriptViewport";
 import { useStreamingDeltaForSession } from "@src/engines/SessionCore";
@@ -306,82 +307,84 @@ export const MessageViewer: React.FC<MessageViewerProps> = ({
   }
 
   return (
-    <div
-      className="allow-select-deep flex h-full w-full flex-col"
-      data-testid="communication-message-viewer"
-    >
+    <ViewportLayoutMutationProvider value={preserveForLayoutMutation}>
       <div
-        ref={setScrollContainer}
-        data-testid="communication-message-scroll-container"
-        tabIndex={0}
-        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4"
-        onScroll={() => handleScroll()}
+        className="allow-select-deep flex h-full w-full flex-col"
+        data-testid="communication-message-viewer"
       >
         <div
-          className={
-            viewMode === "chat"
-              ? "flex flex-col gap-2 pt-3 pb-[120px]"
-              : "flex flex-col gap-6 pt-4 pb-[120px]"
-          }
+          ref={setScrollContainer}
+          data-testid="communication-message-scroll-container"
+          tabIndex={0}
+          className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4"
+          onScroll={() => handleScroll()}
         >
-          {canLoadMoreMessages && (
-            <div className="flex w-full justify-center py-1.5">
-              <Button
-                htmlType="button"
-                variant="tertiary"
-                appearance="ghost"
-                size="small"
-                icon={
-                  <HugeiconsIcon
-                    icon={UnfoldMoreIcon}
-                    data-icon="chevrons-up-down"
-                    size={14}
-                  />
-                }
-                data-testid="communication-load-more-messages"
-                onClick={handleLoadMoreMessages}
-              >
-                {t("simulator.replay.messages.divider.loadEarlierMessages", {
-                  ns: "sessions",
-                  count: hiddenMessageCount,
-                })}
-              </Button>
-            </div>
-          )}
-          {visibleMessages.map((message, index) => {
-            const isLastVisibleMessage = index === totalVisibleMessages - 1;
-            const previousMessage = visibleMessages[index - 1];
-            const showChrome =
-              isLastVisibleMessage ||
-              !shouldGroupWithPreviousMessage(message, previousMessage);
-            return (
-              <React.Fragment key={message.eventId}>
-                {showNewMessageDivider && isLastVisibleMessage && (
-                  <NewMessageDivider
-                    label={t("simulator.replay.messages.divider.newMessage", {
-                      ns: "sessions",
-                    })}
-                  />
-                )}
-                <BubbleWrapper
-                  message={message}
-                  viewMode={viewMode}
-                  index={index}
-                  total={totalVisibleMessages}
-                  onMessageClick={onMessageClick}
-                  onNavigateToTodoList={
-                    setViewMode ? handleNavigateToTodoList : undefined
+          <div
+            className={
+              viewMode === "chat"
+                ? "flex flex-col gap-2 pt-3 pb-[120px]"
+                : "flex flex-col gap-6 pt-4 pb-[120px]"
+            }
+          >
+            {canLoadMoreMessages && (
+              <div className="flex w-full justify-center py-1.5">
+                <Button
+                  htmlType="button"
+                  variant="tertiary"
+                  appearance="ghost"
+                  size="small"
+                  icon={
+                    <HugeiconsIcon
+                      icon={UnfoldMoreIcon}
+                      data-icon="chevrons-up-down"
+                      size={14}
+                    />
                   }
-                  showChrome={showChrome}
-                  orgMembers={orgMembers}
-                  activeSearchEventId={activeSearchEventId}
-                />
-              </React.Fragment>
-            );
-          })}
+                  data-testid="communication-load-more-messages"
+                  onClick={handleLoadMoreMessages}
+                >
+                  {t("simulator.replay.messages.divider.loadEarlierMessages", {
+                    ns: "sessions",
+                    count: hiddenMessageCount,
+                  })}
+                </Button>
+              </div>
+            )}
+            {visibleMessages.map((message, index) => {
+              const isLastVisibleMessage = index === totalVisibleMessages - 1;
+              const previousMessage = visibleMessages[index - 1];
+              const showChrome =
+                isLastVisibleMessage ||
+                !shouldGroupWithPreviousMessage(message, previousMessage);
+              return (
+                <React.Fragment key={message.eventId}>
+                  {showNewMessageDivider && isLastVisibleMessage && (
+                    <NewMessageDivider
+                      label={t("simulator.replay.messages.divider.newMessage", {
+                        ns: "sessions",
+                      })}
+                    />
+                  )}
+                  <BubbleWrapper
+                    message={message}
+                    viewMode={viewMode}
+                    index={index}
+                    total={totalVisibleMessages}
+                    onMessageClick={onMessageClick}
+                    onNavigateToTodoList={
+                      setViewMode ? handleNavigateToTodoList : undefined
+                    }
+                    showChrome={showChrome}
+                    orgMembers={orgMembers}
+                    activeSearchEventId={activeSearchEventId}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </ViewportLayoutMutationProvider>
   );
 };
 

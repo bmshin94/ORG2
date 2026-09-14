@@ -14,7 +14,7 @@ vi.mock("react-i18next", () => ({
 describe("BuilderTypesPanel", () => {
   let container: HTMLDivElement;
   let root: Root;
-  let onBack: ReturnType<typeof vi.fn>;
+  let onBack: ReturnType<typeof vi.fn<() => void>>;
 
   beforeEach(() => {
     container = document.createElement("div");

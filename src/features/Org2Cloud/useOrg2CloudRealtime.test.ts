@@ -103,27 +103,27 @@ vi.mock("./org2CloudSyncEngine", () => ({
 
 interface ControlledSubscription {
   options: Org2CloudSubscribeOptions;
-  unsubscribe: ReturnType<typeof vi.fn>;
+  unsubscribe: ReturnType<typeof vi.fn<() => void>>;
 }
 
 interface ControlledPresence {
   options: Org2CloudPresenceOptions;
   handle: Org2CloudPresenceHandle & {
-    update: ReturnType<typeof vi.fn>;
-    send: ReturnType<typeof vi.fn>;
-    leave: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn<() => void>>;
+    send: ReturnType<typeof vi.fn<() => void>>;
+    leave: ReturnType<typeof vi.fn<() => void>>;
   };
 }
 
 interface ControlledConnection extends Org2CloudRealtimeConnection {
   subscriptions: ControlledSubscription[];
   presences: ControlledPresence[];
-  setAuth: ReturnType<typeof vi.fn>;
-  dispose: ReturnType<typeof vi.fn>;
+  setAuth: ReturnType<typeof vi.fn<() => void>>;
+  dispose: ReturnType<typeof vi.fn<() => void>>;
 }
 
 const connections: ControlledConnection[] = [];
-const broadcasterUnregisters: Array<ReturnType<typeof vi.fn>> = [];
+const broadcasterUnregisters: Array<ReturnType<typeof vi.fn<() => void>>> = [];
 
 function createControlledConnection(): ControlledConnection {
   const subscriptions: ControlledSubscription[] = [];

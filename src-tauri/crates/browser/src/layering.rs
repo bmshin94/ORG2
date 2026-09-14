@@ -49,7 +49,7 @@ pub fn browser_webview_bring_to_front(app: AppHandle, label: String) -> Result<(
     reorder_webview(&app, &label, Order::Front)
 }
 
-/// Reorder every inline browser webview at once. Used by the global overlay
+/// Reorder every inline browser webview in the calling window. Used by the global overlay
 /// layering bridge (React-side) to drop all inline webviews behind portals
 /// when any overlay opens, and lift them back on close.
 ///
@@ -62,6 +62,7 @@ pub fn browser_webview_bring_to_front(app: AppHandle, label: String) -> Result<(
 #[tauri::command]
 pub fn browser_webviews_set_layer_for_all(
     app: AppHandle,
+    window: tauri::Window,
     send_to_back: bool,
 ) -> Result<Vec<String>, String> {
     let order = if send_to_back {
@@ -71,12 +72,12 @@ pub fn browser_webviews_set_layer_for_all(
     };
     let mut reordered: Vec<String> = Vec::new();
 
-    for label in app.webviews().keys() {
-        if !label.starts_with("browser-session-") {
+    for (label, webview) in app.webviews() {
+        if !label.starts_with("browser-session-") || webview.window().label() != window.label() {
             continue;
         }
 
-        if let Err(err) = reorder_webview(&app, label, order) {
+        if let Err(err) = reorder_webview(&app, &label, order) {
             // Not fatal — a webview might be mid-teardown. Log and continue.
             eprintln!(
                 "[browser_webviews_set_layer_for_all] '{}' skipped: {}",

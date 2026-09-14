@@ -125,7 +125,7 @@ describe("StationModePill", () => {
     expect(agentStation?.classList.contains("bg-primary-6")).toBe(true);
   });
 
-  it("opens the other station's window instead of switching inside a station window", () => {
+  it("switches both directions in the same detached window without opening another", () => {
     vi.mocked(getCurrentStationWindowMode).mockReturnValue("agent-station");
     renderPill();
 
@@ -141,8 +141,10 @@ describe("StationModePill", () => {
     expect(openStationInNewWindowMock).not.toHaveBeenCalled();
 
     act(() => myStation?.click());
-    expect(openStationInNewWindowMock).toHaveBeenCalledWith("my-station");
-    // The pinned window keeps its own station.
+    expect(store.get(stationModeAtom)).toBe("my-station");
+    expect(myStation?.getAttribute("aria-pressed")).toBe("true");
+    act(() => agentStation?.click());
     expect(store.get(stationModeAtom)).toBe("agent-station");
+    expect(openStationInNewWindowMock).not.toHaveBeenCalled();
   });
 });

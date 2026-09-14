@@ -2,10 +2,13 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useBeforeViewportLayoutMutation } from "@src/components/ViewportLayoutMutationContext";
 import type { SessionEvent } from "@src/engines/SessionCore/core/types";
 
 import { MessageViewer } from "../MessageViewer";
 import type { MessageEntry } from "../types";
+
+let observedLayoutCallback: unknown;
 
 const { useTranscriptViewportMock } = vi.hoisted(() => ({
   useTranscriptViewportMock: vi.fn(
@@ -54,8 +57,10 @@ vi.mock("@src/icons", () => ({
 }));
 vi.mock("../EmptyState", () => ({ EmptyState: () => null }));
 vi.mock("../MessageViewer/MessageBubbleRenderer", () => ({
-  BubbleWrapper: ({ message }: { message: MessageEntry }) =>
-    React.createElement("div", { "data-message-id": message.eventId }),
+  BubbleWrapper: ({ message }: { message: MessageEntry }) => {
+    observedLayoutCallback = useBeforeViewportLayoutMutation();
+    return React.createElement("div", { "data-message-id": message.eventId });
+  },
   NewMessageDivider: () => null,
 }));
 vi.mock("../MessageViewer/planDocViewModel", () => ({
@@ -88,6 +93,21 @@ function message(id: string): MessageEntry {
 describe("MessageViewer viewport ownership", () => {
   beforeEach(() => {
     useTranscriptViewportMock.mockClear();
+  });
+
+  it("provides its layout mutation callback to expandable message descendants", () => {
+    renderToStaticMarkup(
+      React.createElement(MessageViewer, {
+        messages: [message("message-a")],
+        viewMode: "chat",
+        sessionReplayMode: "interactive",
+        currentEventId: "event-a",
+      })
+    );
+    expect(observedLayoutCallback).toBe(
+      useTranscriptViewportMock.mock.results.at(-1)!.value
+        .preserveForLayoutMutation
+    );
   });
 
   it("keeps replay cursor changes inside one reader-intent session", () => {

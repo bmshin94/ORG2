@@ -5,10 +5,9 @@
 //!
 //! ## Single-owner model
 //!
-//! My Station is the sole owner of every native webview. Control Tower is a
-//! secondary viewer that publishes its container rect via `controlTowerBrowserRectAtom`
-//! (frontend) so My Station can reposition the webview into CT's pane when CT
-//! is active. CT never calls `create_inline_webview` itself.
+//! Each app window owns its live native browser views through SharedBrowserApp.
+//! My Station and Agent Station in that document share the same owner. Detached
+//! windows use scoped labels; a view is never reused under a different parent.
 //!
 //! The ref-count registry (`WEBVIEW_REF_COUNTS`) is retained as a safety net
 //! for any future multi-caller scenario and to guard against double-close races
@@ -152,6 +151,34 @@ fn reset_ref(label: &str) {
     map.remove(label);
 }
 
+/// Native window destruction does not run React cleanup. Drop lifecycle slots
+/// owned by its scoped BrowserCore views so reopening starts with one owner.
+pub fn release_station_window_webview_state(window_label: &str) {
+    let suffix = format!("__window__{window_label}");
+    ref_counts()
+        .lock()
+        .unwrap()
+        .retain(|label, _| !label.ends_with(&suffix));
+    generations()
+        .lock()
+        .unwrap()
+        .retain(|label, _| !label.ends_with(&suffix));
+    cancelled_generations()
+        .lock()
+        .unwrap()
+        .retain(|label, _| !label.ends_with(&suffix));
+    if let Ok(Some(active)) = super::internal_browser_state::get_active_internal_browser_state() {
+        if active.label.ends_with(&suffix) {
+            let _ = super::internal_browser_state::clear_active_internal_browser_state(
+                Some(active.label),
+                Some(active.browser_session_id),
+                None,
+                Some(active.updated_at),
+            );
+        }
+    }
+}
+
 #[cfg(test)]
 fn get_ref_count(label: &str) -> u32 {
     let map = ref_counts().lock().unwrap();
@@ -206,6 +233,14 @@ pub async fn create_inline_webview(
         )
     })?;
 
+    // A reused label must belong to this parent. Reject before changing its
+    // generation or ref count so a second window cannot take over its lifecycle.
+    if let Some(existing) = app.get_webview(&label) {
+        if existing.window().label() != parent_window {
+            return Err(format!("Webview '{label}' belongs to another window"));
+        }
+    }
+
     if let Some(generation) = generation {
         set_generation(&label, generation);
     }
@@ -255,6 +290,7 @@ pub async fn create_inline_webview(
 
     let label_for_closure = label.clone();
     let app_for_closure = app.clone();
+    let parent_for_shortcuts = parent_window.clone();
 
     // Build the webview with anti-bot detection, element inspector, page agent
     // (DOM automation), and new window handling. Console/network interception is
@@ -286,7 +322,8 @@ pub async fn create_inline_webview(
 
             if new_window_url.scheme() == "orgii-shortcut" {
                 if let Some(shortcut) = new_window_url.host_str() {
-                    let _ = app_for_closure.emit(
+                    let _ = app_for_closure.emit_to(
+                        &parent_for_shortcuts,
                         "inline-webview-shortcut",
                         serde_json::json!({
                             "shortcut": shortcut,
@@ -504,15 +541,18 @@ pub fn close_inline_webview(
 ///
 /// Uses catch_unwind to handle wry panics when webviews are in invalid state.
 #[tauri::command]
-pub fn hide_all_inline_webviews(app: AppHandle) -> Result<Vec<String>, String> {
+pub fn hide_all_inline_webviews(
+    app: AppHandle,
+    window: tauri::Window,
+) -> Result<Vec<String>, String> {
     let mut hidden_labels = Vec::new();
 
     // Get all webviews in the app
     let webviews = app.webviews();
 
     for (label, webview) in webviews.iter() {
-        // Skip the main webview (it's the app itself)
-        if label == "main" {
+        // Keep the calling window's app surface and every other window intact.
+        if label == window.label() || webview.window().label() != window.label() {
             continue;
         }
 
@@ -553,15 +593,25 @@ pub fn hide_all_inline_webviews(app: AppHandle) -> Result<Vec<String>, String> {
 ///
 /// Uses catch_unwind to handle wry panics when webviews are in invalid state.
 #[tauri::command]
-pub fn close_all_inline_webviews(app: AppHandle) -> Result<Vec<String>, String> {
+pub fn close_all_inline_webviews(
+    app: AppHandle,
+    window: tauri::Window,
+) -> Result<Vec<String>, String> {
+    close_inline_webviews_for_window(app, window.label())
+}
+
+pub fn close_inline_webviews_for_window(
+    app: AppHandle,
+    window_label: &str,
+) -> Result<Vec<String>, String> {
     let mut closed_labels = Vec::new();
 
     // Get all webviews in the app
     let webviews = app.webviews();
 
     for (label, webview) in webviews.iter() {
-        // Skip the main webview (it's the app itself)
-        if label == "main" {
+        // Keep the reloading window's app surface and every other window intact.
+        if label == window_label || webview.window().label() != window_label {
             continue;
         }
 
@@ -668,6 +718,28 @@ mod tests {
         use std::sync::atomic::{AtomicU64, Ordering};
         static CTR: AtomicU64 = AtomicU64::new(0);
         format!("test-{}-{}", suffix, CTR.fetch_add(1, Ordering::Relaxed))
+    }
+
+    #[test]
+    fn closing_station_window_releases_only_its_browser_lifecycle() {
+        let owner = "app-window-station-lifecycle-test";
+        let own = format!("browser-session-lifecycle-test__window__{owner}");
+        let peer = "browser-session-lifecycle-peer__window__app-window-station-other";
+        increment_ref(&own);
+        increment_ref(peer);
+        set_generation(&own, 42);
+        set_generation(peer, 43);
+        cancel_generation(&own, Some(42));
+        release_station_window_webview_state(owner);
+        assert_eq!(get_ref_count(&own), 0);
+        assert!(!is_current_generation(&own, Some(42)));
+        assert!(!is_generation_cancelled(&own, 42));
+        assert_eq!(get_ref_count(peer), 1);
+        assert!(is_current_generation(peer, Some(43)));
+        assert_eq!(increment_ref(&own), 1);
+        assert_eq!(decrement_ref(&own), 0);
+        reset_ref(peer);
+        clear_generation(peer);
     }
 
     #[test]

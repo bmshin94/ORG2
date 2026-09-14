@@ -169,8 +169,8 @@ const reactActEnvironment = globalThis as typeof globalThis & {
 describe("WorktreeSourceSelector", () => {
   let container: HTMLDivElement;
   let root: Root;
-  let onClose: ReturnType<typeof vi.fn>;
-  let onSelect: ReturnType<typeof vi.fn>;
+  let onClose: ReturnType<typeof vi.fn<() => void>>;
+  let onSelect: ReturnType<typeof vi.fn<() => void>>;
 
   beforeAll(() => {
     reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true;

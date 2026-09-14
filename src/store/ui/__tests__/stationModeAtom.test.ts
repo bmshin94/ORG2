@@ -33,18 +33,22 @@ describe("stationModeAtom", () => {
     expect(store.get(stationModeAtom)).toBe("my-station");
   });
 
-  it("is pinned by the label in a detached station window and ignores writes", () => {
-    localStorage.setItem("stationMode", JSON.stringify("my-station"));
+  it("seeds from the label and switches locally without writing main's preference", () => {
+    localStorage.setItem("stationMode", JSON.stringify("agent-station"));
     vi.mocked(getCurrentStationWindowMode).mockReturnValue("agent-station");
     const store = createStore();
 
     expect(store.get(stationModeAtom)).toBe("agent-station");
 
     store.set(stationModeAtom, "my-station");
+    expect(store.get(stationModeAtom)).toBe("my-station");
+    store.set(stationModeAtom, (previous) =>
+      previous === "my-station" ? "agent-station" : "my-station"
+    );
     expect(store.get(stationModeAtom)).toBe("agent-station");
     // The write must not leak into the main window's persisted preference.
     expect(localStorage.getItem("stationMode")).toBe(
-      JSON.stringify("my-station")
+      JSON.stringify("agent-station")
     );
   });
 });

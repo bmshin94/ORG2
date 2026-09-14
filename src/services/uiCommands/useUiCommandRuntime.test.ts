@@ -22,6 +22,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 vi.mock("@src/util/platform/tauri/windowIdentity", () => ({
   getCurrentWindowLabel: () => mocks.label,
+  isStationWindow: () => mocks.label.startsWith("app-window-station-"),
 }));
 vi.mock("@src/util/platform/tauri/init", () => ({ invokeTauri: mocks.invoke }));
 vi.mock("@src/util/core/state/instrumentedStore", () => ({

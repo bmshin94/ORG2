@@ -63,6 +63,9 @@ pub(crate) fn handle_window_close_and_destroy(
             app_ui::broker().disconnect();
         }
         system_services::power::release_sleep_inhibitor_for_window_label(_window.label());
+        if app_window::is_station_window_label(_window.label()) {
+            browser::inline::release_station_window_webview_state(_window.label());
+        }
         notify_main_of_station_window_closed(_window);
     }
     if let tauri::WindowEvent::CloseRequested { api: _api, .. } = _event {
@@ -90,11 +93,11 @@ fn notify_main_of_station_window_closed(window: &tauri::Window) {
     if !app_window::is_station_window_label(label) {
         return;
     }
-    if let Err(error) = window.app_handle().emit_to(
-        "main",
-        app_window::STATION_WINDOW_CLOSED_EVENT,
-        label,
-    ) {
+    if let Err(error) =
+        window
+            .app_handle()
+            .emit_to("main", app_window::STATION_WINDOW_CLOSED_EVENT, label)
+    {
         tracing::warn!(label, error = %error, "[Window] failed to notify main of station window close");
     }
 }
@@ -126,10 +129,14 @@ pub(crate) fn handle_page_load(
             );
         }
     }
-    if webview.label() == "main" && matches!(payload.event(), PageLoadEvent::Started) {
-        app_ui::broker().disconnect();
+    if (webview.label() == "main" || app_window::is_station_window_label(webview.label()))
+        && matches!(payload.event(), PageLoadEvent::Started)
+    {
+        if webview.label() == "main" {
+            app_ui::broker().disconnect();
+        }
         let app = webview.app_handle().clone();
-        match browser::inline::close_all_inline_webviews(app) {
+        match browser::inline::close_inline_webviews_for_window(app, webview.window().label()) {
             Ok(closed) if !closed.is_empty() => {
                 tracing::info!(
                     count = closed.len(),

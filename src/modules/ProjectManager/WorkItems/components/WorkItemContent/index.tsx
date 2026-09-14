@@ -1,63 +1,36 @@
 import { useAtomValue } from "jotai";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import PageNotice from "@src/components/PageNotice";
-import PersonAvatar from "@src/components/PersonAvatar";
-import TabPill from "@src/components/TabPill";
 import { useWorkItemImageInsert } from "@src/hooks/project";
-import { HugeiconsIcon, Pen01Icon, RepeatIcon } from "@src/icons";
 import { builtInAgentsAtom } from "@src/modules/MainApp/AgentOrgs/store/builtInAgentsAtom";
 import { useEnsureStatusDefinitions } from "@src/modules/ProjectManager/WorkItems/hooks/useStatusDefinitions";
-import {
-  ProjectContentEditor,
-  type ProjectContentEditorRef,
-} from "@src/modules/ProjectManager/shared";
-import { IssueTimelineItems } from "@src/modules/WorkStation/CodeEditor/Panels/EditorPrimarySidebar/content/IssuesContent/IssueTimelineItems";
-import {
-  ActivityHeaderActionButton,
-  ConnectedTimelineItem,
-  MarkdownContent,
-  TimelineCard,
-  TimelineCardHeader,
-  TimelineStack,
-} from "@src/modules/shared/components/ActivityTimeline";
-import MarkdownTextareaEditor from "@src/modules/shared/components/MarkdownTextareaEditor";
-import MarkdownEditorModeSwitch from "@src/modules/shared/components/MarkdownTextareaEditor/ModeSwitch";
+import type { ProjectContentEditorRef } from "@src/modules/ProjectManager/shared";
 import {
   DetailPanelContainer,
-  PanelFooter,
   ScrollTrailTarget,
 } from "@src/modules/shared/layouts/blocks";
-import { WORK_ITEM_STATUS } from "@src/types/core/workItem";
 
 import RevisionConflictModal from "../RevisionConflictModal";
 import WorkItemContentStack from "../WorkItemContentStack";
-import WorkItemFlowHeader from "../WorkItemFlowHeader";
 import WorkItemSubItems, { useWorkItemFamily } from "../WorkItemSubItems";
 import {
   WorkItemThreadLayout,
-  type WorkItemThreadView,
   WorkItemThreadViewAction,
 } from "../WorkItemThread";
 import CustomPropertiesSection from "./CustomPropertiesSection";
 import GitHubIssueComposer from "./GitHubIssueComposer";
 import HistoryTab from "./HistoryTab";
-import { LinkedSessionsList } from "./LinkedSessionsList";
 import OutputTab from "./OutputTab";
 import QuickActionsSection from "./QuickActionsSection";
-import WorkItemHandoffNotice from "./WorkItemHandoffNotice";
-import WorkItemRunUsageSummary from "./WorkItemRunUsageSummary";
-import { normalizeLegacyEscapedMarkdown } from "./descriptionMarkdown";
-import { useGitHubIssueTimeline } from "./hooks/useGitHubIssueTimeline";
-import { useWorkItemContentState } from "./hooks/useWorkItemContentState";
-import { useWorkItemDescriptionEditing } from "./hooks/useWorkItemDescriptionEditing";
-import { useWorkItemHandoff } from "./hooks/useWorkItemHandoff";
 import {
-  resolveCreationActivityKey,
-  resolveWorkItemContentSectionPolicy,
-} from "./presentation";
-import type { SessionTab, WorkItemContentProps } from "./types";
+  WorkItemTabbedLowerSection,
+  WorkItemThreadLowerSection,
+} from "./WorkItemContentLowerSections";
+import WorkItemDescriptionSection from "./WorkItemDescriptionSection";
+import { useWorkItemContentModel } from "./hooks/useWorkItemContentModel";
+import { useWorkItemContentState } from "./hooks/useWorkItemContentState";
+import type { WorkItemContentProps } from "./types";
 
 const WorkItemContent: React.FC<WorkItemContentProps> = ({
   workItem,
@@ -151,294 +124,65 @@ const WorkItemContent: React.FC<WorkItemContentProps> = ({
     onRefreshWorkflow,
   });
 
-  const creatorName =
-    workItem.createdBy?.name ||
-    teamMembers?.find((member) => member.id === workItem.user_id)?.name ||
-    workItem.user_id ||
-    t("workItems.activity.system");
-  const resolvedFlowHeader =
-    flowHeader !== undefined ? (
-      flowHeader
-    ) : (
-      <WorkItemFlowHeader
-        workItem={workItem}
-        shortId={shortId}
-        actorName={creatorName}
-      />
-    );
-  const normalizedRawDescription =
-    normalizeLegacyEscapedMarkdown(rawDescription);
-  const displayedDescription = normalizeLegacyEscapedMarkdown(
-    resolvedDescription ?? rawDescription
-  );
-  const displayStatus = workItem.workItemStatus ?? workItem.status;
-  const isGitHubWorkItem =
-    displayStatus === WORK_ITEM_STATUS.GITHUB_OPEN ||
-    displayStatus === WORK_ITEM_STATUS.GITHUB_CLOSED;
-  const canEditDescription = isGitHubWorkItem
-    ? Boolean(githubIssueInteraction?.canEditBody)
-    : Boolean(onUpdateWorkItem);
-  const loadedGitHubTimeline = useGitHubIssueTimeline({
-    enabled: isGitHubWorkItem && !githubIssueTimeline,
-    repoPath,
-    shortId: shortId ?? workItem.shortId,
-  });
-  const githubTimeline =
-    githubIssueTimeline?.items ?? loadedGitHubTimeline.timeline;
-  const githubTimelineLoading =
-    githubIssueTimeline?.loading ?? loadedGitHubTimeline.timelineLoading;
-  const githubTimelineError =
-    githubIssueTimeline?.error ?? loadedGitHubTimeline.timelineError;
-  const githubTimelineAlert =
-    isGitHubWorkItem && !githubTimelineLoading && githubTimelineError ? (
-      <PageNotice
-        type="danger"
-        role="status"
-        dataTestId="work-item-github-timeline-alert"
-        title={t("git.issues.timelineErrorTitle", {
-          defaultValue: "GitHub activity unavailable",
-        })}
-      >
-        {githubTimelineError}
-      </PageNotice>
-    ) : null;
   const {
-    descriptionDraft,
-    descriptionHasChanges,
-    descriptionEditWorkItemId,
-    descriptionSaveErrorWorkItemId,
-    descriptionEditorMode,
-    setDescriptionEditorMode,
-    handleDescriptionDraftChange,
-    handleCancelDescription,
-    handleSaveDescription,
-    beginDescriptionEdit,
-  } = useWorkItemDescriptionEditing({
-    workItemId: workItem.session_id,
+    creatorName,
+    resolvedFlowHeader,
+    normalizedRawDescription,
     displayedDescription,
     isGitHubWorkItem,
-    githubIssueInteraction,
-    onCommitDescription: handleDescriptionChange,
-  });
-  const [threadViewSelection, setThreadViewSelection] = useState<{
-    workItemId: string;
-    view: WorkItemThreadView;
-  }>({
-    workItemId: workItem.session_id,
-    view: "overview",
-  });
-  const sectionPolicy = resolveWorkItemContentSectionPolicy(
-    presentation,
-    Boolean(workItem.proofOfWork)
-  );
-  const isThread = presentation === "thread";
-  const activeThreadView =
-    !isGitHubWorkItem && threadViewSelection.workItemId === workItem.session_id
-      ? threadViewSelection.view
-      : "overview";
-  const isEditingThreadDescription =
-    isThread && descriptionEditWorkItemId === workItem.session_id;
-  const {
-    handoff,
-    canRespondToHandoff,
-    handoffError,
-    handoffResponseUnavailableReason,
-    respondingHandoff,
-    respondToHandoff,
-  } = useWorkItemHandoff({
+    canEditDescription,
+    githubTimeline,
+    githubTimelineLoading,
+    githubTimelineError,
+    githubTimelineAlert,
+    descriptionEditing,
+    setThreadViewSelection,
+    sectionPolicy,
+    isThread,
+    activeThreadView,
+    isEditingThreadDescription,
+    handoffNotice,
+  } = useWorkItemContentModel({
     workItem,
+    presentation,
+    flowHeader,
+    teamMembers,
+    githubIssueTimeline,
+    githubIssueInteraction,
+    repoPath,
     shortId,
     projectSlug,
+    onUpdateWorkItem,
     onTransitionHandoff,
     onRefreshWorkflow,
     currentUser,
     currentUserMemberIds,
-    teamMembers,
-    t,
+    rawDescription,
+    resolvedDescription,
+    handleDescriptionChange,
   });
-  const handoffNotice = handoff ? (
-    <WorkItemHandoffNotice
-      handoff={handoff}
-      canRespond={canRespondToHandoff}
-      error={handoffError}
-      unavailableReason={handoffResponseUnavailableReason}
-      responding={respondingHandoff}
-      onAccept={() => respondToHandoff("accept")}
-      onReturn={(reason) => respondToHandoff("return", reason)}
-    />
-  ) : null;
-
-  const descriptionActions =
-    isThread && canEditDescription && !isEditingThreadDescription ? (
-      <ActivityHeaderActionButton
-        icon={
-          <HugeiconsIcon
-            icon={Pen01Icon}
-            data-icon="pencil"
-            size={12}
-            aria-hidden
-          />
-        }
-        label={t("common:actions.edit")}
-        onClick={beginDescriptionEdit}
-        data-testid="work-item-description-edit"
-      />
-    ) : null;
 
   const descriptionSection = (
-    <TimelineStack>
-      <ConnectedTimelineItem
-        isLast={
-          !isGitHubWorkItem ||
-          (!githubTimelineLoading && githubTimeline.length === 0)
-        }
-        trailLabel={
-          isThread
-            ? workItem.name ||
-              t("common:labels.description", {
-                defaultValue: "Description",
-              })
-            : undefined
-        }
-      >
-        <TimelineCard
-          copyBody={normalizedRawDescription}
-          actions={descriptionActions}
-          className={isThread ? "shadow-xs" : undefined}
-          footer={
-            canEditDescription &&
-            (isThread ? isEditingThreadDescription : descriptionHasChanges) ? (
-              <PanelFooter
-                left={
-                  isGitHubWorkItem || isThread ? (
-                    <MarkdownEditorModeSwitch
-                      mode={descriptionEditorMode}
-                      onModeChange={setDescriptionEditorMode}
-                      disabled={githubIssueInteraction?.updatingBody}
-                      dataTestId="work-item-description-mode-switch"
-                    />
-                  ) : undefined
-                }
-                secondaryActions={[
-                  {
-                    label: t("common:actions.cancel"),
-                    onClick: handleCancelDescription,
-                    disabled: githubIssueInteraction?.updatingBody,
-                    dataTestId: "work-item-description-cancel",
-                  },
-                ]}
-                primaryAction={{
-                  label: t("common:actions.save"),
-                  onClick: () => void handleSaveDescription(),
-                  disabled:
-                    !descriptionHasChanges ||
-                    githubIssueInteraction?.updatingBody,
-                  loading: githubIssueInteraction?.updatingBody,
-                  dataTestId: "work-item-description-save",
-                }}
-              />
-            ) : null
-          }
-          header={
-            <TimelineCardHeader
-              avatar={
-                <PersonAvatar
-                  size={18}
-                  name={creatorName}
-                  src={workItem.createdBy?.avatar}
-                  color={workItem.createdBy?.color}
-                />
-              }
-              actor={creatorName}
-              action={t(resolveCreationActivityKey(isGitHubWorkItem))}
-              timestamp={workItem.created_time}
-            />
-          }
-        >
-          {workItem.routineSource && (
-            <div
-              className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-fill-2 px-2 py-0.5 text-[11px] text-text-3"
-              data-testid="work-item-routine-source-chip"
-              title={workItem.routineSource.firedAt}
-            >
-              <HugeiconsIcon
-                icon={RepeatIcon}
-                data-icon="repeat"
-                size={11}
-                className="shrink-0"
-              />
-              <span className="truncate">
-                {t("workItems.fromRoutine", {
-                  name: workItem.routineSource.routineName,
-                })}
-              </span>
-            </div>
-          )}
-          {(isGitHubWorkItem || isThread) && !isEditingThreadDescription ? (
-            <MarkdownContent
-              body={displayedDescription}
-              emptyText="No description provided."
-              fadeFrom="from-chat-pane"
-            />
-          ) : isGitHubWorkItem ? (
-            <>
-              <MarkdownTextareaEditor
-                value={descriptionDraft}
-                onChange={handleDescriptionDraftChange}
-                onSubmit={() => void handleSaveDescription()}
-                placeholder={t("workItems.descriptionPlaceholder")}
-                minHeight={120}
-                maxHeight={360}
-                appearance="plain"
-                editable={
-                  canEditDescription && !githubIssueInteraction?.updatingBody
-                }
-                mode={descriptionEditorMode}
-                onModeChange={setDescriptionEditorMode}
-                dataTestId="github-issue-description-editor"
-              />
-              {descriptionSaveErrorWorkItemId === workItem.session_id ? (
-                <p className="px-3 pb-2 text-xs text-danger-6" role="status">
-                  {t("common:git.issues.composer.bodyUpdateFailed")}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <ProjectContentEditor
-              key={workItem.session_id}
-              ref={editorRef}
-              title={workItem.name || ""}
-              onTitleChange={handleTitleChange}
-              initialDescription={descriptionDraft}
-              onDescriptionChange={handleDescriptionDraftChange}
-              onImageInsert={canEditDescription ? handleImageInsert : undefined}
-              titleVisible={titleVisible}
-              separatorVisible={false}
-              descriptionPlaceholder={t("workItems.descriptionPlaceholder")}
-              editable={canEditDescription}
-              descriptionMinHeight={isThread ? 120 : 200}
-              descriptionMaxHeight={isThread ? 360 : 600}
-              descriptionMode={isThread ? descriptionEditorMode : undefined}
-              onDescriptionModeChange={
-                isThread ? setDescriptionEditorMode : undefined
-              }
-              descriptionClassName="no-bottom-border"
-              repoPath={repoPath}
-              className="w-full"
-              dataTestId="work-item-content-editor"
-            />
-          )}
-        </TimelineCard>
-      </ConnectedTimelineItem>
-      {isGitHubWorkItem ? (
-        <IssueTimelineItems
-          timeline={githubTimeline}
-          timelineLoading={githubTimelineLoading}
-          timelineError={githubTimelineError}
-          navigationEnabled={isThread}
-        />
-      ) : null}
-    </TimelineStack>
+    <WorkItemDescriptionSection
+      workItem={workItem}
+      isThread={isThread}
+      isGitHubWorkItem={isGitHubWorkItem}
+      canEditDescription={canEditDescription}
+      isEditingThreadDescription={isEditingThreadDescription}
+      githubIssueInteraction={githubIssueInteraction}
+      githubTimeline={githubTimeline}
+      githubTimelineLoading={githubTimelineLoading}
+      githubTimelineError={githubTimelineError}
+      creatorName={creatorName}
+      normalizedRawDescription={normalizedRawDescription}
+      displayedDescription={displayedDescription}
+      descriptionEditing={descriptionEditing}
+      handleTitleChange={handleTitleChange}
+      handleImageInsert={handleImageInsert}
+      editorRef={editorRef}
+      titleVisible={titleVisible}
+      repoPath={repoPath}
+    />
   );
 
   const subItemsSection = !isGitHubWorkItem ? (
@@ -560,75 +304,35 @@ const WorkItemContent: React.FC<WorkItemContentProps> = ({
   );
 
   const tabbedLowerSection = (
-    <section data-testid="work-item-lower-tabs-section">
-      <div className="mb-4 flex items-center justify-start">
-        <TabPill
-          tabs={sessionTabItems}
-          activeTab={activeSessionTab}
-          onChange={(key) => setActiveSessionTab(key as SessionTab)}
-          variant="simple"
-          fillWidth={false}
-          size="large"
-        />
-      </div>
-
-      {activeSessionTab === "session" &&
-        (sectionPolicy.showLinkedSessionsTable ? (
-          <LinkedSessionsList
-            sessions={workItem.linkedSessions ?? []}
-            originSession={workItem.originSession}
-            shortId={shortId ?? workItem.shortId}
-            projectSlug={projectSlug}
-            orgId={orgId}
-            activeAgentSessionId={activeAgentSessionId}
-            onOpenSession={onOpenSession}
-          />
-        ) : null)}
-
-      {activeSessionTab === "output" && outputContent}
-
-      {activeSessionTab === "history" && historyContent}
-    </section>
+    <WorkItemTabbedLowerSection
+      workItem={workItem}
+      shortId={shortId ?? workItem.shortId}
+      projectSlug={projectSlug}
+      orgId={orgId}
+      activeAgentSessionId={activeAgentSessionId}
+      onOpenSession={onOpenSession}
+      sectionPolicy={sectionPolicy}
+      outputContent={outputContent}
+      sessionTabItems={sessionTabItems}
+      activeSessionTab={activeSessionTab}
+      setActiveSessionTab={setActiveSessionTab}
+      historyContent={historyContent}
+    />
   );
 
   const threadLowerSection = (
-    <>
-      {!isGitHubWorkItem && !sectionPolicy.showInlineOutput ? (
-        <WorkItemRunUsageSummary
-          projectSlug={projectSlug}
-          orgId={orgId}
-          shortId={shortId ?? workItem.shortId}
-          navigationEnabled={isThread}
-          onOpenSession={onOpenSession}
-        />
-      ) : null}
-      {(workItem.linkedSessions?.length ?? 0) > 0 || workItem.originSession ? (
-        <ScrollTrailTarget
-          enabled={isThread}
-          label={t("workItems.linkedSessions.title", {
-            defaultValue: "Sessions",
-          })}
-        >
-          <LinkedSessionsList
-            sessions={workItem.linkedSessions ?? []}
-            originSession={workItem.originSession}
-            shortId={shortId ?? workItem.shortId}
-            projectSlug={projectSlug}
-            orgId={orgId}
-            activeAgentSessionId={activeAgentSessionId}
-            onOpenSession={onOpenSession}
-          />
-        </ScrollTrailTarget>
-      ) : null}
-      {sectionPolicy.showInlineOutput ? (
-        <ScrollTrailTarget
-          enabled={isThread}
-          label={t("common:labels.output", { defaultValue: "Output" })}
-        >
-          {outputContent}
-        </ScrollTrailTarget>
-      ) : null}
-    </>
+    <WorkItemThreadLowerSection
+      workItem={workItem}
+      shortId={shortId ?? workItem.shortId}
+      projectSlug={projectSlug}
+      orgId={orgId}
+      activeAgentSessionId={activeAgentSessionId}
+      onOpenSession={onOpenSession}
+      sectionPolicy={sectionPolicy}
+      outputContent={outputContent}
+      isThread={isThread}
+      isGitHubWorkItem={isGitHubWorkItem}
+    />
   );
 
   if (isThread) {

@@ -354,7 +354,7 @@ const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
         // Reset position ready state and calculate position
         setPositionReady(false);
         // Use RAF to ensure tooltip is rendered before calculating position
-        requestAnimationFrame(() => {
+        const frameId = requestAnimationFrame(() => {
           updatePosition();
         });
 
@@ -362,6 +362,7 @@ const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
         window.addEventListener("resize", updatePosition);
 
         return () => {
+          cancelAnimationFrame(frameId);
           window.removeEventListener("scroll", updatePosition, true);
           window.removeEventListener("resize", updatePosition);
         };

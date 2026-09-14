@@ -1,30 +1,9 @@
-import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useBrowserAddToConversationAction } from "@src/engines/ChatPanel/hooks/useBrowserAddToConversationAction";
-import {
-  COMPOSER_COMMAND_ACTIONS,
-  buildNativeSlashItems,
-  composerActionFor,
-  parseNativeSlashCommand,
-} from "@src/engines/ChatPanel/hooks/useInputArea/nativeSlashCommands";
 import { useSessionCreator } from "@src/engines/SessionCore/hooks/session/useSessionCreator";
-import type {
-  SessionLaunchSuccessInfo,
-  SessionLaunchWorkItemContext,
-} from "@src/engines/SessionCore/hooks/session/useSessionCreator/useSessionLaunch/types";
-import {
-  org2CloudOrgsAtom,
-  sidebarActiveCloudOrgIdAtom,
-} from "@src/features/Org2Cloud/org2CloudOrgsAtom";
 import { useRepoSelection } from "@src/hooks/git/useRepoSelection";
 import { createLogger } from "@src/hooks/logger";
 import { useAgentOrgs } from "@src/modules/MainApp/AgentOrgs/hooks/useAgentOrgs";
@@ -45,29 +24,28 @@ import {
   sessionTargetKindAtom,
 } from "@src/store/session";
 import { creatorComposerPositionAtom } from "@src/store/session/creatorComposerPositionAtom";
-import { openCategoryPickerSignalAtom } from "@src/store/session/openCategoryPickerAtom";
-import { tuiModeAtom } from "@src/store/session/tuiModeAtom";
 import { modelPickerStyleAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
-import {
-  chatPanelSelectedProjectAtom,
-  chatPanelSelectedProjectOrgAtom,
-  chatPanelSelectedWorkItemAtom,
-} from "@src/store/ui/chatPanel/selectionAtoms";
 import { getRustAgentType } from "@src/util/session/sessionDispatch";
 
-import { CliLaunchModeSwitch } from "../../components";
 import ChatPanelHumanSessionHeader from "./ChatPanelHumanSessionHeader";
 import SessionCreatorChatPanelView from "./SessionCreatorChatPanelView";
-import { deriveChatPanelLaunchContext } from "./deriveLaunchContext";
+import {
+  buildChatPanelEditorAreaProps,
+  buildChatPanelSessionInfoProps,
+} from "./chatPanelViewProps";
 import "./index.scss";
-import { shouldUseCreatorComposerBreathing } from "./repoChromeLayout";
 import type { SessionCreatorChatPanelSingleProps } from "./types";
 import { useChatPanelAgentPresentation } from "./useChatPanelAgentPresentation";
 import { useChatPanelBranchSync } from "./useChatPanelBranchSync";
+import { useChatPanelCategoryPicker } from "./useChatPanelCategoryPicker";
+import { useChatPanelCliChrome } from "./useChatPanelCliChrome";
+import { useChatPanelComposerGate } from "./useChatPanelComposerGate";
 import { useChatPanelDraftRestore } from "./useChatPanelDraftRestore";
 import { useChatPanelHeroPresentation } from "./useChatPanelHeroPresentation";
 import { useChatPanelLaunch } from "./useChatPanelLaunch";
+import { useChatPanelLaunchContext } from "./useChatPanelLaunchContext";
 import { useChatPanelMultiRunner } from "./useChatPanelMultiRunner";
+import { useChatPanelNativeControlItems } from "./useChatPanelNativeControlItems";
 import { useChatPanelWorktreeSelection } from "./useChatPanelWorktreeSelection";
 import { useCliAgentConfiguration } from "./useCliAgentConfiguration";
 import { useSessionCreatorChatPanelHandlers } from "./useSessionCreatorChatPanelHandlers";
@@ -127,23 +105,14 @@ const SessionCreatorChatPanelContent: React.FC<
   const [humanNoteHasContent, setHumanNoteHasContent] = useState(
     Boolean(initialContent?.trim())
   );
+  const cli = useCliAgentConfiguration({ cliAgentType, isCliMode });
   const {
     cliComposerEnabled,
-    cliLaunchMode,
     defaultTuiMode,
     enabledCliAgentList,
-    handleCliLaunchModeChange,
     selectedCliAgent,
-    selectedCliAgentGuiSupportKnown,
-    selectedCliAgentSupportsGui,
-    selectedCliVersion,
-    isSelectedCliVersionRefreshing,
-    muteSelectedCliVersionAlertUntilNextVersion,
-    refreshSelectedCliVersion,
     setAgentSelectionLaunchMode,
-    showCliVersionOutdatedAlert,
-    snoozeSelectedCliVersionAlert,
-  } = useCliAgentConfiguration({ cliAgentType, isCliMode });
+  } = cli;
 
   const {
     repos: reposList,
@@ -155,115 +124,24 @@ const SessionCreatorChatPanelContent: React.FC<
     loadBranchList,
     forceRefreshRepos,
   } = useRepoSelection({ autoLoad: true });
-  const [attachedWorkItemContext, setAttachedWorkItemContext] =
-    useState<SessionLaunchWorkItemContext | null>(null);
-  const selectedProjectOrgContext = useAtomValue(
-    chatPanelSelectedProjectOrgAtom
-  );
-  const selectedProjectContext = useAtomValue(chatPanelSelectedProjectAtom);
-  const selectedWorkItemContext = useAtomValue(chatPanelSelectedWorkItemAtom);
-  const activeCloudOrgId = useAtomValue(sidebarActiveCloudOrgIdAtom);
-  const cloudOrgs = useAtomValue(org2CloudOrgsAtom);
-  const activeCloudOrg = useMemo(
-    () => cloudOrgs.find((org) => org.orgId === activeCloudOrgId) ?? null,
-    [activeCloudOrgId, cloudOrgs]
-  );
-  const chatPanelLaunchContext = useMemo(
-    () =>
-      deriveChatPanelLaunchContext({
-        activeCloudOrg,
-        selectedProjectContext,
-        selectedProjectOrgContext,
-        selectedWorkItemContext,
-      }),
-    [
-      activeCloudOrg,
-      selectedProjectContext,
-      selectedProjectOrgContext,
-      selectedWorkItemContext,
-    ]
-  );
-  const store = useStore();
-
-  const handleSessionStart = useCallback(
-    (info: SessionLaunchSuccessInfo) => {
-      setAttachedWorkItemContext(null);
-      if (defaultTuiMode && !isHumanMode) {
-        store.set(tuiModeAtom(info.sessionId), true);
-      }
-      onSessionStart?.(info);
-    },
-    [
-      onSessionStart,
-      defaultTuiMode,
-      isHumanMode,
-      setAttachedWorkItemContext,
-      store,
-    ]
-  );
-
-  const nativeControlItems = useMemo(
-    () =>
-      isHumanMode || multiRunnerLauncher
-        ? []
-        : buildNativeSlashItems(
-            [
-              ...Object.keys(COMPOSER_COMMAND_ACTIONS),
-              "model",
-              "effort",
-              "fast",
-              "plan",
-            ],
-            (name) =>
-              t("input.nativeCommandDescription", {
-                command: `/${name}`,
-                provider: "ORG2",
-              }),
-            "builtin"
-          ),
-    [isHumanMode, multiRunnerLauncher, t]
-  );
-
   const {
-    fileInputRef,
-    composerInputRef,
-    uploadedFiles,
-    isLoading,
-    advancedConfig,
-    setAdvancedConfig,
-    effectiveSource,
-    repos,
-    showContextMenu,
-    setShowContextMenu,
-    atSearchQuery,
-    setAtSearchQuery,
-    handleFileUpload,
-    handleRemoveFile,
-    handleUploadClick,
-    handleContentChange,
-    handleAtMention,
-    handleAtMentionClose,
-    handleAtSelect,
-    handleLaunch: originalHandleLaunch,
-    handleBranchChange,
-    attachedImages,
-    handleImagePaste,
-    removeImage,
-    clearImages,
-    editorContent,
-    canLaunch,
-    slashCommandKeyboardHandlerRef,
-    showSlashMenu,
-    slashQuery,
-    handleSlashCommand,
-    handleSlashCommandClose,
-    handleSlashSelect,
-    handleModeSelect,
-    currentMode,
-    includeProjectMode,
-    filteredSlashItems,
-    slashLoading,
-  } = useSessionCreator({
+    attachedWorkItemContext,
+    setAttachedWorkItemContext,
+    chatPanelLaunchContext,
+    handleSessionStart,
+  } = useChatPanelLaunchContext({
+    defaultTuiMode,
+    isHumanMode,
+    onSessionStart,
+  });
+
+  const nativeControlItems = useChatPanelNativeControlItems({
+    isHumanMode,
+    multiRunnerLauncher,
+    t,
+  });
+
+  const creator = useSessionCreator({
     extraSlashItems: nativeControlItems,
     initialContent,
     launchMode,
@@ -275,6 +153,23 @@ const SessionCreatorChatPanelContent: React.FC<
     onLaunchSuccess: handleSessionStart,
     cliAgentSupportsGui: cliComposerEnabled,
   });
+  const {
+    fileInputRef,
+    composerInputRef,
+    isLoading,
+    advancedConfig,
+    setAdvancedConfig,
+    effectiveSource,
+    repos,
+    handleFileUpload,
+    handleContentChange,
+    handleLaunch: originalHandleLaunch,
+    handleBranchChange,
+    attachedImages,
+    clearImages,
+    editorContent,
+    canLaunch,
+  } = creator;
 
   const gitInstalled = useAtomValue(gitDependencyInstalledAtom);
   const showMissingGitAlert = gitInstalled === false;
@@ -284,13 +179,14 @@ const SessionCreatorChatPanelContent: React.FC<
   const agentName = useAtomValue(agentNameAtom);
   const agentIconId = useAtomValue(agentIconIdAtom);
 
+  const worktree = useChatPanelWorktreeSelection({ effectiveSource });
   const {
     runningLocation,
     activeWorktreeSelection,
     clearWorktreeLaunchSelection,
     handleWorktreeLocationChange,
     handleWorktreeSourceSelect,
-  } = useChatPanelWorktreeSelection({ effectiveSource });
+  } = worktree;
 
   const agentVariant = getRustAgentType(selectedAgentDefId);
   const isRustMode = dispatchCategory === "rust_agent";
@@ -300,33 +196,13 @@ const SessionCreatorChatPanelContent: React.FC<
   const isCursorIdeMode = dispatchCategory === "cursor_ide";
   const isCliTuiMode = isCliMode && !cliComposerEnabled;
 
-  const [isCategorySelectorOpen, setIsCategorySelectorOpen] = useState(false);
-  const openCategoryPickerSignal = useAtomValue(openCategoryPickerSignalAtom);
-  const prevOpenCategoryPickerSignalRef = useRef(openCategoryPickerSignal);
-  useEffect(() => {
-    if (openCategoryPickerSignal !== prevOpenCategoryPickerSignalRef.current) {
-      prevOpenCategoryPickerSignalRef.current = openCategoryPickerSignal;
-      // Defer out of the effect body to avoid synchronous setState cascades
-      queueMicrotask(() => setIsCategorySelectorOpen(true));
-    }
-  }, [openCategoryPickerSignal]);
-
-  const agentHeroRef = useRef<HTMLButtonElement>(null);
+  const { isCategorySelectorOpen, setIsCategorySelectorOpen, agentHeroRef } =
+    useChatPanelCategoryPicker();
   const modelPickerStyle = useAtomValue(modelPickerStyleAtom);
 
   // ── Handlers via extracted hook ───────────────────────────────────────────
 
-  const {
-    screenPickerMonitors,
-    setScreenPickerMonitors,
-    handleShareScreenClick,
-    handleScreenPicked,
-    handleRepoChange,
-    handleRepoSelectForSession,
-    requestModelOpen,
-    setRequestModelOpen,
-    handleCategorySelect,
-  } = useSessionCreatorChatPanelHandlers({
+  const handlers = useSessionCreatorChatPanelHandlers({
     reposList,
     effectiveSource,
     advancedConfig,
@@ -335,6 +211,13 @@ const SessionCreatorChatPanelContent: React.FC<
     forceRefreshRepos,
     onRepoScopeChange: clearWorktreeLaunchSelection,
   });
+  const {
+    screenPickerMonitors,
+    setScreenPickerMonitors,
+    handleShareScreenClick,
+    handleScreenPicked,
+    handleCategorySelect,
+  } = handlers;
 
   const handleAgentPickerSelect = useCallback(
     (selection: AgentSelection) => {
@@ -361,46 +244,34 @@ const SessionCreatorChatPanelContent: React.FC<
     loadBranchList,
   });
 
-  const { handleContentChangeWithTracking, initialRestoreText } =
-    useChatPanelDraftRestore({
-      composerInputRef,
-      handleContentChange,
-      setHumanNoteHasContent,
-    });
+  const draft = useChatPanelDraftRestore({
+    composerInputRef,
+    handleContentChange,
+    setHumanNoteHasContent,
+  });
+  const { handleContentChangeWithTracking } = draft;
 
-  const { handleLaunch, humanTitle, setHumanTitle, humanCreating } =
-    useChatPanelLaunch({
-      isHumanMode,
-      hasAttachedImages: attachedImages.length > 0,
-      isCliTuiMode,
-      composerInputRef,
-      effectiveSource,
-      handleContentChangeWithTracking,
-      handleSessionStart,
-      onOpenCliTerminal,
-      selectedCliAgent,
-      cliAgentType,
-      chatPanelLaunchContext,
-      originalHandleLaunch,
-      setAttachedWorkItemContext,
-      t,
-    });
+  const launch = useChatPanelLaunch({
+    isHumanMode,
+    hasAttachedImages: attachedImages.length > 0,
+    isCliTuiMode,
+    composerInputRef,
+    effectiveSource,
+    handleContentChangeWithTracking,
+    handleSessionStart,
+    onOpenCliTerminal,
+    selectedCliAgent,
+    cliAgentType,
+    chatPanelLaunchContext,
+    originalHandleLaunch,
+    setAttachedWorkItemContext,
+    t,
+  });
+  const { handleLaunch, humanTitle, setHumanTitle, humanCreating } = launch;
 
   // ── Hero section ──────────────────────────────────────────────────────────
 
-  const {
-    sessionRepoId,
-    effectiveBranchName,
-    sessionRepoKind,
-    currentRepoPath,
-    isFullScreenVariant,
-    isOrgMembersPanelOpen,
-    handleToggleOrgMembers,
-    displayedRepoId,
-    displayedRepoName,
-    isDisplayedSystemPath,
-    browserElementScrollNav,
-  } = useChatPanelHeroPresentation({
+  const hero = useChatPanelHeroPresentation({
     effectiveSource,
     repos,
     currentRepo,
@@ -411,6 +282,12 @@ const SessionCreatorChatPanelContent: React.FC<
     browserAddToConversationNav,
     t,
   });
+  const {
+    isFullScreenVariant,
+    isOrgMembersPanelOpen,
+    handleToggleOrgMembers,
+    browserElementScrollNav,
+  } = hero;
 
   const {
     allAgentDefinitions,
@@ -462,33 +339,22 @@ const SessionCreatorChatPanelContent: React.FC<
     t,
   });
 
-  // In multi mode the launcher's own `canLaunch` is the wrong gate: it checks
-  // the GLOBAL model selection, which multi mode hides because each row owns
-  // its own. Row readiness is `multiRunner.canLaunch`; what remains here is the
-  // prompt.
-  const hasPromptContent = editorContent.trim().length > 0;
-  const localCommand = parseNativeSlashCommand(editorContent);
-  const canRunLocalCommand =
-    !isHumanMode &&
-    !isCliTuiMode &&
-    !multiRunner.isActive &&
-    attachedImages.length === 0 &&
-    !!localCommand &&
-    (Boolean(composerActionFor(localCommand.name)) ||
-      ["model", "effort", "fast", "plan"].includes(localCommand.name));
-  const composerCanLaunch =
-    canRunLocalCommand ||
-    (multiRunner.isActive
-      ? hasPromptContent && multiRunner.canLaunch
-      : canLaunch);
+  const { composerCanLaunch, handleComposerLaunch } = useChatPanelComposerGate({
+    editorContent,
+    isHumanMode,
+    isCliTuiMode,
+    hasAttachedImages: attachedImages.length > 0,
+    canLaunch,
+    multiRunner,
+    handleLaunch,
+  });
 
-  const handleComposerLaunch = useCallback(() => {
-    if (multiRunner.isActive) {
-      void multiRunner.launchGroup();
-      return;
-    }
-    void handleLaunch();
-  }, [handleLaunch, multiRunner]);
+  const { cliLaunchModeSwitch, cliVersionAlert } = useChatPanelCliChrome({
+    cli,
+    cliAgentType,
+    isCliMode,
+    isMultiRunnerActive: multiRunner.isActive,
+  });
 
   return (
     <SessionCreatorChatPanelView
@@ -498,33 +364,8 @@ const SessionCreatorChatPanelContent: React.FC<
       centerFullScreenContent={centerFullScreenContent}
       composerPosition={composerPosition}
       className={className}
-      cliLaunchModeSwitch={
-        isCliMode && !multiRunner.isActive ? (
-          <CliLaunchModeSwitch
-            mode={cliLaunchMode}
-            supportsGui={
-              !selectedCliAgentGuiSupportKnown || selectedCliAgentSupportsGui
-            }
-            onModeChange={handleCliLaunchModeChange}
-          />
-        ) : null
-      }
-      cliVersionAlert={
-        showCliVersionOutdatedAlert
-          ? {
-              cliDisplayName:
-                selectedCliAgent?.displayName ?? cliAgentType ?? undefined,
-              installedVersion:
-                selectedCliVersion?.installed_version ?? undefined,
-              latestVersion: selectedCliVersion?.latest_version ?? undefined,
-              refreshing: isSelectedCliVersionRefreshing,
-              onMuteUntilNextVersion:
-                muteSelectedCliVersionAlertUntilNextVersion,
-              onRefresh: refreshSelectedCliVersion,
-              onClose: snoozeSelectedCliVersionAlert,
-            }
-          : undefined
-      }
+      cliLaunchModeSwitch={cliLaunchModeSwitch}
+      cliVersionAlert={cliVersionAlert}
       compactHeaderIcon={compactHeaderIcon}
       composerHeaderContent={
         isHumanMode ? (
@@ -540,74 +381,28 @@ const SessionCreatorChatPanelContent: React.FC<
       }
       heroFooterSlot={heroFooterSlot}
       composerInputRef={composerInputRef}
-      editorAreaProps={{
-        variant: "chatPanelFullScreen",
-        uploadedFiles: isHumanMode ? [] : uploadedFiles,
-        onRemoveFile: handleRemoveFile,
-        composerInputRef,
-        onContentChange: handleContentChangeWithTracking,
-        onAtMention: handleAtMention,
-        onAtMentionClose: handleAtMentionClose,
-        onSubmit: handleComposerLaunch,
-        showContextMenu,
-        setShowContextMenu,
-        atSearchQuery,
-        setAtSearchQuery,
-        onAtSelect: handleAtSelect,
-        repoPath: currentRepoPath,
-        onUploadClick: isHumanMode ? () => undefined : handleUploadClick,
-        isLoading: isHumanMode
-          ? humanCreating
-          : isLoading || multiRunner.isLaunching,
-        onLaunch: handleComposerLaunch,
-        advancedConfig,
-        onAdvancedConfigChange: handleAdvancedConfigChange,
-        hideInfoLine: true,
-        repoId: displayedRepoId,
-        repoName: displayedRepoName,
-        repoKind: isOSMode && !sessionRepoId ? undefined : currentRepo?.kind,
-        branchName:
-          isOSMode && !sessionRepoId ? undefined : effectiveBranchName,
-        onBranchChange: handleBranchChange,
-        onImagePaste: isHumanMode ? undefined : handleImagePaste,
-        attachedImages: isHumanMode ? [] : attachedImages,
-        onRemoveImage: isHumanMode ? undefined : removeImage,
-        launchDisabled: isHumanMode ? !humanNoteHasContent : !composerCanLaunch,
-        launchAriaLabel: isHumanMode
-          ? t("humanSession.createAction")
-          : undefined,
-        // Model belongs to a runner in multi mode; a second picker in the
-        // composer would be lying about which runner it applies to.
-        hideModelSourcePill: isHumanMode || multiRunner.isActive,
-        editorPlaceholder: isHumanMode
-          ? t("humanSession.createPlaceholder")
-          : undefined,
-        requestModelOpen: isHumanMode ? false : requestModelOpen,
-        onModelOpenHandled: () => setRequestModelOpen(false),
-        shellClassName: `session-creator-chat-panel-fullscreen-input-shell ${
-          shouldUseCreatorComposerBreathing(
-            layout === "launchpad",
-            repoChromePosition,
-            !hideRepoLine && headerLayout !== "compact"
-          )
-            ? "composer-breathing"
-            : ""
-        }`.trim(),
-        initialContent: initialRestoreText || initialContent || undefined,
-        autoFocus: !isHumanMode,
-        showSlashMenu,
-        slashQuery,
-        slashCommandKeyboardHandlerRef,
-        onSlashCommand: handleSlashCommand,
-        onSlashCommandClose: handleSlashCommandClose,
-        onSlashSelect: handleSlashSelect,
-        onModeSelect: handleModeSelect,
-        currentMode,
-        includeProjectMode: isHumanMode ? false : includeProjectMode,
-        filteredSlashItems,
-        slashLoading,
+      editorAreaProps={buildChatPanelEditorAreaProps({
+        creator,
+        hero,
+        multiRunner,
+        draft,
+        launch,
+        handlers,
+        isHumanMode,
+        isOSMode,
+        humanNoteHasContent,
+        composerCanLaunch,
+        currentRepoKind: currentRepo?.kind,
+        repoChromePosition,
+        handleComposerLaunch,
+        handleAdvancedConfigChange,
+        layout,
+        hideRepoLine,
+        headerLayout,
+        initialContent,
         dropdownDirection,
-      }}
+        t,
+      })}
       fileInputRef={fileInputRef}
       footerSlot={footerSlot}
       headerLayout={headerLayout}
@@ -672,40 +467,20 @@ const SessionCreatorChatPanelContent: React.FC<
             }
           : undefined
       }
-      sessionInfoProps={{
-        repoId: displayedRepoId,
-        repoName: displayedRepoName,
-        repoPath: currentRepoPath,
-        onRepoChange: handleRepoChange,
-        onRepoSelect: handleRepoSelectForSession,
-        repoKind: sessionRepoKind,
-        includeSystemPaths: isOSMode || isSDEMode,
-        branchName:
-          isOSMode && !sessionRepoId ? undefined : effectiveBranchName,
-        branchLoading: branchLoading && !effectiveBranchName,
-        onBranchChange: handleBranchChange,
-        // Multi-runner always isolates (see useMultiRunnerLaunch); the pill
-        // reports that rather than the launcher's stored preference.
-        worktreeLocation: isDisplayedSystemPath
-          ? undefined
-          : multiRunner.isActive
-            ? "worktree"
-            : runningLocation,
-        worktreeLocationLabel: multiRunner.worktreeSourceLabel,
-        worktreeSourceLabel:
-          runningLocation === "worktree" || multiRunner.isActive
-            ? activeWorktreeSelection?.source.sourceRef?.startsWith("pr:")
-              ? activeWorktreeSelection.source.label
-              : (activeWorktreeSelection?.source.title ??
-                activeWorktreeSelection?.source.baseBranch)
-            : undefined,
-        worktreeSource: activeWorktreeSelection?.source,
-        selectedWorktreePath:
-          activeWorktreeSelection?.source.existingWorktreePath ?? null,
-        onWorktreeLocationChange: multiRunner.handleWorktreeLocationChange,
-        onWorktreeSourceSelect: handleWorktreeSourceSelect,
-        fullWidth: true,
-      }}
+      sessionInfoProps={buildChatPanelSessionInfoProps({
+        hero,
+        handlers,
+        worktree: {
+          runningLocation,
+          activeWorktreeSelection,
+          handleWorktreeSourceSelect,
+        },
+        multiRunner,
+        handleBranchChange,
+        isOSMode,
+        isSDEMode,
+        branchLoading,
+      })}
       showMissingGitAlert={!isHumanMode && showMissingGitAlert}
       hideSessionSetupControls={isHumanMode}
       workItemContext={attachedWorkItemContext}

@@ -72,6 +72,31 @@ function isInteractiveKeyboardTarget(target: EventTarget | null): boolean {
   );
 }
 
+/** A descendant owns wheel intent while it can scroll in that direction. */
+function descendantOwnsWheel(event: WheelEvent, root: HTMLElement): boolean {
+  let element = event.target instanceof Element ? event.target : null;
+  while (element && element !== root) {
+    if (element.scrollHeight > element.clientHeight) {
+      const style = getComputedStyle(element);
+      if (style.overflowY === "auto" || style.overflowY === "scroll") {
+        const canScroll =
+          event.deltaY < 0
+            ? element.scrollTop > 0
+            : element.scrollTop + element.clientHeight < element.scrollHeight;
+        if (
+          canScroll ||
+          style.overscrollBehaviorY === "contain" ||
+          style.overscrollBehaviorY === "none"
+        ) {
+          return true;
+        }
+      }
+    }
+    element = element.parentElement;
+  }
+  return false;
+}
+
 function isScrollbarPointerDown(
   event: PointerEvent,
   element: HTMLElement
@@ -401,6 +426,12 @@ export function useTranscriptViewport({
       userScrollPendingRef.current = true;
     };
     const handleWheel = (event: WheelEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.deltaY === 0 ||
+        descendantOwnsWheel(event, scrollRoot)
+      )
+        return;
       markUserScroll();
       if (event.deltaY < 0 && optionsRef.current.followPolicy !== "always") {
         // Wheel fires before the browser applies its scroll delta. Leave the

@@ -5,7 +5,7 @@
  * the window carries no sidebar and no chat panel: one station surface — My
  * Station (Code / Browser / Project tabs) or Agent Station (the activity
  * simulator) — composed from the same `WorkStationPage` the main window
- * mounts inside `AppLayout`. Which station is pinned by the window label
+ * mounts inside `AppLayout`. The initial station is seeded by the window label
  * (`app-window-station-<mode>`, see `stationModeAtom`); the route param only
  * mirrors it so the URL is self-describing and browser dev can render it.
  *
@@ -22,14 +22,17 @@
  * `?session=` query at open time, then retargeted by every
  * `orgii:station-window:session` event (`useStationWindowBridge`).
  */
-import { useAtomValue, useSetAtom } from "jotai";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import React, { memo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams } from "react-router-dom";
 
 import { ActionSystemProvider } from "@src/ActionSystem";
 import {
   STATION_WINDOW_SESSION_EVENT,
   type StationWindowSessionPayload,
+  requestStationWindowSession,
 } from "@src/api/tauri/stationWindow";
 import { ChatProvider } from "@src/contexts/workspace/ChatContext";
 import { DataProvider } from "@src/contexts/workspace/DataContext";
@@ -55,6 +58,9 @@ import { stationModeAtom } from "@src/store/ui/simulatorAtom";
 import { activeWorkspaceRootPathAtom } from "@src/store/workspace";
 import { STATION_MODES, type StationMode } from "@src/types/ui/workstation";
 import { getCurrentStationWindowMode } from "@src/util/platform/tauri/windowIdentity";
+
+import { useStationWindowNavigation } from "./useStationWindowNavigation";
+import { useStationWindowRouteGuard } from "./useStationWindowRouteGuard";
 
 const log = createLogger("StationWindow");
 
@@ -98,8 +104,9 @@ function parseStationMode(value: string | undefined): StationMode | null {
  * My Station's per-session workspace both converge on it.
  */
 function useStationWindowSessionFollower(seedSessionId: string | null): void {
+  const store = useStore();
   const jumpToSession = useSetAtom(jumpToSessionAtom);
-  const rememberedSessionId = useAtomValue(workstationActiveSessionIdAtom);
+  const setStationMode = useSetAtom(stationModeAtom);
 
   useEffect(() => {
     // Session rows are owned by the chat surfaces in the main window; this
@@ -118,9 +125,19 @@ function useStationWindowSessionFollower(seedSessionId: string | null): void {
 
   useTauriListen<StationWindowSessionPayload>(
     STATION_WINDOW_SESSION_EVENT,
-    ({ sessionId }) => {
-      if (sessionId === rememberedSessionId) return;
+    ({ sessionId, stationMode }) => {
+      if (stationMode) setStationMode(stationMode);
+      if (sessionId === store.get(workstationActiveSessionIdAtom)) return;
       jumpToSession(sessionId);
+    },
+    {
+      onReady: () => {
+        const mode = getCurrentStationWindowMode();
+        if (mode)
+          void requestStationWindowSession(mode).catch((error) =>
+            log.warn("Failed to request current session", error)
+          );
+      },
     }
   );
 }
@@ -133,6 +150,8 @@ const StationWindowBridges: React.FC<{ seedSessionId: string | null }> = ({
   useNativeSessionStatusMonitor({ notifications: false });
   useWorkStationPipelineBridge(true);
   useStationWindowSessionFollower(seedSessionId);
+  useStationWindowNavigation();
+  useStationWindowRouteGuard();
   useGlobalBrowserWebviewLayering();
   useProjectDataChangedListener();
   return null;
@@ -150,6 +169,8 @@ const WorkStationLoadingFallback: React.FC = () => (
 
 const StationWindowSurface: React.FC<{ stationMode: StationMode }> = memo(
   ({ stationMode }) => {
+    const effectiveMode = useAtomValue(stationModeAtom);
+    const { t } = useTranslation("common");
     const repoPath = useAtomValue(activeWorkspaceRootPathAtom);
     const backgroundConfig = useAtomValue(resolvedBackgroundConfigAtom);
     const setStationMode = useSetAtom(stationModeAtom);
@@ -159,12 +180,27 @@ const StationWindowSurface: React.FC<{ stationMode: StationMode }> = memo(
       ).backgroundColor,
     };
 
-    // Inside Tauri the window label pins the mode and the setter is inert.
+    // Inside Tauri the window label seeds the local selection.
     // Outside it (browser dev renders of this route) there is no label, so
     // the route decides.
     useEffect(() => {
       if (getCurrentStationWindowMode() === null) setStationMode(stationMode);
     }, [setStationMode, stationMode]);
+
+    useEffect(() => {
+      if (getCurrentStationWindowMode() === null) return;
+      void getCurrentWindow()
+        .setTitle(
+          t(
+            effectiveMode === "agent-station"
+              ? "terminology.agentStation"
+              : "terminology.myStation"
+          )
+        )
+        .catch((error) =>
+          log.warn("Failed to update station window title", error)
+        );
+    }, [effectiveMode, t]);
 
     return (
       <BrowserProvider>
@@ -177,7 +213,7 @@ const StationWindowSurface: React.FC<{ stationMode: StationMode }> = memo(
             className="relative isolate flex h-full min-h-0 min-w-0 flex-row overflow-hidden"
             style={paneUnderlayStyle}
             data-pane-surface-underlay
-            data-station-window={stationMode}
+            data-station-window={effectiveMode}
           >
             <div
               className="relative z-0 h-full min-h-0 min-w-0 flex-1 overflow-hidden"

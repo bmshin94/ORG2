@@ -70,7 +70,7 @@ export function isMainAppWindow(): boolean {
 }
 
 /**
- * The station mode a detached station window is pinned to, from its label;
+ * The initial station mode encoded in a detached station window's label;
  * null for every other label (main, session windows, non-Tauri).
  */
 export function getStationWindowModeFromLabel(
@@ -84,10 +84,8 @@ export function getStationWindowModeFromLabel(
 }
 
 /**
- * The station mode this document is pinned to when it is a detached station
- * window (`app-window-station-<mode>`), else null. The pin is what lets the
- * station window ignore the persisted (cross-window synced) station-mode
- * preference and the main-window-only chat/sidebar chrome.
+ * The initial mode of a detached station document, else null. This identifies
+ * the native window, not its current selection; read stationModeAtom for that.
  */
 export function getCurrentStationWindowMode(): StationMode | null {
   return getStationWindowModeFromLabel(getCurrentWindowLabel());

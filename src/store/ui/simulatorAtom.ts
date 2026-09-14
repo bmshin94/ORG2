@@ -264,30 +264,36 @@ const persistedStationModeAtom = atomWithStorage<StationMode>(
 );
 persistedStationModeAtom.debugLabel = "persistedStationModeAtom";
 
+// Each detached document starts in the mode named by its native label, then
+// owns its selection independently. Clicking the station selector never opens
+// another window and never writes the main window's persisted preference.
+const detachedStationModeAtom = atom<StationMode | null>(null);
+
 /**
  * The station this window shows.
  *
- * In the main window this is the persisted preference. In a detached station
- * window (`app-window-station-<mode>`) the mode is pinned by the window
- * label: reads return the pinned mode and writes are dropped, so a
- * programmatic "switch to My Station" inside the Agent Station window can
- * neither repaint that window nor leak through storage into the main
- * window's preference. `StationModePill` turns such a switch into opening
- * the other station's window instead.
+ * Main uses its persisted preference. A detached station starts from its
+ * window label and keeps subsequent selection changes in this document.
  */
 export const stationModeAtom = atom(
-  (get) => getCurrentStationWindowMode() ?? get(persistedStationModeAtom),
+  (get) => {
+    const initialMode = getCurrentStationWindowMode();
+    return initialMode === null
+      ? get(persistedStationModeAtom)
+      : (get(detachedStationModeAtom) ?? initialMode);
+  },
   (
     get,
     set,
     update: StationMode | ((previous: StationMode) => StationMode)
   ) => {
-    if (getCurrentStationWindowMode() !== null) return;
     const next =
-      typeof update === "function"
-        ? update(get(persistedStationModeAtom))
-        : update;
-    set(persistedStationModeAtom, next);
+      typeof update === "function" ? update(get(stationModeAtom)) : update;
+    if (getCurrentStationWindowMode() !== null) {
+      set(detachedStationModeAtom, next);
+    } else {
+      set(persistedStationModeAtom, next);
+    }
   }
 );
 stationModeAtom.debugLabel = "stationModeAtom";

@@ -1,7 +1,7 @@
 //! Local managed proxy: port/URL resolution, the per-session proxy token,
 //! and the authenticated route base URLs handed to each CLI.
 
-use rand::RngCore;
+use rand::Rng;
 use std::sync::OnceLock;
 
 use super::registry::{CLAUDE_CODE_AGENT, CODEX_AGENT};

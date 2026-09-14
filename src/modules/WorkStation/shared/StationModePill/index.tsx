@@ -14,9 +14,6 @@ import { useShortcutKeys } from "@src/config/keyboard/useShortcutBindings";
 import { Infinity01Icon, type IconSvgElement, LaptopIcon } from "@src/icons";
 import { GENERAL_LAYOUT_TOUR_TARGETS } from "@src/scaffold/Tutorials/generalLayoutTourConfig";
 import { type StationMode, stationModeAtom } from "@src/store/ui/simulatorAtom";
-import { getCurrentStationWindowMode } from "@src/util/platform/tauri/windowIdentity";
-
-import { useOpenStationInNewWindow } from "../StationPaneControls";
 
 const MY_STATION_SHORTCUT_ID = "open_my_station";
 const AGENT_STATION_SHORTCUT_ID = "open_agent_station";
@@ -77,19 +74,11 @@ const StationModePill: React.FC = () => {
 
   const myStationShortcut = useShortcutKeys(MY_STATION_SHORTCUT_ID);
   const agentStationShortcut = useShortcutKeys(AGENT_STATION_SHORTCUT_ID);
-  // Inside a detached station window the mode is pinned by the window, so
-  // "switching" means bringing up the other station's window instead.
-  const pinnedStationMode = getCurrentStationWindowMode();
-  const openStationInNewWindow = useOpenStationInNewWindow();
   const handleChange = useCallback(
     (mode: StationMode) => {
-      if (pinnedStationMode !== null) {
-        if (mode !== pinnedStationMode) openStationInNewWindow(mode);
-        return;
-      }
       setStationMode(mode);
     },
-    [openStationInNewWindow, pinnedStationMode, setStationMode]
+    [setStationMode]
   );
 
   return (

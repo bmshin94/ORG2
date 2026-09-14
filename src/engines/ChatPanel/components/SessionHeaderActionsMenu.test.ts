@@ -41,9 +41,11 @@ vi.mock("@src/api/tauri/externalHistory/appOpen", () => ({
 }));
 // Webpack loads SVGs as components; Vitest otherwise treats them as URLs.
 // claude.svg is brand artwork imported as a URL asset (`?url`) and rendered
-// through <img>; Vite resolves it to a path containing the file name, which is
-// the brand marker the rows below assert on. openai.svg is a currentColor
+// through <img>; use a stable URL fixture independent of Vite asset inlining. openai.svg is a currentColor
 // glyph and stays an svgr component, mocked here with a data-brand tag.
+vi.mock("@src/assets/modelIcons/claude.svg?url", () => ({
+  default: "/fixtures/claude.svg",
+}));
 vi.mock("@src/assets/modelIcons/openai.svg", () => ({
   default: (props: SVGProps<SVGSVGElement>) =>
     createElement("svg", { ...props, "data-brand": "openai" }),

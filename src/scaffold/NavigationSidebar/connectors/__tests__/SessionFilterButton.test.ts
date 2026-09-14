@@ -52,8 +52,8 @@ function queryTestId(testId: string): HTMLElement | null {
 describe("SessionFilterButton", () => {
   let container: HTMLDivElement;
   let root: Root;
-  let onSelect: ReturnType<typeof vi.fn>;
-  let onSelectGroupVisibleCount: ReturnType<typeof vi.fn>;
+  let onSelect: ReturnType<typeof vi.fn<() => void>>;
+  let onSelectGroupVisibleCount: ReturnType<typeof vi.fn<() => void>>;
 
   beforeAll(() => {
     reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true;

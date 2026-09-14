@@ -454,6 +454,54 @@ describe("AgentOrgGroupProjectionView", () => {
     );
   });
 
+  it("keeps reading position through partial acknowledgement and follows explicit Send", async () => {
+    const pending = ["a", "b"].map((id) => ({
+      ...(items[0] as AgentOrgGroupConversationItem),
+      id: `optimistic:${id}:0`,
+      turnIntentId: id,
+    }));
+    await renderView({ projectedItems: [...items, ...pending] });
+    const scroller = container.querySelector<HTMLDivElement>(
+      '[data-testid="agent-org-group-projection-scroll-container"]'
+    )!;
+    Object.defineProperties(scroller, {
+      clientHeight: { value: 200 },
+      scrollHeight: { value: 1000 },
+    });
+    scroller.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+    scroller.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+      scroller.scrollTop =
+        typeof options === "number" ? (y ?? 0) : (options?.top ?? 0);
+    };
+    scroller
+      .querySelectorAll<HTMLElement>("[data-transcript-anchor-id]")
+      .forEach((node, index) => {
+        node.getBoundingClientRect = () =>
+          ({
+            top: index * 120 - scroller.scrollTop,
+            bottom: index * 120 + 100 - scroller.scrollTop,
+          }) as DOMRect;
+      });
+    scroller.scrollTop = 200;
+    act(() => {
+      scroller.dispatchEvent(new WheelEvent("wheel", { deltaY: -120 }));
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+    await renderView({
+      projectedItems: [
+        ...items,
+        { ...pending[0], id: "durable:a:0" },
+        pending[1],
+      ],
+    });
+    act(flushFrames);
+    expect(scroller.scrollTop).toBe(200);
+    // ChatView's existing before-submit callback invokes this navigation owner.
+    act(() => onScrollNavChange.mock.lastCall![0].onScrollToBottom());
+    act(flushFrames);
+    expect(scroller.scrollTop).toBe(800);
+  });
+
   it("preserves the visible item when older Group history is prepended", async () => {
     await renderView();
     const scroller = container.querySelector<HTMLDivElement>(

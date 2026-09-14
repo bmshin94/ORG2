@@ -10,6 +10,7 @@ import { z } from "zod/v4";
 import { activeChatPanelTabAtom } from "@src/store/chatPanel/chatPanelTabsState";
 import { CHAT_PANEL_SURFACE_KIND } from "@src/types/ui/chatPanel";
 import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
+import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
 import {
   CHAT_PANEL_CONTENT_MODE,
@@ -145,11 +146,25 @@ resetChatPanelSessionSurfaceAtom.debugLabel =
  * layout full-screen temporarily, but that layout is derived without mutating
  * this preference or the underlying Station mode.
  */
-export const chatPanelMaximizedAtom = atomWithStorage<boolean>(
+const persistedChatPanelMaximizedAtom = atomWithStorage<boolean>(
   "orgii:chatPanelMaximized",
   false,
   createZodJsonStorage(z.boolean()),
   { getOnInit: true }
+);
+// A detached station has no outer chat panel. Enforce ownership here so any
+// workstation action using this shared atom cannot resize main through storage.
+export const chatPanelMaximizedAtom = atom(
+  (get) => (isStationWindow() ? false : get(persistedChatPanelMaximizedAtom)),
+  (get, set, update: boolean | ((previous: boolean) => boolean)) => {
+    if (isStationWindow()) return;
+    set(
+      persistedChatPanelMaximizedAtom,
+      typeof update === "function"
+        ? update(get(persistedChatPanelMaximizedAtom))
+        : update
+    );
+  }
 );
 chatPanelMaximizedAtom.debugLabel = "chatPanelMaximizedAtom";
 

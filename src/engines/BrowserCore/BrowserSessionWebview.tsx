@@ -19,19 +19,15 @@ import {
   simulatorPrimarySidebarWidthAtom,
 } from "@src/store/ui/simulatorAtom";
 import { NEW_TAB_TITLE } from "@src/store/workstation/browser/tabs";
+import { getBrowserSessionWebviewLabel } from "@src/util/platform/tauri/browserSessionLabel";
 
 const log = createLogger("BrowserSessionWebview");
 
 const ABOUT_BLANK_URL = "about:blank";
-const BROWSER_SESSION_LABEL_PREFIX = "browser-session-";
 
 function isBlankBrowserUrl(url?: string): boolean {
   const normalizedUrl = url?.trim().toLowerCase();
   return !normalizedUrl || normalizedUrl.startsWith(ABOUT_BLANK_URL);
-}
-
-function getBrowserSessionWebviewLabel(sessionId: string): string {
-  return `${BROWSER_SESSION_LABEL_PREFIX}${sessionId}`;
 }
 
 interface ActiveInternalBrowserSync {

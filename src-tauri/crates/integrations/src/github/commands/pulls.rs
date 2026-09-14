@@ -32,22 +32,36 @@ pub use reviews::{
 // `tauri::generate_handler!` resolves each generated `__cmd__*` item beside
 // the public command path. Keep those hidden command shims on the stable
 // `github::commands::*` surface as the leaf modules move behind this façade.
-pub use checks::__cmd__github_get_checks;
+pub use checks::{__cmd__github_get_checks, __tauri_command_name_github_get_checks};
 pub use detail::{
     __cmd__github_get_pr, __cmd__github_list_pr_commits, __cmd__github_list_pr_files,
+    __tauri_command_name_github_get_pr, __tauri_command_name_github_list_pr_commits,
+    __tauri_command_name_github_list_pr_files,
 };
 pub use list_search::{
     __cmd__github_create_pr, __cmd__github_find_pull_request, __cmd__github_list_prs,
-    __cmd__github_update_pr_state,
+    __cmd__github_update_pr_state, __tauri_command_name_github_create_pr,
+    __tauri_command_name_github_find_pull_request, __tauri_command_name_github_list_prs,
+    __tauri_command_name_github_update_pr_state,
 };
 pub use merge::{
     __cmd__github_merge_pr, __cmd__github_set_pr_auto_merge, __cmd__github_update_pr_draft_state,
+    __tauri_command_name_github_merge_pr, __tauri_command_name_github_set_pr_auto_merge,
+    __tauri_command_name_github_update_pr_draft_state,
 };
-pub use reviewers::{__cmd__github_remove_pr_reviewers, __cmd__github_request_pr_reviewers};
+pub use reviewers::{
+    __cmd__github_remove_pr_reviewers, __cmd__github_request_pr_reviewers,
+    __tauri_command_name_github_remove_pr_reviewers,
+    __tauri_command_name_github_request_pr_reviewers,
+};
 pub use reviews::{
     __cmd__github_create_pr_review, __cmd__github_create_pr_review_comment,
     __cmd__github_list_pr_review_comments, __cmd__github_list_pr_reviews,
-    __cmd__github_reply_pr_review_comment,
+    __cmd__github_reply_pr_review_comment, __tauri_command_name_github_create_pr_review,
+    __tauri_command_name_github_create_pr_review_comment,
+    __tauri_command_name_github_list_pr_review_comments,
+    __tauri_command_name_github_list_pr_reviews,
+    __tauri_command_name_github_reply_pr_review_comment,
 };
 
 #[cfg(test)]

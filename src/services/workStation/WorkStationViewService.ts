@@ -1,3 +1,4 @@
+import { navigateInMainWindow } from "@src/api/tauri/stationWindow";
 import { ROUTES, isWorkbenchPath } from "@src/config/routes";
 import { navigateApp as dispatchNavigate } from "@src/router/navigateApp";
 import { stationModeAtom } from "@src/store/ui/simulatorAtom";
@@ -8,7 +9,7 @@ import type {
   WorkStationTabType,
 } from "@src/store/workstation/tabs/types";
 import { getInstrumentedStore } from "@src/util/core/state/instrumentedStore";
-import { getCurrentStationWindowMode } from "@src/util/platform/tauri/windowIdentity";
+import { isStationWindow } from "@src/util/platform/tauri/windowIdentity";
 
 const getStore = () => getInstrumentedStore();
 
@@ -27,7 +28,7 @@ function isWorkStationRoute() {
 function isCodeEditorActive() {
   const store = getStore();
   return (
-    isWorkStationRoute() &&
+    (isWorkStationRoute() || isStationWindow()) &&
     store.get(stationModeAtom) === "my-station" &&
     store.get(activeHostAtom) === "code"
   );
@@ -42,6 +43,7 @@ function dispatchOpenCodeTab(tabId: string) {
 }
 
 async function unmaximizeChatPanel(): Promise<void> {
+  if (isStationWindow()) return;
   const { chatPanelMaximizedAtom } =
     await import("@src/store/ui/chatPanel/surfaceAtoms");
   const store = getStore();
@@ -94,7 +96,11 @@ async function shouldToggleMaximizedForActiveTab(
   tabId: string,
   options?: NavigationOptions
 ): Promise<boolean> {
-  if (!options?.toggleChatPanelMaximizedWhenActive || !isCodeEditorActive()) {
+  if (
+    isStationWindow() ||
+    !options?.toggleChatPanelMaximizedWhenActive ||
+    !isCodeEditorActive()
+  ) {
     return false;
   }
   const { EditorTabService } =
@@ -114,6 +120,7 @@ export const WorkStationViewService = {
    * Station access. Slot mode (session vs. settings) is left untouched.
    */
   async toggleChatPanelMaximized(): Promise<boolean> {
+    if (isStationWindow()) return false;
     if (!isWorkbenchRoute()) return false;
 
     const { toggleActiveChatPanelMaximizedAtom } =
@@ -124,6 +131,7 @@ export const WorkStationViewService = {
   },
 
   async showWorkStation(): Promise<boolean> {
+    if (isStationWindow()) return false;
     if (!isWorkbenchRoute()) return false;
 
     const [
@@ -154,6 +162,13 @@ export const WorkStationViewService = {
   },
 
   async openKanbanTab(): Promise<boolean> {
+    if (isStationWindow()) {
+      await navigateInMainWindow({
+        path: ROUTES.workStation.base.path,
+        action: "open-kanban",
+      });
+      return true;
+    }
     const [{ activeStationChatVisibleAtom }, { stationModeAtom }] =
       await Promise.all([
         import("@src/store/ui/chatPanel/visibilityAtoms"),
@@ -176,22 +191,17 @@ export const WorkStationViewService = {
   },
 
   async openStationMode(mode: StationMode): Promise<boolean> {
-    // A detached station window is pinned to its station: "switch to the
-    // other station" there means bringing up that station's own window,
-    // exactly what the station-mode pill does in that window.
-    const pinnedStationMode = getCurrentStationWindowMode();
-    if (pinnedStationMode !== null) {
-      return pinnedStationMode === mode ? true : this.openStationWindow(mode);
+    if (isStationWindow()) {
+      getStore().set(stationModeAtom, mode);
+      return true;
     }
 
     const [
       { activeChatPanelTabAtom, isChatPanelTabStationAvailable },
       { activeStationChatVisibleAtom },
-      { stationModeAtom },
     ] = await Promise.all([
       import("@src/store/chatPanel/chatPanelTabsAtom"),
       import("@src/store/ui/chatPanel/visibilityAtoms"),
-      import("@src/store/ui/simulatorAtom"),
     ]);
 
     const store = getStore();
@@ -300,7 +310,11 @@ export const WorkStationViewService = {
     const { EditorTabService } =
       await import("@src/services/workStation/EditorTabService");
     const targetTabId = EditorTabService.getLastFileOrExplorerTabId();
-    if (options?.toggleChatPanelMaximizedWhenActive && isCodeEditorActive()) {
+    if (
+      !isStationWindow() &&
+      options?.toggleChatPanelMaximizedWhenActive &&
+      isCodeEditorActive()
+    ) {
       const activeTab = EditorTabService.getActiveTab();
       if (
         activeTab &&
@@ -357,6 +371,7 @@ export const WorkStationViewService = {
     const store = getStore();
     if (
       options?.toggleChatPanelMaximizedWhenActive &&
+      !isStationWindow() &&
       query === undefined &&
       isCodeEditorActive() &&
       store.get(workStationPrimarySidebarTabAtom) ===
@@ -403,7 +418,7 @@ export const WorkStationViewService = {
       store.get(stationModeAtom) === "agent-station" &&
       !options?.forceCodeEditorSurface
     ) {
-      store.set(chatPanelMaximizedAtom, false);
+      if (!isStationWindow()) store.set(chatPanelMaximizedAtom, false);
       store.set(simulatorSelectedAppAtom, AppType.CODE_EDITOR);
       store.set(
         simulatorIdeTerminalRevealRequestAtom,

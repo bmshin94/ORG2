@@ -19,6 +19,7 @@ import {
   browserDevToolsPositionPersistAtom,
 } from "@src/store/ui/workStationLayout/secondaryPanelPositionAtoms";
 import type { SecondaryPanelPosition } from "@src/store/ui/workStationLayout/secondaryPanelPositionAtoms";
+import { getBrowserSessionWebviewLabel } from "@src/util/platform/tauri/browserSessionLabel";
 
 import { shouldEnableBrowserLogPolling } from "./browserDiagnosticsPolicy";
 import { useBrowserConsole } from "./useBrowserConsole";
@@ -129,7 +130,7 @@ export function useBrowserSessions(
   const activeSessionId = browserState.activeSessionId || "";
   const activeWebviewLabel = useMemo(() => {
     if (!activeSessionId) return "";
-    return `browser-session-${activeSessionId}`;
+    return getBrowserSessionWebviewLabel(activeSessionId);
   }, [activeSessionId]);
 
   // Console log management - delayed start

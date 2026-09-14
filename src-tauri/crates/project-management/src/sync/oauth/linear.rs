@@ -44,7 +44,7 @@ use axum::Router;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use chrono::{DateTime, Utc};
-use rand::RngCore;
+use rand::Rng;
 use reqwest::Client;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};

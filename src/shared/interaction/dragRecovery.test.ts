@@ -107,12 +107,16 @@ for (const kind of ["drag", "resize"] as const) {
     (reason) => {
       act(() => root.render(createElement(FloatingHarness, { kind })));
       const panel = host.firstElementChild as HTMLElement;
-      vi.spyOn(panel, "getBoundingClientRect").mockReturnValue({
-        ...rect,
-        width: 200,
-        height: 200,
-        right: 200,
-        bottom: 200,
+      // Give this element its own stub; spying on the inherited mock also changes the overlay in Vitest 4.
+      Object.defineProperty(panel, "getBoundingClientRect", {
+        value: () => ({
+          ...rect,
+          width: 200,
+          height: 200,
+          right: 200,
+          bottom: 200,
+        }),
+        configurable: true,
       });
       const handle = host.querySelector("[data-handle]")!;
       send(handle, "pointerdown");

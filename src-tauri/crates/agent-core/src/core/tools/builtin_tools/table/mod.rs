@@ -58,6 +58,7 @@ pub static BUILTIN_TOOLS: LazyLock<&'static [ToolEntry]> = LazyLock::new(|| {
     all.extend(app_ui::agent_tools::ALL.iter().map(|kind| ToolEntry {
         name: kind.name(),
         description: kind.description(),
+        description_detail: kind.description(),
         category: aliases::tool_categories::WEB,
         icon_id: "panel-top",
         simulator_app: aliases::AppCode,

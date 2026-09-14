@@ -59,7 +59,8 @@ describe("openStationInNewWindowAtom", () => {
     });
     expect(emitStationWindowSession).toHaveBeenCalledWith(
       "my-station",
-      "session-1"
+      "session-1",
+      { selectStation: true }
     );
   });
 

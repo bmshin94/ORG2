@@ -101,7 +101,12 @@ describe("local date display helpers", () => {
   it("reuses bounded Intl formatters across repeated chat timestamp renders", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-02-25T14:30:00.000Z"));
-    const formatterConstructor = vi.spyOn(Intl, "DateTimeFormat");
+    const NativeDateTimeFormat = Intl.DateTimeFormat;
+    const formatterConstructor = vi
+      .spyOn(Intl, "DateTimeFormat")
+      .mockImplementation(function (locales, options) {
+        return new NativeDateTimeFormat(locales, options);
+      });
 
     const first = formatSmartDateTime("2026-02-25T14:25:00.000Z", {
       locale: "en-US",
@@ -128,7 +133,12 @@ describe("local date display helpers", () => {
       hour: "2-digit",
       minute: "2-digit",
     });
-    const formatterConstructor = vi.spyOn(Intl, "DateTimeFormat");
+    const NativeDateTimeFormat = Intl.DateTimeFormat;
+    const formatterConstructor = vi
+      .spyOn(Intl, "DateTimeFormat")
+      .mockImplementation(function (locales, options) {
+        return new NativeDateTimeFormat(locales, options);
+      });
 
     const first = formatShortLocalTime(date);
     const constructorCountAfterFirstRender =

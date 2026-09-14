@@ -21,6 +21,7 @@ import {
   switchBrowserTabAtom,
   translatePlaceholderBrowserSessionTitle,
 } from "@src/store/workstation/browser/tabs";
+import { getBrowserSessionWebviewLabel } from "@src/util/platform/tauri/browserSessionLabel";
 
 import { useWebviewScreenshot } from "../../../../hooks/useWebviewScreenshot";
 import WebUrlBar from "../../components/WebUrlBar";
@@ -266,10 +267,9 @@ export const WebViewport: React.FC<WebViewportProps> = memo(
       }
     }, [effectiveActiveSessionId, updateSession]);
 
-    // Screenshot capture: webview label matches BrowserSessionWebview's
-    // useExactLabel pattern: `browser-session-${session.id}`.
+    // Screenshot capture must address this window's native browser view.
     const activeWebviewLabel = effectiveActiveSessionId
-      ? `browser-session-${effectiveActiveSessionId}`
+      ? getBrowserSessionWebviewLabel(effectiveActiveSessionId)
       : null;
     const { triggerScreenshot, isCapturing } = useWebviewScreenshot({
       webviewLabel: activeWebviewLabel,

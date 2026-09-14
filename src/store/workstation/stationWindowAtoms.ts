@@ -50,9 +50,11 @@ export const openStationInNewWindowAtom = atom(
     // A window that already existed keeps its old session until told
     // otherwise; a fresh one was seeded through its route and ignores the
     // duplicate. Best effort — the window itself is already up.
-    await emitStationWindowSession(stationMode, sessionId).catch(
-      () => undefined
-    );
+    await emitStationWindowSession(
+      stationMode,
+      get(workstationActiveSessionIdAtom),
+      { selectStation: true }
+    ).catch(() => undefined);
 
     if (!isMainAppWindow()) return;
     if (get(stationModeAtom) !== stationMode) return;
