@@ -134,3 +134,24 @@ This follow-up preserves the selected model through the shared TUI create reques
 Additional direct-resume consumers were found: `orgtrack-cli::commands` launches the planned native ID with args/cwd only, and the mobile imported Codex adapter similarly constructs exec/resume without the transcript's custom home. Desktop imported continuation instead enters canonical materialization with the selected target. These paths have different execution semantics and must not be fixed by blindly injecting the same environment in all three.
 
 Verification: targeted Market launch and shared terminal tests passed 36 with one existing PowerShell runtime test skipped because no runtime override was supplied. The skipped test is not new Windows evidence. No real continuation, provider request, native app build, or production rollout was performed by this follow-up.
+
+## Live-session proxy isolation follow-up
+
+New Market TUI launches now receive a session-owned local proxy token rather than copying the mutable global selection's token. The request resolver maps that token to its frozen agent/source/model before consulting any global selection; unknown and released session tokens cannot fall back. Provider credentials still resolve through the existing dynamic source on each request. Initial selection/hash checks remain in profile preparation.
+
+Lifetime coverage in code: failed preparation, terminal release, normal CLI deletion and agent-core deletion remove the token; profile cleanup preserves native history. A release does not cancel an already admitted upstream request. The registry is capped at 256 process-owned entries and rejects duplicate session reservations. It performs no I/O under its mutex and introduces no timers.
+
+This solves live-session dependence on global settings, not persistence/restart or ordinary runner integration. Those remaining items above are unchanged. Remote revocation, real grant rotation, actual Tauri close/delete, multiple app instances and CPU/RSS remain unverified.
+
+| Area               | Verdict | Evidence and lifecycle decision                                                  | Verification boundary                                     |
+| ------------------ | ------- | -------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Background work    | keep    | Demand-driven reserve/resolve/release; no new polling or worker                  | Source inspection                                         |
+| Memory             | fix     | At most 256 entries; duplicate rejection and explicit release                    | Registry bound/reclamation regression                     |
+| Scope/isolation    | fix     | Random token resolves exact agent/source/model independently of global selection | Real local Router with synthetic upstream; not production |
+| Rendering/hot path | keep    | No React changes; short registry lock, no I/O while held                         | No real desktop CPU/RSS measurement                       |
+
+Performance verdict: blocked for full runtime acceptance because the matching native build has not been measured through visible/hidden/closed, crash and multiple-instance states. This is not an overall task block; restart integration remains actionable.
+
+Verification for this follow-up: `cargo test --lib cli_managed_proxy:: -- --nocapture` passed 14 tests, including real localhost Router→synthetic upstream requests for independent Codex workspaces, Claude Messages and HEAD probes, released-token rejection, and the existing global-route regression. `cargo test -p agent_cli managed_launch -- --nocapture` passed 2 tests covering both client profile formats, independent token insertion, external-edit refusal and history retention. Zero tests were ignored in either filtered suite. Strict `cargo clippy --lib -- -D warnings` passed. These are native Rust/local HTTP tests, not an installed-app, real-provider or restart acceptance run.
+
+Preparation and terminal release also take the existing per-session control lock used by ordinary deletion. The owned guard stays inside blocking work so dropping the IPC future cannot release it while profile writes are still executing. Agent-core deletion retains its existing synchronous orchestration; it now revokes a route before deleting a row.

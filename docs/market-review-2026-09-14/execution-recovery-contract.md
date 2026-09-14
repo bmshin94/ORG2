@@ -37,3 +37,13 @@ This is an implementation contract derived from the actual execution paths, not 
 | Crash and repeated open/close    | No secret-bearing orphan token, uncontrolled registry growth, or transcript deletion                        |
 
 No item in this matrix is marked passed by source inspection or by the model-persistence patch. No production state or credentials were changed during this audit.
+
+## Live-session routing implementation follow-up
+
+The global-selection dependency in points 2–3 above is now removed for newly prepared Market TUI profiles. The application reserves a random process-local token for the exact session/agent/source/model, then writes that token through the existing profile generator. Each HTTP request resolves a session token before the global-settings path. Unknown, released or wrong-agent session tokens fail without trying the global selection. Normal global-client tokens retain their existing path.
+
+Profile creation still validates the selected global configuration and external-file hashes. Failed preparation releases its reserved route. TUI release invalidates the token before parking the row, even when that database operation fails. Both ordinary CLI deletion and the agent-core deletion adapter release the route and owned profile before deleting the row. Native history is retained. Requests already admitted before release may finish; this is not an in-flight request cancellation mechanism.
+
+The registry is capped at 256 live sessions, rejects duplicate session reservations, has no timer/polling, and drops with the process. Production entries retain non-secret source metadata and a local token; provider credentials still resolve per request through the existing dynamic source. This does not yet persist source ownership or reconstruct routes after app restart. It also does not make the ordinary KeyVault-backed session runner understand dynamic source identities.
+
+Verification and remaining measurements are recorded in remaining-review-findings.md. This follow-up supersedes the old live-global-routing observation, not the entire acceptance matrix.

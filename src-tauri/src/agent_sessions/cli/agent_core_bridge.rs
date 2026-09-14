@@ -255,6 +255,8 @@ pub fn register() {
     session_bridge::register_launch_cli_agent(run);
     session_bridge::register_dispatch_cli_turn(dispatch_turn);
     session_bridge::register_delete_cli_session(|session_id| {
+        crate::cli_managed_proxy::release_session_route(session_id)?;
+        agent_cli::managed_config::launch::release(session_id)?;
         persistence::delete_session(session_id).map_err(|err| format!("DB error: {err}"))
     });
     session_bridge::register_get_cli_tools_snapshot(tools_snapshot);

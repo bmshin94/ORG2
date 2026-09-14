@@ -1007,6 +1007,14 @@ fn managed_launch_freezes_proxy_generation_and_releases_only_its_session() {
             use std::os::unix::fs::PermissionsExt;
             assert_eq!(std::fs::metadata(&config_path).unwrap().permissions().mode() & 0o777, 0o600);
         }
+        let routed_id = format!("cli_routed_{agent}");
+        let routed = launch::prepare_with_proxy_token(agent, "key-1", "gpt-test", &routed_id, Some("session_independent-token")).unwrap();
+        let routed_dir = PathBuf::from(routed.env.get(env_key).unwrap());
+        let routed_content = std::fs::read_to_string(routed_dir.join(if agent == CODEX_AGENT { "config.toml" } else { "settings.json" })).unwrap();
+        assert!(routed_content.contains("session_independent-token"));
+        assert!(!routed_content.contains(TEST_PROXY_TOKEN));
+        assert!(!serde_json::to_string(&routed).unwrap().contains("session_independent-token"));
+        launch::release(&routed_id).unwrap();
         // A later global switch must never rewrite this session's profile.
         manifest.selected_key_id = Some("key-2".into());
         manifest.proxy_token = Some("new-proxy-generation".into());

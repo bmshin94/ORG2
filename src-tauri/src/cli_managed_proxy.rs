@@ -1,3 +1,4 @@
+mod session_routes;
 use crate::dynamic_credentials::Authentication;
 use axum::{
     body::{to_bytes, Body},
@@ -287,9 +288,11 @@ async fn proxy_agent_handler(
     path: String,
     request: Request<Body>,
 ) -> Response<Body> {
-    let resolved = request.extensions().get::<ContextResolver>()
-        .ok_or_else(|| "Proxy context resolver unavailable".to_string())
-        .and_then(|resolver| (resolver.0)(agent_name));
+    let resolved = session_routes::resolve(agent_name, &supplied_token).and_then(|session| {
+        session.map(Ok).unwrap_or_else(|| request.extensions().get::<ContextResolver>()
+            .ok_or_else(|| "Proxy context resolver unavailable".to_string())
+            .and_then(|resolver| (resolver.0)(agent_name)))
+    });
     let mut context = match resolved {
         Ok(context) => context,
         Err(err) => {
@@ -364,7 +367,8 @@ fn empty_ok_response() -> Response<Body> {
 }
 
 fn authenticated_empty_ok_response(agent_name: &str, supplied_token: &str) -> Response<Body> {
-    let context = match resolve_proxy_context(agent_name) {
+    let context = match session_routes::resolve(agent_name, supplied_token)
+        .and_then(|session| session.map(Ok).unwrap_or_else(|| resolve_proxy_context(agent_name))) {
         Ok(context) => context,
         Err(err) => return json_error(StatusCode::PRECONDITION_FAILED, err),
     };
@@ -1021,6 +1025,66 @@ mod tests {
         proxy_task.abort(); upstream_task.abort();
     }
 
+    #[tokio::test]
+    async fn session_routes_forward_independently_and_reject_released_tokens() {
+        let _ = tokio_rustls::rustls::crypto::ring::default_provider().install_default();
+        let (observed, mut received) = tokio::sync::mpsc::channel(8);
+        let upstream = Router::new().fallback(any(move |request: Request<Body>| {
+            let observed = observed.clone();
+            async move { observed.send(request.uri().to_string()).await.unwrap(); Json(json!({"ok":true})) }
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let root = format!("http://{}", listener.local_addr().unwrap());
+        let upstream_task = tokio::spawn(async move { axum::serve(listener, upstream).await.unwrap(); });
+        let sessions = [uuid::Uuid::new_v4().to_string(), uuid::Uuid::new_v4().to_string()];
+        let mut tokens = Vec::new();
+        for (index, session) in sessions.iter().enumerate() {
+            tokens.push(session_routes::reserve(session, "codex", ProxyContext {
+                authentication: Authentication::Bearer, key_id: "test-static".into(), provider: "test".into(),
+                model: "test-model".into(), upstream_base_url: format!("{root}/w/ws_{index}/v1"),
+                api_key: "synthetic-upstream-key".into(), proxy_token: String::new(), protocol: ProxyProtocol::OpenAi,
+            }).unwrap());
+        }
+        // Session routes remain usable without a global selection.
+        let app = proxy_router(ContextResolver(std::sync::Arc::new(|_| Err("global selection removed".into()))));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let proxy_url = format!("http://{}", listener.local_addr().unwrap());
+        let proxy_task = tokio::spawn(async move { axum::serve(listener, app).await.unwrap(); });
+        let client = reqwest::Client::new();
+        for index in [0, 1, 0] {
+            let response = client.post(format!("{proxy_url}/cli/codex/{}/v1/responses", tokens[index]))
+                .json(&json!({"model":"orgii-current-model","input":"test"})).send().await.unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(tokio::time::timeout(Duration::from_secs(5), received.recv()).await.unwrap().unwrap(), format!("/w/ws_{index}/v1/responses"));
+        }
+        session_routes::release(&sessions[0]).unwrap();
+        let rejected = client.post(format!("{proxy_url}/cli/codex/{}/v1/responses", tokens[0])).send().await.unwrap();
+        assert_eq!(rejected.status(), StatusCode::PRECONDITION_FAILED);
+        assert!(received.try_recv().is_err());
+        let remaining = client.post(format!("{proxy_url}/cli/codex/{}/v1/responses", tokens[1]))
+            .json(&json!({"model":"test-model","input":"test"})).send().await.unwrap();
+        assert_eq!(remaining.status(), StatusCode::OK);
+        session_routes::release(&sessions[1]).unwrap();
+        let claude_session = uuid::Uuid::new_v4().to_string();
+        let claude_token = session_routes::reserve(&claude_session, "claude_code", ProxyContext {
+            authentication: Authentication::Bearer, key_id: "test-static".into(), provider: "test".into(),
+            model: "test-model".into(), upstream_base_url: format!("{root}/w/ws_claude"),
+            api_key: "synthetic-upstream-key".into(), proxy_token: String::new(), protocol: ProxyProtocol::Anthropic,
+        }).unwrap();
+        let head_url = format!("{proxy_url}/cli/claude_code/{claude_token}/claude/v1");
+        assert_eq!(client.head(&head_url).send().await.unwrap().status(), StatusCode::OK);
+        let response = client.post(format!("{head_url}/messages"))
+            .json(&json!({"model":"test-model","messages":[],"max_tokens":1})).send().await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        // Drain the preceding surviving Codex request, then the Claude request.
+        assert_eq!(received.recv().await.unwrap(), "/w/ws_1/v1/responses");
+        assert_eq!(received.recv().await.unwrap(), "/w/ws_claude/v1/messages");
+        session_routes::release(&claude_session).unwrap();
+        assert_eq!(client.head(&head_url).send().await.unwrap().status(), StatusCode::PRECONDITION_FAILED);
+        assert!(received.try_recv().is_err());
+        proxy_task.abort(); upstream_task.abort();
+    }
+
     #[test]
     fn rewrites_placeholder_model() {
         let mut value = json!({
@@ -1155,12 +1219,28 @@ mod tests {
 #[tauri::command(rename_all = "camelCase")]
 pub async fn cli_config_prepare_launch(agent_name: String, selection: String, model: String,
     session_id: String) -> Result<agent_cli::managed_config::launch::ManagedLaunchProfile, String> {
+    let control = crate::agent_sessions::cli::session_runner::session_control_lock(&session_id).await;
+    let guard = control.lock_owned().await;
     tokio::task::spawn_blocking(move || {
+        // Keep ownership through blocking writes even if the IPC future is dropped.
+        let _guard = guard;
         let session = crate::agent_sessions::cli::persistence::get_session(&session_id)
             .map_err(|e| e.to_string())?.ok_or("Launch session is missing")?;
         if session.runner != "tui" || session.cli_agent_type.as_deref() != Some(&agent_name) {
             return Err("Launch session does not match the client".into());
         }
-        agent_cli::managed_config::launch::prepare(&agent_name, &selection, &model, &session_id)
+        if model.is_empty() || model.len() > 256 { return Err("Invalid launch model".into()); }
+        crate::dynamic_credentials::source(&selection)?.ok_or("Dynamic credential source required")?;
+        let context = resolve_proxy_context_for_selection(&agent_name, Some(&selection), Some(&model), String::new())?;
+        let token = session_routes::reserve(&session_id, &agent_name, context)?;
+        let result = agent_cli::managed_config::launch::prepare_with_proxy_token(
+            &agent_name, &selection, &model, &session_id, Some(&token));
+        if result.is_err() { session_routes::release(&session_id)?; }
+        result
     }).await.map_err(|_| "Launch profile task failed")?
+}
+
+/// Revoke only this live session route; never change another client's selection.
+pub(crate) fn release_session_route(session_id: &str) -> Result<(), String> {
+    session_routes::release(session_id)
 }

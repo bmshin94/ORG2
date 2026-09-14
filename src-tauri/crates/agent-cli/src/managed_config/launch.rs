@@ -1,5 +1,5 @@
-//! Session-owned launch profiles freeze the selected proxy generation. Switching
-//! global configuration invalidates its token instead of rebinding this client.
+//! Session-owned native homes keep launch configuration separate from history.
+//! The application can bind a profile to an independently owned local route.
 use super::{
     config_operation_guard, file_io, generators,
     operations::{managed_selection_for_agent_unlocked, status_for_unlocked},
@@ -36,6 +36,15 @@ pub fn prepare(
     model: &str,
     session_id: &str,
 ) -> Result<ManagedLaunchProfile, String> {
+    prepare_with_proxy_token(agent, selection, model, session_id, None)
+}
+
+/// The application may supply a session-owned local proxy token. Global
+/// selection/conflict validation still runs before any profile is written.
+pub fn prepare_with_proxy_token(
+    agent: &str, selection: &str, model: &str, session_id: &str,
+    session_proxy_token: Option<&str>,
+) -> Result<ManagedLaunchProfile, String> {
     let _guard = config_operation_guard()?;
     let _lock = target_lock::lock_targets(agent)?;
     recover_pending_transaction_unlocked(agent)?;
@@ -53,15 +62,16 @@ pub fn prepare(
     let token = selected
         .proxy_token
         .ok_or("Managed proxy token is missing")?;
+    let token = session_proxy_token.unwrap_or(&token);
     let (filename, content, env_name) = match agent {
         "codex" => (
             "config.toml",
-            generators::generate_codex_managed_config("", Some(model), &url, &token)?,
+            generators::generate_codex_managed_config("", Some(model), &url, token)?,
             "CODEX_HOME",
         ),
         "claude_code" => (
             "settings.json",
-            generators::generate_claude_code_managed_config("", Some(model), &url, &token)?,
+            generators::generate_claude_code_managed_config("", Some(model), &url, token)?,
             "CLAUDE_CONFIG_DIR",
         ),
         _ => return Err("Client launch profile is not supported".into()),

@@ -97,7 +97,10 @@ pub(super) fn new_turn_intent_id() -> String {
 /// tab close). Non-TUI sessions and already-terminal rows are left alone.
 #[tauri::command]
 pub async fn cli_agent_tui_release(session_id: String) -> Result<bool, String> {
+    let guard = session_runner::session_control_lock(&session_id).await.lock_owned().await;
     tokio::task::spawn_blocking(move || {
+        let _guard = guard;
+        crate::cli_managed_proxy::release_session_route(&session_id)?;
         let released = super::super::tui_bridge::release_tui_session(&session_id)?;
         agent_cli::managed_config::launch::release(&session_id)?;
         Ok(released)
