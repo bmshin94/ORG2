@@ -10,6 +10,7 @@ const api = vi.hoisted(() => ({
   prepare: vi.fn(),
   release: vi.fn(),
   create: vi.fn(),
+  destroy: vi.fn(),
   tab: vi.fn(),
   navigate: vi.fn(),
   surface: vi.fn(),
@@ -37,6 +38,9 @@ vi.mock("@src/store/chatPanel/chatPanelTerminalAtom", async () => {
   return {
     createChatPanelTerminalAtom: atom(null, (_get, _set, input) =>
       api.create(input)
+    ),
+    destroyChatPanelTerminalAtom: atom(null, (_get, _set, input) =>
+      api.destroy(input)
     ),
   };
 });
@@ -121,4 +125,32 @@ it("shows a recoverable error without opening a terminal when preparation fails"
   expect(host.textContent).toContain("marketConnection.launchFailed");
   expect(api.create).not.toHaveBeenCalled();
   expect(api.close).not.toHaveBeenCalled();
+});
+it("releases an unclaimed native profile if terminal creation fails", async () => {
+  api.create.mockImplementation(() => {
+    throw new Error("creation failed");
+  });
+  await act(async () => host.querySelector("button")!.click());
+  expect(api.release).toHaveBeenCalledWith("cli_one");
+  expect(api.destroy).not.toHaveBeenCalled();
+  expect(api.tab).not.toHaveBeenCalled();
+  expect(host.textContent).toContain("marketConnection.launchFailed");
+});
+it("closes the terminal through its lifecycle owner if tab insertion fails", async () => {
+  api.tab.mockImplementation(() => {
+    throw new Error("tab failed");
+  });
+  await act(async () => host.querySelector("button")!.click());
+  expect(api.destroy).toHaveBeenCalledWith("terminal_one");
+  expect(api.release).not.toHaveBeenCalled();
+  expect(api.navigate).not.toHaveBeenCalled();
+});
+it("keeps the terminal-owned profile when navigation fails after insertion", async () => {
+  api.navigate.mockImplementation(() => {
+    throw new Error("navigation failed");
+  });
+  await act(async () => host.querySelector("button")!.click());
+  expect(api.tab).toHaveBeenCalledOnce();
+  expect(api.destroy).not.toHaveBeenCalled();
+  expect(api.release).not.toHaveBeenCalled();
 });

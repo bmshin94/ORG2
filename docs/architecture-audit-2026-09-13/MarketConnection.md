@@ -195,3 +195,21 @@ Three new atom-level regressions verify delayed close, failed close, unavailable
 The independent SearchInput test typing fix and native connection implementation are now local commits, rebased onto `upstream/develop` at `cd08efbc4`. The dependency lock was installed frozen, including upstream security updates. The new workspace launch follows the shared `useAppNavigate` wrapper, preserving the upstream navigation-completion error handling.
 
 After integration: 50 tests across Market, terminal lifecycle/command formatting, SearchInput and shared navigation passed; full TypeScript check, root Rust check and production frontend build passed. Normal commit hooks also passed lint, staged type checking and scoped Clippy. Local commit creation is not a release or PR completion claim. Packaged cross-application authorization/request, lifecycle/Windows acceptance, release marker/signing, remaining infra/product work and final PR deliverables remain open.
+
+## Packaged application and launch handoff checkpoint
+
+The rebased native acceptance bundle built successfully with the independent
+`org2ai.org2.marketacceptance` identifier. Computer use observed `My workspace`
+and `Login`, confirming that this run did not inherit the primary application's
+sign-in. Chrome's local synthetic buyer page still reached only the opening
+state. Foreground testing was interrupted by user activity; native authorization
+receipt and a real model request remain unverified. Both protocol handlers were
+restored to the installed application's `yorg.orgii` identifier. The isolated
+process was then stopped; no production deployment was performed.
+
+The workspace launcher now releases its prepared session when terminal creation
+fails, or asks the existing terminal lifecycle owner to close a created terminal
+when tab insertion fails. After tab ownership transfers, a navigation failure
+retains the profile. The six WorkspaceLaunch tests pass, including all three
+failure boundaries. This additional frontend change is newer than the acceptance
+bundle and has not yet been exercised in a rebuilt application.

@@ -9,7 +9,10 @@ import { ROUTES } from "@src/config/routes";
 import { useChatPanelNavigationActions } from "@src/engines/ChatPanel/hooks/useChatPanelNavigationActions";
 import { useAppNavigate as useNavigate } from "@src/hooks/navigation/useAppNavigate";
 import { addChatPanelTerminalTabAtom } from "@src/store/chatPanel/chatPanelTabsAtom";
-import { createChatPanelTerminalAtom } from "@src/store/chatPanel/chatPanelTerminalAtom";
+import {
+  createChatPanelTerminalAtom,
+  destroyChatPanelTerminalAtom,
+} from "@src/store/chatPanel/chatPanelTerminalAtom";
 
 import { MarketLaunchError, prepareLaunch } from "./launch";
 import type { Connection } from "./rpc";
@@ -32,6 +35,7 @@ export default function WorkspaceLaunch({
   const active = useRef(true),
     running = useRef(false);
   const createTerminal = useSetAtom(createChatPanelTerminalAtom);
+  const destroyTerminal = useSetAtom(destroyChatPanelTerminalAtom);
   const addTab = useSetAtom(addChatPanelTerminalTabAtom);
   const { showSessionSurface } = useChatPanelNavigationActions();
   useEffect(() => {
@@ -59,20 +63,30 @@ export default function WorkspaceLaunch({
         await cliAgentTuiRelease(options.agentSessionId);
         return;
       }
-      const terminalSessionId = createTerminal({
-        name: options.title,
-        cwd: options.cwd,
-        cliAgentType: options.cliAgentType,
-        agentCommand: options.command,
-        expectedProcess: options.expectedProcess,
-        agentSessionId: options.agentSessionId,
-        envOverride: options.envOverride,
-      });
-      addTab({
-        terminalSessionId,
-        title: options.title,
-        cliCommand: options.command,
-      });
+      let terminalSessionId: string | undefined;
+      try {
+        terminalSessionId = createTerminal({
+          name: options.title,
+          cwd: options.cwd,
+          cliAgentType: options.cliAgentType,
+          agentCommand: options.command,
+          expectedProcess: options.expectedProcess,
+          agentSessionId: options.agentSessionId,
+          envOverride: options.envOverride,
+        });
+        addTab({
+          terminalSessionId,
+          title: options.title,
+          cliCommand: options.command,
+        });
+      } catch (failure) {
+        // Before tab ownership transfers, a failed UI insertion must not leave
+        // an orphaned native session/profile. A created terminal uses the same
+        // close acknowledgement path as normal terminal teardown.
+        if (terminalSessionId) await destroyTerminal(terminalSessionId);
+        else await cliAgentTuiRelease(options.agentSessionId);
+        throw failure;
+      }
       showSessionSurface();
       navigate(ROUTES.workStation.base.path);
       onClose();
