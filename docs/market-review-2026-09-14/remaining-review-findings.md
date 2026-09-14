@@ -34,7 +34,7 @@
 - [ORG2 #1761](https://github.com/org2AI/ORG2/pull/1761)：OPEN，base `codex/search-input-renderer-types`；最新提交以 PR 为准
 - [Cloud infra #75](https://github.com/org2AI/ORGII-cloud-infra/pull/75)：OPEN，head `d05755d85d6a3b26ce189dffb86ff3d1613860ad`
 - [Cloud infra #76](https://github.com/org2AI/ORGII-cloud-infra/pull/76)：OPEN，head `57031e98e7134ab1f2843f844ae0c8d368cf6eb1`
-- [Cloud infra #77](https://github.com/org2AI/ORGII-cloud-infra/pull/77)：OPEN，head `ac1e15502a662d4435d4dc54842512b01a4a1f93`
+- [Cloud infra #77](https://github.com/org2AI/ORGII-cloud-infra/pull/77)：OPEN，head `bfb8b372857160534834dae50e7461ae8d0b05ef`
 
 未合并、未由本次报告修改触发部署，也未将 CI queued/completed（无 conclusion）记为通过。以下为历史修复与测试记录，早期的 pending 以本报告上面的状态表为准。
 
@@ -238,3 +238,11 @@ Verification: `cargo test --lib native_materializer -- --test-threads=1` from `s
 Recovery boundary: existing managed histories stay in place; there is no bulk migration or cleanup. Reverting to an older reader can make them inaccessible through continuation, so preserve both the files and durable source bindings on rollback. Existing ordinary-account regressions remain required.
 
 Architecture scope: persistence owner, native-store resolver symmetry, initial/final/deferred paths, configuration ownership and file effects. No UI/wire-schema change in this follow-up. Performance scope: demand-driven bounded scan of one Session, no new cache/timer/subprocess beyond existing catalog operations; actual CPU/RSS, concurrent processes and provider rewrite/rotation remain unmeasured.
+
+## Primary app-settings recovery entry
+
+The current App connections page did not mount Market connection management; it was only mounted in the older CLI detail view. The current page now reuses `ConnectionSettings` for its selected client. It uses a distinct `market:` React key: the first combined-page regression caught that sharing the editor's key retained Claude recovery state after switching to Codex. This was corrected before delivery.
+
+Verification: `pnpm run test src/modules/MainApp/Settings/sections/HarnessConnections/HarnessConnectionsSection.test.ts src/features/MarketConnect/ConnectionSettings.test.ts` passed 3 tests in 2 files. The actual segmented control and Market settings component are rendered; the tests check client-specific workspace recovery, Desktop with no saved grant, and preserve the existing editor-selection and credential-import assertions. `pnpm typecheck:fast` passed. These tests replace only RPC and unrelated editors, not the selected-client controls.
+
+The unsigned macOS acceptance bundle at the preceding commit built and opened the normal workstation and App connections page through native computer use. It used an isolated test profile and custom test scheme; this is startup evidence, not a signed main-app authorization, provider, receipt or restart acceptance result. The updated settings wiring was then rebuilt with `pnpm exec tauri build --debug --bundles app --no-sign --config <isolated-acceptance-config>` (production webpack frontend plus debug macOS bundle, exit 0). Native computer use confirmed the Market entry on Claude Code and Codex, and its disappearance on Claude Desktop with no matching record. The Codex layout was visually inspected in a screenshot. Two non-secret connection-index fixtures without stored grants were used; no provider credentials were copied, no authorization was submitted, and no charge was made. This proves page wiring and target switching only. Full authorization, offline disconnect and installed main-app restart remain open.

@@ -6,6 +6,7 @@ import type { ConnectionHarness } from "@src/api/tauri/rpc/schemas/agentOrgs";
 import type { SaveKeyRequest } from "@src/api/types/keys";
 import Message from "@src/components/Message";
 import SegmentedTextPill from "@src/components/SegmentedTextPill";
+import ConnectionSettings from "@src/features/MarketConnect/ConnectionSettings";
 import InlineCredentialImport from "@src/modules/MainApp/Integrations/KeyVault/CliClients/CredentialImport/InlineCredentialImport";
 import { KeyVaultWizard } from "@src/scaffold/WizardSystem/variants/KeyVault";
 
@@ -68,6 +69,7 @@ export default function HarnessConnectionsSection() {
         />
       </div>
       <InlineCredentialImport onAfterImport={refreshHarnessConnections} />
+      <ConnectionSettings key={`market:${target}`} agentName={target} />
       {target === "codex" ? (
         <HarnessConnectionEditor
           key={target}
