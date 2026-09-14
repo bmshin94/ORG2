@@ -4,16 +4,14 @@ import {
   SHELL_REPLAY_SETTLE_MS,
   SHELL_REPLAY_WINDOW_MAX_FRAME_BYTES,
   type ShellReplayRange,
+  ShellReplayRequestGuard,
   filterFramesToBookmark,
   mergeReplayFrameWindow,
+  readShellReplayRangeIfCurrent,
   replayWindowBounds,
+  scheduleShellReplayPrefetch,
   shellReplayRowsToText,
   shellReplayScopeKey,
-} from "@orgii/replay-core/shell";
-import {
-  ShellReplayRequestGuard,
-  readShellReplayRangeIfCurrent,
-  scheduleShellReplayPrefetch,
   shouldShowShellReplayLoadingPlaceholder,
 } from "@orgii/replay-core/shell";
 import type { UIEvent } from "react";

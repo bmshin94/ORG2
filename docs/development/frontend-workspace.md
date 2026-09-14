@@ -60,8 +60,8 @@ needed for this workspace.
 | ---------------------------------------- | ------------------------------------------------------------------ |
 | `pnpm install --frozen-lockfile`         | Install/link all workspace members                                 |
 | `pnpm typecheck` / `pnpm typecheck:fast` | Independent package checks, then application tsc/tsgo              |
-| `pnpm build:packages`                    | Build both package artifacts in dependency order                   |
-| `pnpm build`                             | Build packages, then the existing production application           |
+| `pnpm build:packages`                    | Build both package artifacts in dependency order (CI verification) |
+| `pnpm build`                             | Existing production application, compiling package source          |
 | `pnpm test`                              | Application and package test projects, including path/name filters |
 | `pnpm test:app`                          | Application tests with the existing platform mocks                 |
 | `pnpm test:packages`                     | Package tests without application setup                            |

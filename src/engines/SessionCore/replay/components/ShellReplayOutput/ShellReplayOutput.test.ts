@@ -1,5 +1,5 @@
-import { shellReplayScopeKey } from "@orgii/replay-core/shell";
 // @vitest-environment jsdom
+import { shellReplayScopeKey } from "@orgii/replay-core/shell";
 import { act, createElement } from "react";
 import { type Root, createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
