@@ -579,6 +579,7 @@
     "voicePermissionSheetTitle": "需要麥克風存取權限"
   },
   "chat": {
+    "draftTooLong": "草稿過長（最多 {{max}} 個字元）",
     "cliPermissions": {
       "ask": "操作前審批",
       "workspace": "工作區權限",

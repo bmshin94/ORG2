@@ -579,6 +579,7 @@
     "voicePermissionSheetTitle": "マイクへのアクセスが必要です"
   },
   "chat": {
+    "draftTooLong": "下書きが長すぎます（最大 {{max}} 文字）",
     "cliPermissions": {
       "ask": "承認を求める",
       "workspace": "ワークスペースへのアクセス",

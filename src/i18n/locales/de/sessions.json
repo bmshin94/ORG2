@@ -579,6 +579,7 @@
     "voicePermissionSheetTitle": "Mikrofonzugriff erforderlich"
   },
   "chat": {
+    "draftTooLong": "Der Entwurf ist zu lang (maximal {{max}} Zeichen)",
     "cliPermissions": {
       "ask": "Genehmigung anfordern",
       "workspace": "Zugriff auf den Arbeitsbereich",

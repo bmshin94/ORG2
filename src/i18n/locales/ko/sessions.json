@@ -579,6 +579,7 @@
     "voicePermissionSheetTitle": "마이크 접근 권한 필요"
   },
   "chat": {
+    "draftTooLong": "초안이 너무 깁니다(최대 {{max}}자)",
     "cliPermissions": {
       "ask": "승인 요청",
       "workspace": "작업 공간 접근",

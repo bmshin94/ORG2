@@ -50,15 +50,14 @@ describe("mobileI18n", () => {
         "auth.signIn",
         "settings.manageAccount",
         "settings.deleteAccount",
-        "settings.accountWebHint",
         "profile.deleteHint",
         "profile.pairingStep1",
       ]) {
         expect(t(key)).not.toBe(key);
         expect(t(key)).not.toMatch(/cloud/i);
       }
-      expect(t("settings.accountWebHint")).toMatch(
-        language === "zh" ? /核对网页邮箱/ : /check that the email matches/
+      expect(t("profile.deleteHint")).toMatch(
+        language === "zh" ? /确认/ : /confirm/
       );
     }
   });
@@ -151,8 +150,8 @@ describe("mobileI18n", () => {
     expect(
       mobileI18n.t("settings.permissionFull", { ns: "mobileRemote" })
     ).toBe("完整访问");
-    expect(mobileI18n.t("devices.primary", { ns: "mobileRemote" })).toBe(
-      "主桌面"
+    expect(mobileI18n.t("devices.currentDesktop", { ns: "mobileRemote" })).toBe(
+      "当前电脑"
     );
     expect(mobileI18n.t("actions.close", { ns: "common" })).toBe("关闭");
     expect(mobileI18n.t("rounds.newestFirst", { ns: "mobileRemote" })).toBe(

@@ -579,6 +579,7 @@
     "voicePermissionSheetTitle": "Accès au microphone requis"
   },
   "chat": {
+    "draftTooLong": "Le brouillon est trop long ({{max}} caractères maximum)",
     "cliPermissions": {
       "ask": "Demander une approbation",
       "workspace": "Accès à l’espace de travail",
