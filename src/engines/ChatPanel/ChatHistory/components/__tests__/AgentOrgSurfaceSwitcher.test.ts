@@ -16,6 +16,8 @@ import type { AgentOrgRunMemberView } from "@src/api/tauri/agent";
 
 import AgentOrgSurfaceSwitcher from "../AgentOrgSurfaceSwitcher";
 
+const dropdownEngineTestState = vi.hoisted(() => ({ maxHeight: 300 }));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: { defaultValue?: string }) =>
@@ -39,7 +41,12 @@ vi.mock("@src/hooks/dropdown", async () => {
         close: () => setIsOpen(false),
         triggerRef,
         panelRef,
-        panelPosition: { top: 10, left: 10, width: 180, maxHeight: 300 },
+        panelPosition: {
+          top: 10,
+          left: 10,
+          width: 180,
+          maxHeight: dropdownEngineTestState.maxHeight,
+        },
       };
     },
   };
@@ -134,13 +141,14 @@ describe("AgentOrgSurfaceSwitcher", () => {
   const onMemberSelect = vi.fn();
   const onGroupChatToggle = vi.fn();
   const onCloseSiblingMenu = vi.fn();
-  const onRunViewRefresh = vi.fn(async () => undefined);
+  const onRunViewRefresh = vi.fn(async (): Promise<void> => undefined);
 
   beforeAll(() => {
     actEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
   });
 
   beforeEach(() => {
+    dropdownEngineTestState.maxHeight = 300;
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -159,9 +167,11 @@ describe("AgentOrgSurfaceSwitcher", () => {
   async function renderSwitcher({
     groupChatActive = false,
     initiallyOverviewOpen = false,
+    renderedMembers = members,
   }: {
     groupChatActive?: boolean;
     initiallyOverviewOpen?: boolean;
+    renderedMembers?: AgentOrgRunMemberView[];
   } = {}) {
     function Harness() {
       const [overviewOpen, setOverviewOpen] = useState(initiallyOverviewOpen);
@@ -171,7 +181,7 @@ describe("AgentOrgSurfaceSwitcher", () => {
         React.createElement(AgentOrgSurfaceSwitcher, {
           currentMemberId: groupChatActive ? null : "coordinator",
           currentMemberName: groupChatActive ? null : "Team lead",
-          members,
+          members: renderedMembers,
           overviewAvailable: true,
           overviewOpen,
           setOverviewOpen,
@@ -235,6 +245,65 @@ describe("AgentOrgSurfaceSwitcher", () => {
     ]);
     expect(document.body.textContent).not.toContain("Not started");
     expect(onRunViewRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("constrains both the panel and its scrollable member list to the available viewport height", async () => {
+    dropdownEngineTestState.maxHeight = 120;
+    const additionalMembers = Array.from({ length: 8 }, (_, index) => ({
+      ...members[2],
+      memberId: `additional-${index}`,
+      name: `Additional ${index}`,
+      agentId: `additional-agent-${index}`,
+      sessionRuntime: {
+        ...members[2].sessionRuntime!,
+        sessionId: `additional-session-${index}`,
+      },
+    }));
+    const renderedMembers = [...members, ...additionalMembers];
+    const lastMember = additionalMembers.at(-1)!;
+
+    await renderSwitcher({ renderedMembers });
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="agent-org-member-switcher-trigger"]'
+    );
+    await act(async () => trigger?.click());
+
+    const panel = document.querySelector<HTMLElement>('[role="menu"]');
+    const options = panel?.firstElementChild as HTMLElement | null;
+    expect(panel?.style.maxHeight).toBe("120px");
+    expect(options?.style.maxHeight).toBe("120px");
+    expect(options?.classList.contains("overflow-y-auto")).toBe(true);
+
+    const lastOption = document.querySelector<HTMLButtonElement>(
+      `[data-testid="agent-org-member-switcher-option-${lastMember.memberId}"]`
+    );
+    await act(async () => lastOption?.click());
+    expect(onMemberSelect).toHaveBeenCalledWith(lastMember);
+  });
+
+  it("allows Group selection while the menu refresh is still in flight", async () => {
+    let finishRefresh!: () => void;
+    onRunViewRefresh.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRefresh = resolve;
+        })
+    );
+
+    await renderSwitcher();
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[data-testid="agent-org-member-switcher-trigger"]'
+    );
+    await act(async () => trigger?.click());
+
+    const groupOption = document.querySelector<HTMLButtonElement>(
+      '[data-testid="agent-org-group-chat-toggle"]'
+    );
+    await act(async () => groupOption?.click());
+
+    expect(onRunViewRefresh).toHaveBeenCalledTimes(1);
+    expect(onGroupChatToggle).toHaveBeenCalledWith(true);
+    finishRefresh();
   });
 
   it("closes Overview when the page selector opens and exits Group before selecting a Member", async () => {

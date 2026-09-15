@@ -8,6 +8,7 @@ import { DropdownPanel } from "@src/components/Dropdown/exports";
 import {
   DROPDOWN_CLASSES,
   DROPDOWN_ITEM,
+  DROPDOWN_PANEL,
 } from "@src/components/Dropdown/tokens";
 import { HeaderSectionSeparator } from "@src/components/HeaderSectionSeparator";
 import { AgentOrgWriterBadge } from "@src/engines/ChatPanel/blocks/OrgTaskBadges";
@@ -114,6 +115,10 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
       placement: "bottom",
       align: "left",
     });
+    const memberSwitcherMaxHeight = Math.min(
+      DROPDOWN_PANEL.maxHeight,
+      memberSwitcherPanelPosition.maxHeight
+    );
 
     useEffect(() => {
       if (siblingMenuOpen) closeMemberSwitcher();
@@ -170,6 +175,7 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
               data-testid="agent-org-member-switcher-trigger"
               className="max-w-full min-w-0 disabled:cursor-default"
               disabled={!canSwitchSurface}
+              aria-haspopup="menu"
               aria-expanded={isMemberSwitcherOpen}
               aria-pressed={isMemberSwitcherOpen}
               onClick={() => {
@@ -203,20 +209,25 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
                   ref={memberSwitcherPanelRef}
                   role="menu"
                   aria-label={groupChatLabel}
-                  className="min-w-48"
+                  className="flex min-w-48 flex-col"
                   animated={false}
-                  maxHeight="none"
+                  maxHeight={memberSwitcherMaxHeight}
                   style={{
                     position: "fixed",
                     top: memberSwitcherPanelPosition.top,
                     left: memberSwitcherPanelPosition.left,
                   }}
                 >
-                  <div className={DROPDOWN_CLASSES.optionsContainer}>
+                  <div
+                    className={`${DROPDOWN_CLASSES.optionsContainerOverlay} min-h-0 flex-1 cursor-default`}
+                    style={{ maxHeight: memberSwitcherMaxHeight }}
+                  >
                     {hasGroupChatOption && (
                       <>
-                        <button
-                          type="button"
+                        <Button
+                          layout="custom"
+                          appearance="custom"
+                          htmlType="button"
                           role="menuitem"
                           aria-current={groupChatActive ? "page" : undefined}
                           data-testid="agent-org-group-chat-toggle"
@@ -240,7 +251,7 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
                           <span className="min-w-0 flex-1 truncate text-left">
                             {groupChatLabel}
                           </span>
-                        </button>
+                        </Button>
                         <div className={DROPDOWN_CLASSES.menuGroupSeparator} />
                       </>
                     )}
@@ -275,9 +286,11 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
                             : "";
 
                       return (
-                        <button
+                        <Button
                           key={member.memberId}
-                          type="button"
+                          layout="custom"
+                          appearance="custom"
+                          htmlType="button"
                           role="menuitem"
                           aria-current={isCurrent ? "page" : undefined}
                           data-testid={`agent-org-member-switcher-option-${member.memberId}`}
@@ -314,7 +327,7 @@ const AgentOrgSurfaceSwitcher: React.FC<AgentOrgSurfaceSwitcherProps> = memo(
                               {runtimeStatusLabel}
                             </span>
                           )}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
