@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import {
   AGENT_ORG_RUN_STATUS,
   type AgentOrgGroupConversationItem,
-  type AgentOrgGroupDeliveryInput,
   type AgentOrgRunMemberView,
   type AgentOrgRunView,
   isAgentOrgGroupConversationItem,
@@ -30,6 +29,18 @@ import { claimPipelineSessionAtom } from "@src/store/session";
 import { groupChatViewSessionIdAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 
 import {
+  type GroupChatRetryEnvelope,
+  groupChatRetryRequest,
+  isDurableGroupDeliveryOutcomeUnknown,
+  isGroupRetryEnvelopeDurable,
+} from "./agentOrgGroupChatRetry";
+import {
+  isDirectAgentOrgMemberView,
+  shouldBlockPausedAgentOrgGroupChatSubmit,
+  shouldRouteAgentOrgGroupChatSubmit,
+  shouldUseAgentOrgMemberGroupTransport,
+} from "./agentOrgGroupChatRouting";
+import {
   getAgentOrgGroupProjectionSnapshot,
   useAgentOrgGroupProjection,
 } from "./agentOrgGroupProjectionStore";
@@ -41,15 +52,6 @@ interface OptimisticGroupTurn {
   item: AgentOrgGroupConversationItem;
 }
 
-export interface GroupChatRetryEnvelope {
-  fingerprint: string;
-  deliveries: AgentOrgGroupDeliveryInput[];
-  content: string;
-  displayText: string;
-  images?: string[];
-  targetMemberNames: string[];
-}
-
 interface GroupRootRetryEnvelope {
   turnIntentId: string;
   clientMessageId: string;
@@ -59,73 +61,11 @@ interface GroupRootRetryEnvelope {
   targetMemberName: string;
 }
 
-export function groupChatRetryRequest(envelope: GroupChatRetryEnvelope): {
-  deliveries: AgentOrgGroupDeliveryInput[];
-  content: string;
-  displayText: string;
-  images?: string[];
-} {
-  return {
-    deliveries: envelope.deliveries.map((delivery) => ({ ...delivery })),
-    content: envelope.content,
-    displayText: envelope.displayText,
-    images: envelope.images?.slice(),
-  };
-}
-
-export function isDurableGroupDeliveryOutcomeUnknown(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("group_delivery_commit_before_kick_fault") ||
-    message.includes("group_delivery_response_loss_after_kick_fault") ||
-    message.includes("group_delivery_kick_failed")
-  );
-}
-
-export function isGroupRetryEnvelopeDurable(
-  envelope: GroupChatRetryEnvelope,
-  durableTurnIds: ReadonlySet<string>
-): boolean {
-  return envelope.deliveries.every((delivery) =>
-    durableTurnIds.has(delivery.turnIntentId)
-  );
-}
-
 interface UseAgentOrgGroupChatControllerOptions {
   sessionId: string;
   agentOrgRunView: AgentOrgRunView | null;
   currentAgentOrgMember: AgentOrgRunMemberView | null;
   refreshAgentOrgRunView: () => Promise<void>;
-}
-
-export function isDirectAgentOrgMemberView(
-  currentAgentOrgMember: AgentOrgRunMemberView | null
-): boolean {
-  return currentAgentOrgMember !== null && !currentAgentOrgMember.isCoordinator;
-}
-
-export function shouldRouteAgentOrgGroupChatSubmit(
-  groupChatViewActive: boolean,
-  directMemberView: boolean,
-  memberMentionCount: number
-): boolean {
-  if (directMemberView) return false;
-  return groupChatViewActive || memberMentionCount > 0;
-}
-
-export function shouldUseAgentOrgMemberGroupTransport(
-  targetMemberIds: ReadonlyArray<string>
-): boolean {
-  return targetMemberIds.length > 0;
-}
-
-export function shouldBlockPausedAgentOrgGroupChatSubmit(
-  runStatus: AgentOrgRunView["runStatus"],
-  targetMemberIds: ReadonlyArray<string>
-): boolean {
-  return (
-    runStatus === AGENT_ORG_RUN_STATUS.PAUSED && targetMemberIds.length === 0
-  );
 }
 
 function optimisticItem(input: {
