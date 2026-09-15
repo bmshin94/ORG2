@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   releaseConfig,
   validateDistribution,
+  validatePrivacyManifest,
   bundleId,
   parsePlist,
 } from "./readiness.mjs";
@@ -32,6 +34,8 @@ function fixture() {
     CFBundleShortVersionString: expected.version,
     CFBundleVersion: expected.build,
     NSCameraUsageDescription: "Scan pairing codes",
+    NSMicrophoneUsageDescription: "Record dictation",
+    NSSpeechRecognitionUsageDescription: "Transcribe dictation",
     CFBundleURLTypes: [{ CFBundleURLSchemes: ["org2remote"] }],
     ITSAppUsesNonExemptEncryption: false,
   };
@@ -60,6 +64,70 @@ test("release config rejects shell-like and invalid version/build/team inputs", 
 test("accepts matching distribution metadata, including legacy App ID prefixes", () => {
   const f = fixture();
   validateDistribution(f.info, f.profile, f.entitlements, f.expected);
+});
+
+test("accepts a minimal privacy manifest without invalid empty declarations", () => {
+  validatePrivacyManifest({ NSPrivacyTracking: false });
+});
+
+test("rejects empty optional privacy declarations", () => {
+  for (const key of [
+    "NSPrivacyCollectedDataTypes",
+    "NSPrivacyAccessedAPITypes",
+    "NSPrivacyTrackingDomains",
+  ]) {
+    assert.throws(() =>
+      validatePrivacyManifest({ NSPrivacyTracking: false, [key]: [] }),
+    );
+  }
+});
+
+test("requires reasons for declared required-reason APIs", () => {
+  assert.throws(() =>
+    validatePrivacyManifest({
+      NSPrivacyTracking: false,
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp",
+          NSPrivacyAccessedAPITypeReasons: [],
+        },
+      ],
+    }),
+  );
+});
+
+test("ships the reviewed iOS privacy declarations", () => {
+  const privacy = parsePlist(
+    readFileSync(
+      new URL(
+        "../../apps/remote-ios/src-tauri/gen/apple/org2-remote_iOS/PrivacyInfo.xcprivacy",
+        import.meta.url,
+      ),
+    ),
+  );
+  validatePrivacyManifest(privacy);
+  assert.equal(privacy.NSPrivacyTracking, false);
+  assert.deepEqual(
+    privacy.NSPrivacyCollectedDataTypes.map(
+      (entry) => entry.NSPrivacyCollectedDataType,
+    ),
+    [
+      "NSPrivacyCollectedDataTypeName",
+      "NSPrivacyCollectedDataTypeEmailAddress",
+      "NSPrivacyCollectedDataTypeUserID",
+      "NSPrivacyCollectedDataTypeDeviceID",
+      "NSPrivacyCollectedDataTypeProductInteraction",
+      "NSPrivacyCollectedDataTypeOtherUserContent",
+      "NSPrivacyCollectedDataTypePhotosorVideos",
+    ],
+  );
+  assert.deepEqual(privacy.NSPrivacyAccessedAPITypes, [
+    {
+      NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp",
+      NSPrivacyAccessedAPITypeReasons: ["C617.1"],
+    },
+  ]);
+  assert.equal(privacy.NSPrivacyTrackingDomains, undefined);
 });
 for (const [name, mutate] of [
   [
@@ -114,6 +182,18 @@ for (const [name, mutate] of [
     "missing camera permission",
     (f) => {
       delete f.info.NSCameraUsageDescription;
+    },
+  ],
+  [
+    "missing microphone permission",
+    (f) => {
+      delete f.info.NSMicrophoneUsageDescription;
+    },
+  ],
+  [
+    "missing speech recognition permission",
+    (f) => {
+      delete f.info.NSSpeechRecognitionUsageDescription;
     },
   ],
   [

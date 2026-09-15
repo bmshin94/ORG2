@@ -21,6 +21,7 @@ import {
 } from "../../connection/mobileConnectionStorage";
 import { scanCameraQr } from "../scanCameraQr";
 import type { MobileRemotePlatform } from "../types";
+import { writeClipboardText } from "../writeClipboardText";
 import { createBrowserMobileAuthClient } from "./browserMobileAuthClient";
 
 const MOBILE_AUTH_ROOT_PATH = "/orgii/mobile";
@@ -42,6 +43,7 @@ export function createBrowserMobileRemotePlatform(): MobileRemotePlatform {
 
   return {
     kind: "browser",
+    writeClipboardText,
     scanQr: scanCameraQr,
     openExternal: (url) => window.location.assign(url),
     clientInfo: {
@@ -49,7 +51,11 @@ export function createBrowserMobileRemotePlatform(): MobileRemotePlatform {
       version: "0.1.0",
       defaultDeviceLabel: "ORG2 Mobile",
     },
-    runtime,
+    runtime: {
+      ...runtime,
+      readPreference: (key) => localStorage.getItem(key),
+      writePreference: (key, value) => localStorage.setItem(key, value),
+    },
     auth: {
       createClient: () =>
         createBrowserMobileAuthClient({

@@ -20,10 +20,6 @@ import { record, stringValue } from "./mobileToolPresentation";
 import { useMobileToolPresentation } from "./useMobileToolPresentation";
 
 export {
-  MobileToolDetailSheet,
-  type MobileToolDetailSheetProps,
-} from "./MobileToolDetailSheet";
-export {
   mobileToolSummary,
   normalizeMobileToolLifecycle,
   resolveMobileToolIconName,

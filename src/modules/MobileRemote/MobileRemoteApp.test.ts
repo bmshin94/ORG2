@@ -21,7 +21,7 @@ const TestMobileRemotePlatformProvider =
   >;
 
 describe("MobileRemoteApp", () => {
-  it("renders welcome markup within providers", async () => {
+  it("does not flash pairing before persisted device hydration", async () => {
     await i18nReady;
     i18n.addResourceBundle("en", "mobileRemote", enMobileRemote, true, true);
     await i18n.changeLanguage("en");
@@ -36,8 +36,8 @@ describe("MobileRemoteApp", () => {
         )
       )
     );
-    expect(markup).toContain("Mobile Remote");
     expect(markup).not.toContain("Try demo");
-    expect(markup).toContain(enMobileRemote.welcome.scanQr);
+    expect(markup).not.toContain(enMobileRemote.welcome.scanQr);
+    expect(markup).toContain('aria-busy="true"');
   });
 });

@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import ChatLoadingBlock from "@src/components/ChatLoadingBlock";
 import { Placeholder } from "@src/components/Placeholder";
 import ScrollToBottomButton from "@src/components/ScrollToBottomButton";
 import { CHAT_ITEM_PADDING_X } from "@src/engines/ChatPanel/blocks/primitives/config";
@@ -9,7 +8,17 @@ import { CHAT_ITEM_PADDING_X } from "@src/engines/ChatPanel/blocks/primitives/co
 import type { TranscriptLoadPhase } from "../../lib/transcriptLoadState";
 import type { TranscriptItem } from "../../lib/transcriptReducer";
 import { AgentBubble } from "./AgentBubble";
-import { MobileToolCall, MobileToolDetailSheet } from "./MobileToolCall";
+import {
+  type LoadMessageImage,
+  MobileMessageImages,
+  createImageRetention,
+} from "./MobileMessageImages";
+import { MobileToolCall } from "./MobileToolCall";
+import { MobileToolDetailModal } from "./MobileToolDetailModal";
+import {
+  MobileLoadingDots,
+  MobileTranscriptLoading,
+} from "./MobileTranscriptLoading";
 import { UserBubble } from "./UserBubble";
 import {
   MOBILE_CHAT_ITEM_GAP,
@@ -29,7 +38,11 @@ export interface ChatTranscriptProps {
   /** Show ChatPanel's loading block until the active turn paints output. */
   waitingForAgent?: boolean;
   onRetry: () => void;
+  loadImage?: LoadMessageImage;
+  /** Endpoint + authenticated user + desktop identity, independent of connectivity. */
+  imageScope?: string;
   onOpenFile?: (eventId: string, target: MobileFileTarget) => Promise<void>;
+  footer?: React.ReactNode;
 }
 
 export function ChatTranscript({
@@ -42,9 +55,19 @@ export function ChatTranscript({
   waitingForAgent = false,
   onRetry,
   onOpenFile,
+  loadImage,
+  imageScope,
+  footer,
 }: ChatTranscriptProps) {
   const { t } = useTranslation("mobileRemote");
   const transcriptScope = `${sessionId}:${roundId ?? "no-round"}`;
+  const imageResourceScope = JSON.stringify([imageScope, sessionId, roundId]);
+  const retention = useMemo(
+    () => createImageRetention(),
+    // A new authenticated resource owns a fresh retention scope, not each RPC.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [imageResourceScope]
+  );
   const [toolDetail, setToolDetail] = useState<{
     scope: string;
     itemId: string;
@@ -95,19 +118,7 @@ export function ChatTranscript({
   }
 
   if (phase === "loading" && items.length === 0) {
-    return (
-      <div
-        className="flex min-h-0 flex-1"
-        data-mobile-transcript-loading="true"
-      >
-        <Placeholder
-          fillParentHeight
-          placement="sidebar"
-          title={t("transcript.loading")}
-          variant="loading"
-        />
-      </div>
-    );
+    return <MobileTranscriptLoading label={t("transcript.loading")} />;
   }
 
   if (phase === "empty") {
@@ -123,10 +134,10 @@ export function ChatTranscript({
   }
 
   return (
-    <div className="relative min-h-0 flex-1">
+    <div className="mobile-chat-transcript relative min-h-0 min-w-0 flex-1">
       <div
         ref={scrollRef}
-        className="h-full min-h-0 overflow-y-auto px-2 py-3"
+        className="h-full min-h-0 min-w-0 overflow-y-auto px-2 py-3"
         role="log"
         aria-live="polite"
       >
@@ -139,10 +150,28 @@ export function ChatTranscript({
             );
             let content: React.ReactNode;
             if (item.kind === "user") {
-              content = <UserBubble text={item.text} />;
+              content = (
+                <UserBubble text={item.text}>
+                  <MobileMessageImages
+                    key={imageResourceScope}
+                    eventId={item.id}
+                    count={item.imageCount ?? 0}
+                    loadImage={loadImage}
+                    retention={retention}
+                  />
+                </UserBubble>
+              );
             } else if (item.kind === "agent") {
               content = (
-                <AgentBubble text={item.text} streaming={item.streaming} />
+                <AgentBubble text={item.text} streaming={item.streaming}>
+                  <MobileMessageImages
+                    key={imageResourceScope}
+                    eventId={item.id}
+                    count={item.imageCount ?? 0}
+                    loadImage={loadImage}
+                    retention={retention}
+                  />
+                </AgentBubble>
               );
             } else {
               content = (
@@ -169,12 +198,13 @@ export function ChatTranscript({
               </div>
             );
           })}
+          {footer}
           {waitingForAgent ? (
             <div
               className={`${MOBILE_CHAT_ITEM_GAP} ${CHAT_ITEM_PADDING_X}`}
               data-mobile-agent-loading="true"
             >
-              <ChatLoadingBlock />
+              <MobileLoadingDots label={t("composerAccepted")} />
             </div>
           ) : null}
         </div>
@@ -188,7 +218,7 @@ export function ChatTranscript({
         </div>
       ) : null}
       {selectedTool ? (
-        <MobileToolDetailSheet
+        <MobileToolDetailModal
           key={`${transcriptScope}:${selectedTool.id}`}
           item={selectedTool}
           open={toolDetailOpen}

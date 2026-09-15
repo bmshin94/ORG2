@@ -39,7 +39,7 @@ export function StopConfirmModal({
       onClose={handleCancel}
       bodyClassName="px-5 py-4"
       footer={
-        <div className="flex items-center justify-end gap-2 px-3 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 px-3 py-3">
           <Button
             variant="tertiary"
             onClick={handleCancel}
@@ -58,7 +58,7 @@ export function StopConfirmModal({
         </div>
       }
     >
-      <div className="text-[13px] leading-5 text-text-3">
+      <div className="mobile-type-caption text-text-3">
         {t("stopConfirm.body")}
       </div>
       {failed ? (

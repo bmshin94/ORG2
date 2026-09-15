@@ -586,6 +586,7 @@
       "full": "完全访问",
       "nextTurn": "权限设置从下一轮开始生效"
     },
+    "draftTooLong": "草稿过长（最多 {{max}} 个字符）",
     "planApprovedLabel": "执行已批准的计划",
     "planApprovedEditedLabel": "执行已批准的计划（已编辑）",
     "restoreCheckpoint": "恢复到此检查点",

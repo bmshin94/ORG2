@@ -56,6 +56,7 @@ export interface ModelSettingsMenuProps {
   onChange: (modelId: string) => void;
   /** Open the detailed Effort/Speed rows instead of the compact slider. */
   defaultAdvanced?: boolean;
+  className?: string;
   renderTrigger: (props: {
     open: boolean;
     onClick: React.MouseEventHandler<HTMLButtonElement>;
@@ -74,6 +75,7 @@ export default function ModelSettingsMenu({
   onModelClick,
   onChange,
   defaultAdvanced = false,
+  className = "",
   renderTrigger,
 }: ModelSettingsMenuProps) {
   const { t } = useTranslation();
@@ -178,7 +180,7 @@ export default function ModelSettingsMenu({
             role="dialog"
             tabIndex={-1}
             aria-label={text("settings")}
-            className={DROPDOWN_WIDTHS.fixedStatusPanelClass}
+            className={`${DROPDOWN_WIDTHS.fixedStatusPanelClass} ${className}`}
             style={{
               position: "fixed",
               top: panelPosition.top,

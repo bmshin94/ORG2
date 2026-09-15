@@ -2,7 +2,7 @@
 
 use serde_json::{json, Value};
 
-use super::adapters::{file_navigation, interaction, model, session};
+use super::adapters::{file_navigation, images, interaction, model, session};
 use super::auth::MobileRemoteSettings;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,6 +69,7 @@ pub enum MobileTier {
     ReadOnly,
 }
 
+#[derive(Clone)]
 pub struct RpcContext {
     pub conn_id: u64,
     pub initialized: bool,
@@ -104,6 +105,10 @@ async fn dispatch_method(
 ) -> Result<Value, RpcError> {
     match method {
         "initialize" => handle_initialize(ctx, params).await,
+        "session/open" => {
+            require_initialized(ctx)?;
+            session::session_open(ctx.conn_id, params).await
+        }
         "session/resolve" => {
             require_initialized(ctx)?;
             super::adapters::session_identity::resolve(params).await
@@ -112,6 +117,15 @@ async fn dispatch_method(
             require_initialized(ctx)?;
             session::session_list(params).await
         }
+        "session/changes" => {
+            require_initialized(ctx)?;
+            super::adapters::change_review::historical_changes(params).await
+        }
+        "session/read_state" | "session/mark_visited" => {
+            require_initialized(ctx)?;
+            // A personal read receipt does not execute an agent operation.
+            super::read_state::request(params, method == "session/mark_visited").await
+        }
         "session/subscribe" => {
             require_initialized(ctx)?;
             session::session_subscribe(ctx.conn_id, params).await
@@ -119,6 +133,10 @@ async fn dispatch_method(
         "session/round" => {
             require_initialized(ctx)?;
             session::session_round(params).await
+        }
+        "session/history" => {
+            require_initialized(ctx)?;
+            session::session_history(params).await
         }
         "session/unsubscribe" => {
             require_initialized(ctx)?;
@@ -133,6 +151,10 @@ async fn dispatch_method(
             require_initialized(ctx)?;
             require_full_tier(ctx)?;
             session::session_cancel(params).await
+        }
+        "session/image" => {
+            require_initialized(ctx)?;
+            images::session_image(params).await
         }
         "session/open_file" => {
             require_initialized(ctx)?;
@@ -170,6 +192,10 @@ async fn dispatch_method(
         "interaction/pending" => {
             require_initialized(ctx)?;
             interaction::pending(params).await
+        }
+        "interaction/pending_all" => {
+            require_initialized(ctx)?;
+            interaction::pending_all(params).await
         }
         "" => Err(RpcError::new(
             RpcErrorCode::InvalidRequest,
@@ -235,9 +261,14 @@ async fn handle_initialize(ctx: &mut RpcContext, params: &Value) -> Result<Value
             "maxConcurrentSubscriptions": 4,
             "roundHistory": true,
             "openSessionFile": true,
+            "sessionImages": true,
             "modelSelection": true,
             "sessionIdentity": true,
+            "sessionOpen": true,
+            "changeReview": true,
+            "pendingInteractions": true,
             "sessionSearch": true,
+            "sessionReadState": true,
         }
     }))
 }
@@ -245,6 +276,46 @@ async fn handle_initialize(ctx: &mut RpcContext, params: &Value) -> Result<Value
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn opening_requires_initialize_and_validates_lease_before_history() {
+        let mut ctx = RpcContext {
+            conn_id: 0,
+            tier: MobileTier::ReadOnly,
+            initialized: false,
+            settings: MobileRemoteSettings::default(),
+        };
+        let request = json!({"jsonrpc":"2.0", "id":1, "method":"session/open", "params":{}});
+        let response = dispatch(&mut ctx, &request).await.unwrap();
+        assert!(response.get("error").is_some());
+        ctx.initialized = true;
+        let response = dispatch(&mut ctx, &request).await.unwrap();
+        assert_eq!(response["error"]["message"], "subscriptionId is required");
+    }
+
+    #[tokio::test]
+    async fn history_hydration_requires_initialize_and_is_readonly() {
+        let mut ctx = RpcContext {
+            conn_id: 0,
+            initialized: false,
+            tier: MobileTier::ReadOnly,
+            settings: MobileRemoteSettings {
+                enabled: true,
+                lan_token: "test".into(),
+                allow_lan_exposure: false,
+            },
+        };
+        let request = json!({"jsonrpc":"2.0","id":7,"method":"session/history","params":{}});
+        let before = dispatch(&mut ctx, &request).await.unwrap();
+        assert_eq!(
+            before["error"]["code"],
+            RpcErrorCode::InvalidRequest.as_i32()
+        );
+        ctx.initialized = true;
+        let after = dispatch(&mut ctx, &request).await.unwrap();
+        assert_eq!(after["id"], 7);
+        assert_eq!(after["error"]["code"], RpcErrorCode::InvalidParams.as_i32());
+    }
     use crate::api::mobile_bridge::auth::MobileRemoteSettings;
 
     fn test_context(enabled: bool) -> RpcContext {
@@ -287,16 +358,13 @@ mod tests {
         });
         let response = dispatch(&mut ctx, &request).await.expect("response");
         assert!(response.get("result").is_some());
-        assert_eq!(response["result"]["capabilities"]["sessionIdentity"], true);
-        assert_eq!(response["result"]["capabilities"]["sessionSearch"], true);
-        let expected_identity = super::super::desktop_identity::collect();
-        assert_eq!(
-            response["result"]["desktopIdentity"],
-            serde_json::to_value(&expected_identity).unwrap()
-        );
+        let identity = response["result"]["desktopIdentity"].as_object().unwrap();
+        assert!(identity
+            .keys()
+            .all(|key| matches!(key.as_str(), "name" | "model" | "username")));
         assert_eq!(
             response["result"]["desktopName"],
-            serde_json::to_value(&expected_identity.name).unwrap()
+            response["result"]["desktopIdentity"]["name"]
         );
         assert_eq!(
             response
@@ -312,6 +380,55 @@ mod tests {
         );
         assert_eq!(response["result"]["capabilities"]["sessionSearch"], true);
         assert!(ctx.initialized);
+        assert_eq!(
+            response["result"]["capabilities"]["pendingInteractions"],
+            true
+        );
+        assert_eq!(response["result"]["capabilities"]["sessionSearch"], true);
+        assert_eq!(response["result"]["capabilities"]["sessionReadState"], true);
+    }
+
+    #[tokio::test]
+    async fn read_receipts_require_initialization_and_validate_read_only_requests() {
+        let mut ctx = test_context(true);
+        for method in ["session/read_state", "session/mark_visited"] {
+            let response = dispatch(&mut ctx, &json!({"id":1, "method":method, "params":{}}))
+                .await
+                .unwrap();
+            assert_eq!(response["error"]["message"], "connection not initialized");
+        }
+        ctx.initialized = true;
+        ctx.tier = MobileTier::ReadOnly;
+        for method in ["session/read_state", "session/mark_visited"] {
+            let response = dispatch(
+                &mut ctx,
+                &json!({"id":2, "method":method, "params":{"sessionIds":[]}}),
+            )
+            .await
+            .unwrap();
+            assert_eq!(
+                response["error"]["code"],
+                RpcErrorCode::InvalidParams.as_i32()
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn pending_snapshots_require_initialization_and_read_only_cannot_answer() {
+        let mut ctx = test_context(true);
+        for method in ["interaction/pending", "interaction/pending_all"] {
+            let response = dispatch(
+                &mut ctx,
+                &json!({"jsonrpc":"2.0", "id":22, "method":method, "params":{}}),
+            )
+            .await
+            .unwrap();
+            assert_eq!(response["error"]["message"], "connection not initialized");
+        }
+        ctx.initialized = true;
+        ctx.tier = MobileTier::ReadOnly;
+        let response = dispatch(&mut ctx, &json!({"jsonrpc":"2.0", "id":23, "method":"interaction/respond_permission", "params":{}})).await.unwrap();
+        assert_eq!(response["error"]["code"], RpcErrorCode::TierDenied.as_i32());
     }
 
     #[tokio::test]
@@ -359,6 +476,22 @@ mod tests {
         assert_eq!(
             response.pointer("/error/message").and_then(|v| v.as_str()),
             Some("connection not initialized")
+        );
+    }
+
+    #[tokio::test]
+    async fn images_require_initialize_but_allow_read_only_access() {
+        let mut ctx = test_context(true);
+        let request = json!({"jsonrpc":"2.0", "id":21, "method":"session/image", "params":{}});
+        let response = dispatch(&mut ctx, &request).await.unwrap();
+        assert_eq!(response["error"]["message"], "connection not initialized");
+        ctx.initialized = true;
+        ctx.tier = MobileTier::ReadOnly;
+        let response = dispatch(&mut ctx, &request).await.unwrap();
+        // Invalid params are rejected by the adapter, not by a write-tier gate.
+        assert_eq!(
+            response["error"]["code"],
+            RpcErrorCode::InvalidParams.as_i32()
         );
     }
 

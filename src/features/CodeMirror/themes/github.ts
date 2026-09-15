@@ -39,6 +39,7 @@ export function createGithubTheme(): ReturnType<typeof createTheme> {
   const invalid = cssVar("--cm-syntax-invalid", "#cb2431");
   const deleted = cssVar("--cm-syntax-deleted", "#b31d28");
   const deletedBg = cssVar("--cm-syntax-deleted-bg", "#ffeef0");
+  const insertedBg = cssVar("--diff-added-bg", "#e6ffed");
 
   const styles = [
     { tag: [t.standard(t.tagName), t.tagName], color: tag },
@@ -54,6 +55,7 @@ export function createGithubTheme(): ReturnType<typeof createTheme> {
     { tag: [t.heading, t.strong], color: func, fontWeight: "bold" },
     { tag: [t.emphasis], color: func, fontStyle: "italic" },
     { tag: [t.deleted], color: deleted, backgroundColor: deletedBg },
+    { tag: [t.inserted], color: tag, backgroundColor: insertedBg },
     { tag: [t.atom, t.bool, t.special(t.variableName)], color: constant },
     { tag: [t.url, t.escape, t.regexp, t.link], color: link },
     { tag: t.link, textDecoration: "underline" },

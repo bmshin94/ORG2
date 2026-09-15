@@ -3,8 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
 import { InlineBanner } from "@src/components/InlineBanner";
-import { ORG2_CLOUD_OFFICIAL_WEB_ORIGIN } from "@src/features/Org2Cloud/config";
-import { ArrowRight02Icon, HugeiconsIcon, Unlink02Icon } from "@src/icons";
+import { ArrowRight02Icon, HugeiconsIcon } from "@src/icons";
 import {
   SECTION_VALUE_SMALL_MUTED_CLASSES,
   SectionContainer,
@@ -12,38 +11,9 @@ import {
 } from "@src/modules/shared/layouts/SectionLayout";
 
 import { useMobileRemote } from "../../app";
-import { useMobileAuth } from "../../auth/MobileAuthContext";
 import { MobileTopBar } from "../../components/MobileTopBar";
-import { MobileConfirmModal } from "../../components/modals/MobileConfirmModal";
-import { buildMobileWsUrl } from "../../connection/buildMobileWsUrl";
-import type {
-  MobileConnectionConfig,
-  MobilePermissionTier,
-} from "../../connection/types";
-import { useMobileRemotePlatform } from "../../platform";
-
-export function resolveRelayLabel(
-  config: MobileConnectionConfig | null,
-  demoMode: boolean
-): string {
-  if (demoMode) {
-    return "demo";
-  }
-  if (!config) {
-    return "";
-  }
-  try {
-    if (config.wsUrl?.trim()) {
-      return config.wsUrl.trim();
-    }
-    if (config.host?.trim()) {
-      return buildMobileWsUrl(config);
-    }
-  } catch {
-    return "";
-  }
-  return "";
-}
+import { MobileProfileEntry } from "../../components/profile/MobileProfileEntry";
+import type { MobilePermissionTier } from "../../connection/types";
 
 function presenceLabel(
   presence: "online" | "offline" | "unknown",
@@ -78,111 +48,33 @@ export interface SettingsTabProps {
   onRevokePairing?: () => void;
 }
 
-/** M-17 Settings — connection info and demo/live mode label. */
+/** Connection preferences and one entry into the shared account destination. */
 export function SettingsTab({
   onOpenPairingGuide,
   onRevokePairing,
 }: SettingsTabProps) {
   const { t } = useTranslation("mobileRemote");
-  const { connection, connectionConfig } = useMobileRemote();
-  const { session, signOut, isDevelopmentBypass } = useMobileAuth();
-  const [confirmSignOut, setConfirmSignOut] = React.useState(false);
-  const platform = useMobileRemotePlatform();
-  const [opening, setOpening] = React.useState(false);
-  const [openFailed, setOpenFailed] = React.useState(false);
-  const openingRef = React.useRef(false);
-  const openCloudPage = async (path: "/account" | "/legal/privacy") => {
-    if (openingRef.current) return;
-    openingRef.current = true;
-    setOpening(true);
-    setOpenFailed(false);
-    try {
-      await platform.openExternal(
-        new URL(path, ORG2_CLOUD_OFFICIAL_WEB_ORIGIN).href
-      );
-    } catch {
-      setOpenFailed(true);
-    } finally {
-      openingRef.current = false;
-      setOpening(false);
-    }
-  };
-
-  const relayLabel = resolveRelayLabel(connectionConfig, connection.demoMode);
+  const { connection } = useMobileRemote();
 
   const desktopValue = connection.desktopName
     ? `${connection.desktopName} · ${presenceLabel(connection.presence, t)}`
     : t("settings.notAvailable");
 
-  const modeLabel = connection.demoMode
-    ? t("settings.modeDemo")
-    : t("settings.modeLive");
-
   return (
     <>
       <MobileTopBar title={t("settings.title")} />
-      {confirmSignOut && !isDevelopmentBypass ? (
-        <MobileConfirmModal
-          title={t("settings.signOutConfirmTitle")}
-          description={t("settings.signOutConfirmBody")}
-          cancelLabel={t("settings.cancel")}
-          confirmLabel={t("settings.signOut")}
-          danger
-          onDismiss={() => setConfirmSignOut(false)}
-          onConfirm={signOut}
-        />
-      ) : null}
       {connection.demoMode ? (
         <InlineBanner tone="info">{t("settings.demoBanner")}</InlineBanner>
       ) : null}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="mobile-flow-screen flex-1 px-4 py-4">
         <div className="flex flex-col gap-5">
           <SectionContainer
             title={t("settings.account")}
             dataTestId="mobile-remote-account-settings"
           >
-            <SettingsValueRow
-              label={t("settings.signedInAs")}
-              value={
-                session.profile?.primaryEmail ??
-                session.profile?.displayName ??
-                session.userId
-              }
-            />
-            {!isDevelopmentBypass ? (
-              <>
-                <SectionRow showHeader={false}>
-                  <p className="text-sm text-text-2">
-                    {t("settings.accountWebHint")}
-                  </p>
-                </SectionRow>
-                <SettingsActionRow
-                  label={t("settings.manageAccount")}
-                  disabled={opening}
-                  onClick={() => void openCloudPage("/account")}
-                />
-                <SettingsActionRow
-                  label={t("settings.deleteAccount")}
-                  disabled={opening}
-                  onClick={() => void openCloudPage("/account")}
-                />
-                <SettingsActionRow
-                  label={t("settings.signOut")}
-                  danger
-                  onClick={() => setConfirmSignOut(true)}
-                />
-              </>
-            ) : null}
-            <SettingsActionRow
-              label={t("settings.privacyPolicy")}
-              disabled={opening}
-              onClick={() => void openCloudPage("/legal/privacy")}
-            />
-            {openFailed ? (
-              <InlineBanner tone="info">
-                {t("settings.openFailed")}
-              </InlineBanner>
-            ) : null}
+            <SectionRow showHeader={false} className="!py-0">
+              <MobileProfileEntry variant="row" />
+            </SectionRow>
           </SectionContainer>
 
           <SectionContainer
@@ -193,39 +85,33 @@ export function SettingsTab({
               label={t("settings.desktop")}
               value={desktopValue}
             />
-            <SettingsValueRow
-              label={t("settings.relay")}
-              value={
-                connection.demoMode
-                  ? t("settings.notAvailable")
-                  : relayLabel || t("settings.unknownRelay")
-              }
-            />
+          </SectionContainer>
+
+          <SectionContainer
+            title={t("settings.authorization")}
+            dataTestId="mobile-remote-authorization-settings"
+          >
             <SettingsValueRow
               label={t("settings.permissionTier")}
               value={resolvePermissionTierLabel(connection.tier, t)}
             />
-            <SettingsValueRow label={t("settings.mode")} value={modeLabel} />
+            {onRevokePairing ? (
+              <SettingsActionRow
+                label={t("settings.revokePairing")}
+                danger
+                onClick={onRevokePairing}
+              />
+            ) : null}
           </SectionContainer>
-
-          {onOpenPairingGuide || onRevokePairing ? (
+          {onOpenPairingGuide ? (
             <SectionContainer
               title={t("settings.help")}
               dataTestId="mobile-remote-help-settings"
             >
-              {onOpenPairingGuide ? (
-                <SettingsActionRow
-                  label={t("settings.pairingGuide")}
-                  onClick={onOpenPairingGuide}
-                />
-              ) : null}
-              {onRevokePairing ? (
-                <SettingsActionRow
-                  label={t("settings.revokePairing")}
-                  danger
-                  onClick={onRevokePairing}
-                />
-              ) : null}
+              <SettingsActionRow
+                label={t("settings.pairingGuide")}
+                onClick={onOpenPairingGuide}
+              />
             </SectionContainer>
           ) : null}
         </div>
@@ -245,7 +131,7 @@ function SettingsValueRow({ label, value }: SettingsRowProps) {
   return (
     <SectionRow label={label} layout="inline" equalColumns>
       <span
-        className={`block w-full min-w-0 truncate text-right ${SECTION_VALUE_SMALL_MUTED_CLASSES}`}
+        className={`block w-full min-w-0 text-right break-all ${SECTION_VALUE_SMALL_MUTED_CLASSES}`}
         title={value}
       >
         {value}
@@ -273,20 +159,29 @@ function SettingsActionRow({
         htmlType="button"
         variant={danger ? "danger" : "tertiary"}
         appearance="ghost"
-        size="small"
+        size="default"
         long
-        icon={
-          <HugeiconsIcon
-            icon={danger ? Unlink02Icon : ArrowRight02Icon}
-            size={16}
-          />
-        }
-        iconPosition="right"
-        className="justify-between !px-0 font-normal"
+        style={{
+          height: "auto",
+          minHeight: 44,
+          padding: 0,
+          whiteSpace: "normal",
+        }}
+        className="font-normal [&>span]:w-full [&>span]:whitespace-normal"
         onClick={onClick}
         disabled={disabled}
       >
-        {label}
+        <span className="flex w-full items-center justify-between gap-3 text-left">
+          <span className="min-w-0 break-words">{label}</span>
+          {!danger ? (
+            <HugeiconsIcon
+              icon={ArrowRight02Icon}
+              size={16}
+              className="shrink-0"
+              aria-hidden
+            />
+          ) : null}
+        </span>
       </Button>
     </SectionRow>
   );

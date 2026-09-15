@@ -411,6 +411,7 @@ export { default as TextBoldIcon } from "@hugeicons/core-free-icons/TextBoldIcon
 export { default as TextItalicIcon } from "@hugeicons/core-free-icons/TextItalicIcon";
 export { default as TextQuoteIcon } from "@hugeicons/core-free-icons/TextQuoteIcon";
 export { default as TextStrikethroughIcon } from "@hugeicons/core-free-icons/TextStrikethroughIcon";
+export { default as TextWrapIcon } from "@hugeicons/core-free-icons/TextWrapIcon";
 export { default as ThirdBracketIcon } from "@hugeicons/core-free-icons/ThirdBracketIcon";
 export { default as Tick01Icon } from "@hugeicons/core-free-icons/Tick01Icon";
 export { default as TickDouble01Icon } from "@hugeicons/core-free-icons/TickDouble01Icon";

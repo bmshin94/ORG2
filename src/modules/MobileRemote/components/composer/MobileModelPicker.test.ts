@@ -161,6 +161,38 @@ async function renderPicker(
 }
 
 describe("MobileModelPicker", () => {
+  it("shows a catalog failure with retry while retaining the current model", async () => {
+    const retry = vi.fn();
+    await renderPicker({
+      open: true,
+      options: [],
+      error: "catalog unavailable",
+      onRetry: retry,
+    });
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe(
+      "catalog unavailable"
+    );
+    const button = Array.from(document.querySelectorAll("button")).find(
+      (item) => item.textContent === "transcript.retry"
+    );
+    expect(button).toBeDefined();
+    await act(async () => button!.click());
+    expect(retry).toHaveBeenCalledOnce();
+    expect(host?.textContent).toContain("Sonnet");
+  });
+
+  it("keeps the shared settings trigger interactive while its catalog is loading", async () => {
+    const activate = vi.fn();
+    await renderPicker({ optionsLoading: true, onActivate: activate });
+    const trigger = host!.querySelector(
+      '[data-testid="mobile-model-picker-trigger"]'
+    )!;
+    expect(trigger.querySelector(".pointer-events-none")).toBeNull();
+    const button = trigger.querySelector("button")!;
+    await act(async () => button.focus());
+    expect(activate).toHaveBeenCalled();
+  });
+
   it("renders a desktop-style model pill with the formatted current model", async () => {
     await renderPicker();
     const trigger = host?.querySelector(

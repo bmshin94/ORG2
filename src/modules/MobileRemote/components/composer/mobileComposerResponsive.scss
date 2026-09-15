@@ -1,0 +1,26 @@
+@use "../../mobileUiTokens" as mobile;
+
+.mobile-model-menu.mobile-model-menu {
+  @include mobile.adaptive-menu(16rem);
+
+  // Account names may be longer than model names. Keep their identity visible
+  // on a second line rather than allocating a non-shrinking suffix column.
+  .mobile-model-menu__label {
+    display: flex;
+    flex-direction: column;
+    gap: mobile.$space-1;
+  }
+}
+
+.mobile-model-settings-menu.mobile-model-settings-menu {
+  @include mobile.adaptive-menu(14rem);
+  max-height: calc(100dvh - #{mobile.$space-4 * 2});
+  overflow-y: auto;
+}
+
+[data-mobile-composer="true"] {
+  min-width: 0;
+  max-height: 55dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

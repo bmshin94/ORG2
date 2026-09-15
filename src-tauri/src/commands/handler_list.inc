@@ -410,6 +410,8 @@ api::mobile_bridge::commands::mobile_remote_get_relay_url,
 api::mobile_bridge::commands::mobile_remote_relay_status,
 api::mobile_bridge::commands::mobile_remote_notify_cloud_auth_changed,
 api::mobile_bridge::commands::mobile_remote_sync_sidebar_sessions,
+api::mobile_bridge::read_state::mobile_remote_reply_read_state,
+api::mobile_bridge::read_state::mobile_remote_read_state_changed,
 // Code session commands (spawn CLI agents, manage sessions)
 agent_sessions::cli::commands::cli_agent_create,
 agent_sessions::cli::native_materializer::materialize_native_conversation,

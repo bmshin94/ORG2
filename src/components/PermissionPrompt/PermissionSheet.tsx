@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import BottomSheet from "@src/components/BottomSheet";
 import Button from "@src/components/Button";
+import InlineAlert from "@src/components/PageNotice";
 import { HugeiconsIcon, NotificationBubbleIcon } from "@src/icons";
 
 import { PermissionPromptActions } from "./PermissionPromptActions";
@@ -21,6 +22,7 @@ export interface PermissionSheetRequest {
   toolName: string;
   toolCallId?: string;
   toolArgs: Record<string, unknown>;
+  toolArgsTruncated?: boolean;
   origin?: "rust_agent" | "cli_hook" | "acp";
 }
 
@@ -30,6 +32,8 @@ export interface PermissionSheetProps {
   desktopName?: string;
   queueDepth?: number;
   submitting?: boolean;
+  notice?: string;
+  error?: string;
   onDeny: () => void;
   onAllow: () => void;
   onAlwaysAllow: () => void;
@@ -48,6 +52,8 @@ export function PermissionSheet({
   desktopName,
   queueDepth = 0,
   submitting = false,
+  notice,
+  error,
   onDeny,
   onAllow,
   onAlwaysAllow,
@@ -104,7 +110,7 @@ export function PermissionSheet({
       footer={
         <PermissionPromptActions
           layout="mobile"
-          disabled={submitting}
+          disabled={submitting || request.toolArgsTruncated === true}
           onDeny={onDeny}
           onAllow={onAllow}
           onAlwaysAllow={onAlwaysAllow}
@@ -117,6 +123,16 @@ export function PermissionSheet({
         argsPreview={viewModel.argsPreview as PermissionArgPreview[]}
         footerNote={footerNote || undefined}
       />
+      {notice ? (
+        <p role="status" className="mt-3 text-sm text-text-2">
+          {notice}
+        </p>
+      ) : null}
+      {error ? (
+        <InlineAlert type="danger" role="alert" className="mt-3">
+          {error}
+        </InlineAlert>
+      ) : null}
       {onDismiss ? (
         <Button
           variant="tertiary"

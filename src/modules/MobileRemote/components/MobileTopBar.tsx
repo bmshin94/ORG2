@@ -27,6 +27,7 @@ export function MobileTopBar({
           htmlType="button"
           size="mini"
           variant="tertiary"
+          shape="circle"
           className="mobile-chrome-icon-button"
           aria-label={backAriaLabel}
           onClick={onBack}

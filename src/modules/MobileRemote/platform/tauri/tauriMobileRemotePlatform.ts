@@ -16,6 +16,7 @@ import type {
   MobileRemotePlatform,
   MobileRemoteRuntimePort,
 } from "../types";
+import { writeClipboardText } from "../writeClipboardText";
 import { createNativeSocketPreparation } from "./nativeSocketPreparation";
 import { createTauriMobileAuthClient } from "./tauriMobileAuthClient";
 import type {
@@ -212,6 +213,7 @@ export async function createTauriMobileRemotePlatformWithBridge({
 
   const platform: MobileRemotePlatform = {
     kind: "ios",
+    writeClipboardText,
     scanQr: (video, signal) =>
       import("../scanCameraQr").then(({ scanCameraQr }) =>
         scanCameraQr(video, signal)
@@ -350,6 +352,9 @@ function createDefaultRuntime(): MobileRemoteRuntimePort {
   return {
     now: () => Date.now(),
     random: () => Math.random(),
+    readPreference: (key) => globalThis.localStorage.getItem(key),
+    writePreference: (key, value) =>
+      globalThis.localStorage.setItem(key, value),
     randomUUID: () => globalThis.crypto.randomUUID(),
     setTimeout: (callback, delayMs) =>
       globalThis.document.defaultView!.setTimeout(callback, delayMs),

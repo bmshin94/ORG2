@@ -686,6 +686,9 @@ module.exports = (env, argv) => {
         }),
       new webpack.DefinePlugin({
         "process.env.NODE_ENV": JSON.stringify(argv.mode),
+        "process.env.ORGII_MOBILE_REMOTE_NATIVE": JSON.stringify(
+          String(isMobileRemoteNativeBuild)
+        ),
         // Inline-compared in src/index.tsx so webpack constant-folds the
         // `webpackMode: "eager"` App import away on platforms that don't need it.
         "process.env.ORGII_DEV_EAGER_APP": JSON.stringify(String(eagerDevApp)),

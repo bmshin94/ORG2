@@ -363,6 +363,7 @@ module.exports = () => {
       new ReactRefreshPlugin({ overlay: false }),
       new rspack.DefinePlugin({
         "process.env.NODE_ENV": JSON.stringify("development"),
+        "process.env.ORGII_MOBILE_REMOTE_NATIVE": JSON.stringify("false"),
         "process.env.ORGII_DEV_EAGER_APP": JSON.stringify(String(eagerDevApp)),
         // Match webpack: browser startup must never read a runtime process global.
         "process.env.ORGII_E2E": JSON.stringify(isE2E ? "1" : "0"),

@@ -74,6 +74,23 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
+          xcode_path="$(python3 - <<'PY'
+          import glob
+          import re
+
+          candidates = []
+          for path in glob.glob("/Applications/Xcode_26*.app"):
+              match = re.search(r"Xcode_(26(?:\.\d+)*)", path)
+              if match:
+                  version = tuple(int(part) for part in match.group(1).split("."))
+                  candidates.append((version, path))
+          if not candidates:
+              raise SystemExit("Xcode 26 is not installed on this runner")
+          print(max(candidates)[1])
+          PY
+          )"
+          export DEVELOPER_DIR="$xcode_path/Contents/Developer"
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
           node scripts/ios-release/readiness.mjs config > "$RUNNER_TEMP/ios-release-config.json"
           xcodebuild -version
           major=$(xcodebuild -version | awk '/Xcode/{split($2,v,".");print v[1]}')
@@ -87,6 +104,8 @@ jobs:
           command -v xcodegen >/dev/null || brew install xcodegen
 
       - name: Run mobile regression checks
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           pnpm exec tsc --noEmit
           pnpm test src/modules/MobileRemote
@@ -95,14 +114,160 @@ jobs:
           pnpm build:mobile-native
           cargo check --locked --manifest-path apps/remote-ios/src-tauri/Cargo.toml --target aarch64-apple-ios
 
-      - name: Build signed release with bundled frontend
+      - name: Install isolated iOS signing materials
         env:
           IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           IOS_MOBILE_PROVISION: ${{ secrets.IOS_MOBILE_PROVISION }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          set +x
           set -euo pipefail
+          umask 077
+
+          certificate_path="$RUNNER_TEMP/ios-distribution.p12"
+          profile_path="$RUNNER_TEMP/ios-app-store.mobileprovision"
+          profile_plist="$RUNNER_TEMP/ios-app-store.plist"
+          keychain_path="$RUNNER_TEMP/ios-signing.keychain-db"
+          keychain_password="$(uuidgen)$(uuidgen)"
+          echo "::add-mask::$keychain_password"
+          {
+            echo "IOS_KEYCHAIN_PATH=$keychain_path"
+            echo "IOS_KEYCHAIN_PASSWORD=$keychain_password"
+          } >> "$GITHUB_ENV"
+
+          CERTIFICATE_PATH="$certificate_path" PROFILE_PATH="$profile_path" python3 - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+
+          for source, target in (
+              ("IOS_CERTIFICATE", "CERTIFICATE_PATH"),
+              ("IOS_MOBILE_PROVISION", "PROFILE_PATH"),
+          ):
+              try:
+                  encoded = "".join(os.environ[source].split())
+                  decoded = base64.b64decode(encoded, validate=True)
+              except Exception as error:
+                  raise SystemExit(f"Invalid base64 signing material: {source}") from error
+              if not decoded:
+                  raise SystemExit(f"Empty decoded signing material: {source}")
+              Path(os.environ[target]).write_bytes(decoded)
+          PY
+
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 3600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" \
+            -k "$keychain_path" \
+            -P "$IOS_CERTIFICATE_PASSWORD" \
+            -f pkcs12 \
+            -t cert \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security >/dev/null
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$keychain_password" \
+            "$keychain_path" >/dev/null
+          security list-keychains -d user -s "$keychain_path"
+          IOS_KEYCHAIN_PATH="$keychain_path" IOS_SIGNING_IDENTITY_FILE="$RUNNER_TEMP/ios-signing-identity" python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          output = subprocess.check_output(
+              ["security", "find-identity", "-v", "-p", "codesigning", os.environ["IOS_KEYCHAIN_PATH"]],
+              text=True,
+          )
+          identities = re.findall(
+              r'^\s*\d+\)\s+[A-Fa-f0-9]+\s+"((?:Apple|iPhone) Distribution: [^"]+)"\s*$',
+              output,
+              re.MULTILINE,
+          )
+          if len(identities) != 1:
+              raise SystemExit("Expected exactly one Apple Distribution signing identity")
+          Path(os.environ["IOS_SIGNING_IDENTITY_FILE"]).write_text(identities[0], encoding="utf-8")
+          PY
+
+          security cms -D -i "$profile_path" > "$profile_plist"
+          PROFILE_PLIST="$profile_plist" PROFILE_UUID_FILE="$RUNNER_TEMP/ios-profile-uuid" python3 - <<'PY'
+          import os
+          import plistlib
+          import re
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          with open(os.environ["PROFILE_PLIST"], "rb") as source:
+              profile = plistlib.load(source)
+          team = os.environ["APPLE_TEAM_ID"]
+          bundle_id = "org2ai.org2.remote"
+          entitlements = profile.get("Entitlements", {})
+          app_id = entitlements.get("application-identifier", "")
+          prefix, separator, profile_bundle_id = app_id.partition(".")
+
+          if team not in profile.get("TeamIdentifier", []):
+              raise SystemExit("Provisioning profile Team ID mismatch")
+          if not separator or prefix not in profile.get("ApplicationIdentifierPrefix", []):
+              raise SystemExit("Provisioning profile application prefix mismatch")
+          if profile_bundle_id != bundle_id:
+              raise SystemExit("Provisioning profile bundle ID mismatch")
+          if profile.get("ProvisionedDevices") is not None or profile.get("ProvisionsAllDevices") is True:
+              raise SystemExit("Expected an App Store Connect provisioning profile")
+          if entitlements.get("get-task-allow") is not False:
+              raise SystemExit("Provisioning profile allows debugging")
+          if entitlements.get("beta-reports-active") is not True:
+              raise SystemExit("Provisioning profile is not for App Store distribution")
+          expiration = profile.get("ExpirationDate")
+          if not isinstance(expiration, datetime):
+              raise SystemExit("Provisioning profile expiration is missing")
+          if expiration.replace(tzinfo=expiration.tzinfo or timezone.utc) <= datetime.now(timezone.utc):
+              raise SystemExit("Provisioning profile has expired")
+
+          uuid = profile.get("UUID", "")
+          if not re.fullmatch(r"[A-Fa-f0-9-]{36}", uuid):
+              raise SystemExit("Provisioning profile UUID is invalid")
+          Path(os.environ["PROFILE_UUID_FILE"]).write_text(uuid, encoding="utf-8")
+          PY
+
+          profile_uuid="$(cat "$RUNNER_TEMP/ios-profile-uuid")"
+          profiles_dir="$HOME/Library/MobileDevice/Provisioning Profiles"
+          xcode_profiles_dir="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
+          installed_profile="$profiles_dir/$profile_uuid.mobileprovision"
+          installed_xcode_profile="$xcode_profiles_dir/$profile_uuid.mobileprovision"
+          mkdir -p "$profiles_dir" "$xcode_profiles_dir"
+          cp "$profile_path" "$installed_profile"
+          cp "$profile_path" "$installed_xcode_profile"
+
+          xcode_project="$GITHUB_WORKSPACE/apps/remote-ios/src-tauri/gen/apple/org2-remote.xcodeproj/project.pbxproj"
+          export_options="$GITHUB_WORKSPACE/apps/remote-ios/src-tauri/gen/apple/ExportOptions.plist"
+          signing_xcconfig="$RUNNER_TEMP/ios-signing.xcconfig"
+          cp "$xcode_project" "$RUNNER_TEMP/ios-project.pbxproj.backup"
+          cp "$export_options" "$RUNNER_TEMP/ios-export-options.plist.backup"
+          IOS_XCODE_PROJECT_FILE="$xcode_project" \
+          IOS_EXPORT_OPTIONS_FILE="$export_options" \
+          IOS_SIGNING_XCCONFIG="$signing_xcconfig" \
+          IOS_SIGNING_IDENTITY_FILE="$RUNNER_TEMP/ios-signing-identity" \
+          IOS_PROFILE_UUID_FILE="$RUNNER_TEMP/ios-profile-uuid" \
+          node scripts/ios-release/manual-signing.mjs
+          plutil -lint "$export_options"
+
+          {
+            echo "IOS_INSTALLED_PROFILE=$installed_profile"
+            echo "IOS_INSTALLED_XCODE_PROFILE=$installed_xcode_profile"
+            echo "IOS_XCODE_PROJECT_FILE=$xcode_project"
+            echo "IOS_EXPORT_OPTIONS_FILE=$export_options"
+            echo "XCODE_XCCONFIG_FILE=$signing_xcconfig"
+          } >> "$GITHUB_ENV"
+
+      - name: Build signed release with bundled frontend
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          security unlock-keychain -p "$IOS_KEYCHAIN_PASSWORD" "$IOS_KEYCHAIN_PATH"
           pnpm tauri:ios:build --ci --export-method app-store-connect --config "$RUNNER_TEMP/ios-release-config.json"
 
       - name: Validate the exported IPA, not just source configuration
@@ -146,3 +311,23 @@ jobs:
           xcrun altool --validate-app -f "$ipa" --type ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
           xcrun altool --upload-app -f "$ipa" --type ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
           echo 'Upload accepted. Processing, export-compliance questions, tester access and review are separate App Store Connect steps.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove iOS signing materials
+        if: always()
+        run: |
+          set +x
+          set +e
+          [[ -z "${IOS_INSTALLED_PROFILE:-}" ]] || rm -f "$IOS_INSTALLED_PROFILE"
+          [[ -z "${IOS_INSTALLED_XCODE_PROFILE:-}" ]] || rm -f "$IOS_INSTALLED_XCODE_PROFILE"
+          [[ -z "${IOS_KEYCHAIN_PATH:-}" ]] || security delete-keychain "$IOS_KEYCHAIN_PATH"
+          [[ -z "${IOS_XCODE_PROJECT_FILE:-}" || ! -f "$RUNNER_TEMP/ios-project.pbxproj.backup" ]] || cp "$RUNNER_TEMP/ios-project.pbxproj.backup" "$IOS_XCODE_PROJECT_FILE"
+          [[ -z "${IOS_EXPORT_OPTIONS_FILE:-}" || ! -f "$RUNNER_TEMP/ios-export-options.plist.backup" ]] || cp "$RUNNER_TEMP/ios-export-options.plist.backup" "$IOS_EXPORT_OPTIONS_FILE"
+          rm -f \
+            "$RUNNER_TEMP/ios-distribution.p12" \
+            "$RUNNER_TEMP/ios-app-store.mobileprovision" \
+            "$RUNNER_TEMP/ios-app-store.plist" \
+            "$RUNNER_TEMP/ios-profile-uuid" \
+            "$RUNNER_TEMP/ios-signing-identity" \
+            "$RUNNER_TEMP/ios-signing.xcconfig" \
+            "$RUNNER_TEMP/ios-project.pbxproj.backup" \
+            "$RUNNER_TEMP/ios-export-options.plist.backup"

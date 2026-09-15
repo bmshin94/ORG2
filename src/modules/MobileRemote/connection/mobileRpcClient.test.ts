@@ -2,6 +2,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createMobileRpcClient } from "./mobileRpcClient";
+import {
+  cachedMobileSessionIdentity,
+  resolveMobileSessionIdentity,
+} from "./mobileSessionIdentityCache";
 
 type WebSocketListener = (event: { data: string }) => void;
 
@@ -31,6 +35,134 @@ const runtime = {
 };
 
 describe("createMobileRpcClient", () => {
+  it.each([
+    "session/list_changed",
+    "relay/presence",
+    "close",
+    "explicit-close",
+  ])(
+    "invalidates cached identities on %s even while no chat page is mounted",
+    async (event) => {
+      const socket = createMockSocket();
+      const client = createMobileRpcClient(
+        socket as unknown as WebSocket,
+        runtime
+      );
+      const lookup = resolveMobileSessionIdentity(client, "mirror");
+      await Promise.resolve();
+      socket.emit(
+        "message",
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { sessionId: "owner", managed: true },
+        })
+      );
+      await lookup;
+      expect(cachedMobileSessionIdentity(client, "mirror")).toBeDefined();
+      if (event === "close") socket.emit("close", "");
+      else if (event === "explicit-close") client.close();
+      else
+        socket.emit(
+          "message",
+          JSON.stringify({
+            jsonrpc: "2.0",
+            method: event,
+            params: { online: false },
+          })
+        );
+      expect(cachedMobileSessionIdentity(client, "mirror")).toBeUndefined();
+    }
+  );
+
+  it("aborts locally, ignores the late reply, and allows another RPC immediately", async () => {
+    vi.useFakeTimers();
+    try {
+      const socket = createMockSocket();
+      const client = createMobileRpcClient(
+        socket as unknown as WebSocket,
+        runtime
+      );
+      const controller = new AbortController();
+      const remove = vi.spyOn(controller.signal, "removeEventListener");
+      const old = client.call("session/list", {}, controller.signal);
+      const rejected = expect(old).rejects.toMatchObject({
+        name: "AbortError",
+      });
+      controller.abort();
+      await rejected;
+      expect(remove).toHaveBeenCalledOnce();
+      const fresh = client.call("session/list");
+      socket.emit(
+        "message",
+        JSON.stringify({ jsonrpc: "2.0", id: 2, result: "fresh" })
+      );
+      await expect(fresh).resolves.toBe("fresh");
+      socket.emit(
+        "message",
+        JSON.stringify({ jsonrpc: "2.0", id: 1, result: "old" })
+      );
+      expect(vi.getTimerCount()).toBe(0);
+      expect(socket.close).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not send pre-aborted requests or leak resources after send failure", async () => {
+    vi.useFakeTimers();
+    try {
+      const socket = createMockSocket();
+      const client = createMobileRpcClient(
+        socket as unknown as WebSocket,
+        runtime
+      );
+      const controller = new AbortController();
+      controller.abort();
+      await expect(
+        client.call("session/list", {}, controller.signal)
+      ).rejects.toMatchObject({ name: "AbortError" });
+      expect(socket.send).not.toHaveBeenCalled();
+      socket.send.mockImplementation(() => {
+        throw new Error("send failed");
+      });
+      await expect(client.call("session/list")).rejects.toThrow("send failed");
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps aborted wire requests bounded and releases tombstones on timeout and close", async () => {
+    vi.useFakeTimers();
+    try {
+      const socket = createMockSocket();
+      const client = createMobileRpcClient(
+        socket as unknown as WebSocket,
+        runtime
+      );
+      for (let i = 0; i < 128; i++) {
+        const controller = new AbortController();
+        const request = client.call("session/list", {}, controller.signal);
+        const rejected = expect(request).rejects.toMatchObject({
+          name: "AbortError",
+        });
+        controller.abort();
+        await rejected;
+      }
+      await expect(client.call("session/list")).rejects.toThrow(
+        "Too many pending"
+      );
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(vi.getTimerCount()).toBe(0);
+      const pending = client.call("session/list");
+      client.close();
+      await expect(pending).rejects.toThrow("RPC client closed");
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("resolves call results by id", async () => {
     const socket = createMockSocket();
     const client = createMobileRpcClient(

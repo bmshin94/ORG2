@@ -1,0 +1,11 @@
+@use "../mobileUiTokens" as mobile;
+
+// Keep the desktop Dropdown presentation and row density. Mobile only adds
+// intrinsic sizing and viewport clamping.
+.mobile-session-view-menu.mobile-session-view-menu {
+  @include mobile.adaptive-menu;
+
+  [role="option"] {
+    min-height: 2rem;
+  }
+}

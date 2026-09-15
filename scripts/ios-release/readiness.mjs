@@ -49,6 +49,14 @@ export function validateDistribution(
     "Camera purpose string missing",
   );
   assert.ok(
+    info.NSMicrophoneUsageDescription?.trim(),
+    "Microphone purpose string missing",
+  );
+  assert.ok(
+    info.NSSpeechRecognitionUsageDescription?.trim(),
+    "Speech recognition purpose string missing",
+  );
+  assert.ok(
     info.CFBundleURLTypes?.some((t) =>
       t.CFBundleURLSchemes?.includes("org2remote"),
     ),
@@ -158,19 +166,54 @@ export function validateApp(app, expected) {
     "Compiled app icon/assets are missing",
   );
   const privacy = parsePlist(readFileSync(join(app, "PrivacyInfo.xcprivacy")));
-  for (const key of [
-    "NSPrivacyCollectedDataTypes",
-    "NSPrivacyAccessedAPITypes",
-    "NSPrivacyTrackingDomains",
-  ]) {
-    assert.ok(Array.isArray(privacy[key]), `Privacy manifest missing ${key}`);
-  }
+  validatePrivacyManifest(privacy);
+  // Structural validation cannot prove that the declarations match the app's
+  // actual data retention, third-party SDKs, or required-reason API usage.
+}
+
+export function validatePrivacyManifest(privacy) {
   assert.equal(
     typeof privacy.NSPrivacyTracking,
     "boolean",
     "Privacy tracking declaration missing",
   );
-  // This structural check is not an audit of the accuracy of privacy declarations.
+  const optionalArrays = [
+    "NSPrivacyCollectedDataTypes",
+    "NSPrivacyAccessedAPITypes",
+    "NSPrivacyTrackingDomains",
+  ];
+  for (const key of optionalArrays) {
+    if (privacy[key] === undefined) continue;
+    assert.ok(Array.isArray(privacy[key]), `Privacy manifest ${key} must be an array`);
+    assert.ok(privacy[key].length > 0, `Privacy manifest must omit empty ${key}`);
+  }
+  for (const entry of privacy.NSPrivacyCollectedDataTypes ?? []) {
+    assert.equal(typeof entry.NSPrivacyCollectedDataType, "string");
+    assert.equal(typeof entry.NSPrivacyCollectedDataTypeLinked, "boolean");
+    assert.equal(typeof entry.NSPrivacyCollectedDataTypeTracking, "boolean");
+    assert.ok(Array.isArray(entry.NSPrivacyCollectedDataTypePurposes));
+    assert.ok(entry.NSPrivacyCollectedDataTypePurposes.length > 0);
+    assert.ok(
+      entry.NSPrivacyCollectedDataTypePurposes.every(
+        (purpose) => typeof purpose === "string" && purpose.length > 0,
+      ),
+    );
+  }
+  for (const entry of privacy.NSPrivacyAccessedAPITypes ?? []) {
+    assert.equal(typeof entry.NSPrivacyAccessedAPIType, "string");
+    assert.ok(Array.isArray(entry.NSPrivacyAccessedAPITypeReasons));
+    assert.ok(entry.NSPrivacyAccessedAPITypeReasons.length > 0);
+    assert.ok(
+      entry.NSPrivacyAccessedAPITypeReasons.every(
+        (reason) => typeof reason === "string" && reason.length > 0,
+      ),
+    );
+  }
+  assert.ok(
+    (privacy.NSPrivacyTrackingDomains ?? []).every(
+      (domain) => typeof domain === "string" && domain.length > 0,
+    ),
+  );
 }
 
 if (

@@ -586,6 +586,7 @@
       "full": "Full access",
       "nextTurn": "Permissions apply to the next turn"
     },
+    "draftTooLong": "Draft is too long (maximum {{max}} characters)",
     "planApprovedLabel": "Implementing approved plan",
     "planApprovedEditedLabel": "Implementing approved plan (edited)",
     "restoreCheckpoint": "Restore checkpoint",

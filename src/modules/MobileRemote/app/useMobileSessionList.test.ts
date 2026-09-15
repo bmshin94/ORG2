@@ -48,7 +48,10 @@ describe("useMobileSessionList", () => {
       await act(async () => roster.resetSessions());
       expect(roster.sessionsHasMore).toBe(false);
       await act(async () => roster.requestSessionList(client));
-      expect(call).toHaveBeenLastCalledWith("session/list", { offset: 0 });
+      expect(call).toHaveBeenLastCalledWith("session/list", {
+        offset: 0,
+        limit: 200,
+      });
     } finally {
       await act(async () => root.unmount());
       env.IS_REACT_ACT_ENVIRONMENT = false;

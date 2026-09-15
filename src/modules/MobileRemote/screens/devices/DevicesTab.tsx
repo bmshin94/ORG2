@@ -14,29 +14,8 @@ import {
 
 import { useMobileRemote } from "../../app";
 import { MobileTopBar } from "../../components/MobileTopBar";
-import type {
-  DesktopPresence,
-  MobilePairedDesktopSummary,
-} from "../../connection/types";
-
-export interface PairedDesktopRow {
-  id: string;
-  name: string;
-  presence: DesktopPresence;
-  primary?: boolean;
-}
-
-export function derivePairedDesktopsFromInventory(input: {
-  desktops: MobilePairedDesktopSummary[];
-  activePresence: DesktopPresence;
-}): PairedDesktopRow[] {
-  return input.desktops.map((desktop) => ({
-    id: desktop.id,
-    name: desktop.name,
-    presence: desktop.active ? input.activePresence : "offline",
-    primary: desktop.active,
-  }));
-}
+import { derivePairedDesktopPresence } from "../../connection/mobilePairedDesktopPresence";
+import type { DesktopPresence } from "../../connection/types";
 
 function resolveDotColor(presence: DesktopPresence): string {
   switch (presence) {
@@ -45,7 +24,7 @@ function resolveDotColor(presence: DesktopPresence): string {
     case "offline":
       return "bg-text-4";
     default:
-      return "bg-warning-6";
+      return "bg-text-4";
   }
 }
 
@@ -75,7 +54,7 @@ export function DevicesTab() {
     pairedDesktops: pairedDesktopInventory,
     switchPairedDesktop,
   } = useMobileRemote();
-  const pairedDesktops = derivePairedDesktopsFromInventory({
+  const pairedDesktops = derivePairedDesktopPresence({
     desktops: pairedDesktopInventory,
     activePresence: connection.presence,
   });
@@ -83,7 +62,7 @@ export function DevicesTab() {
   return (
     <>
       <MobileTopBar title={t("devices.title")} />
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="mobile-flow-screen flex-1 px-4 py-4">
         <div className="flex flex-col gap-5">
           <SectionContainer
             title={t("devices.thisDevice")}
@@ -132,59 +111,92 @@ export function DevicesTab() {
                     layout="inline"
                     className="py-1"
                     label={
-                      <Button
-                        variant="tertiary"
-                        appearance="ghost"
-                        long
-                        className="min-w-0 justify-start text-left disabled:cursor-default"
-                        style={{ height: 44, minHeight: 44, padding: 0 }}
-                        disabled={
-                          desktop.primary || switchingDesktopId !== null
-                        }
-                        loading={switchingDesktopId === desktop.id}
-                        aria-busy={switchingDesktopId === desktop.id}
-                        aria-current={desktop.primary ? "true" : undefined}
-                        aria-label={
-                          desktop.primary
-                            ? undefined
-                            : t("devices.switchTo", { name: desktop.name })
-                        }
-                        icon={
+                      desktop.current ? (
+                        <span
+                          aria-current="true"
+                          className="flex min-h-11 min-w-0 items-center gap-2 text-text-1"
+                        >
                           <HugeiconsIcon
                             icon={LaptopIcon}
                             size={16}
                             className="shrink-0 text-text-3"
                             aria-hidden="true"
                           />
-                        }
-                        onClick={async () => {
-                          setSwitchError(null);
-                          setSwitchingDesktopId(desktop.id);
-                          try {
-                            await switchPairedDesktop(desktop.id);
-                          } catch {
-                            setSwitchError(t("devices.switchFailed"));
-                          } finally {
-                            setSwitchingDesktopId(null);
-                          }
-                        }}
-                      >
-                        <span className="truncate">{desktop.name}</span>
-                        {desktop.primary ? (
-                          <span
-                            className={`shrink-0 font-normal ${SECTION_VALUE_SMALL_MUTED_CLASSES}`}
-                          >
-                            · {t("devices.primary")}
+                          <span className="flex min-w-0 flex-1 flex-col gap-1">
+                            <span className="break-words">{desktop.name}</span>
+                            {desktop.details ? (
+                              <span
+                                className={`font-normal break-words ${SECTION_VALUE_SMALL_MUTED_CLASSES}`}
+                              >
+                                {desktop.details}
+                              </span>
+                            ) : null}
+                            <span
+                              className={`font-normal ${SECTION_VALUE_SMALL_MUTED_CLASSES}`}
+                            >
+                              {t("devices.currentDesktop")}
+                            </span>
                           </span>
-                        ) : null}
-                      </Button>
+                        </span>
+                      ) : (
+                        <Button
+                          variant="tertiary"
+                          appearance="ghost"
+                          long
+                          className="min-w-0 justify-start text-left disabled:cursor-default"
+                          style={{
+                            height: "auto",
+                            minHeight: 44,
+                            padding: "8px 0",
+                          }}
+                          disabled={switchingDesktopId !== null}
+                          loading={switchingDesktopId === desktop.id}
+                          aria-busy={switchingDesktopId === desktop.id}
+                          aria-label={t("devices.switchTo", {
+                            name: desktop.name,
+                          })}
+                          icon={
+                            <HugeiconsIcon
+                              icon={LaptopIcon}
+                              size={16}
+                              className="shrink-0 text-text-3"
+                              aria-hidden="true"
+                            />
+                          }
+                          onClick={async () => {
+                            setSwitchError(null);
+                            setSwitchingDesktopId(desktop.id);
+                            try {
+                              await switchPairedDesktop(desktop.id);
+                            } catch {
+                              setSwitchError(t("devices.switchFailed"));
+                            } finally {
+                              setSwitchingDesktopId(null);
+                            }
+                          }}
+                        >
+                          <span className="flex min-w-0 flex-1 flex-col gap-1 whitespace-normal">
+                            <span className="break-words">{desktop.name}</span>
+                            {desktop.details ? (
+                              <span
+                                className={`font-normal break-words ${SECTION_VALUE_SMALL_MUTED_CLASSES}`}
+                              >
+                                {desktop.details}
+                              </span>
+                            ) : null}
+                          </span>
+                        </Button>
+                      )
                     }
                   >
                     <StatusDot
                       color={resolveDotColor(desktop.presence)}
-                      label={resolvePresenceLabel(desktop.presence, t)}
+                      label={
+                        desktop.current
+                          ? resolvePresenceLabel(desktop.presence, t)
+                          : t("devices.presenceUnknown")
+                      }
                       size="inline"
-                      pulse={desktop.presence === "unknown"}
                     />
                   </SectionRow>
                 ))}

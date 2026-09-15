@@ -263,6 +263,11 @@ describe("createTauriMobileRemotePlatformWithBridge", () => {
       wsUrl: "wss://relay.example/a",
       desktopId: "desktop-a",
       deviceLabel: "Home Mac",
+      desktopIdentity: {
+        name: "Office Mac",
+        model: "Mac14,7",
+        username: "alex",
+      },
       deviceToken: "secret-a",
     });
     first.controller.dispose();
@@ -273,8 +278,25 @@ describe("createTauriMobileRemotePlatformWithBridge", () => {
     ).resolves.toMatchObject({
       desktopId: "desktop-a",
       deviceLabel: "Home Mac",
+      desktopIdentity: {
+        name: "Office Mac",
+        model: "Mac14,7",
+        username: "alex",
+      },
       deviceToken: "secret-a",
     });
+    await expect(
+      second.platform.connection.listPairedDesktops("local-development")
+    ).resolves.toEqual([
+      expect.objectContaining({
+        name: "Office Mac",
+        desktopIdentity: {
+          name: "Office Mac",
+          model: "Mac14,7",
+          username: "alex",
+        },
+      }),
+    ]);
     second.controller.dispose();
   });
 

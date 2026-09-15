@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createLatestOnlySearchRunner } from "./latestOnlySearchRunner";
+import { createLatestOnlySearchRunner } from "../latestOnlySearchRunner";
 
 function deferred() {
   let resolve!: () => void;

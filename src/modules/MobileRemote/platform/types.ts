@@ -8,6 +8,8 @@ import type {
 export type MobileRemoteIntentEvent = "auth_callback" | "pairing";
 
 export interface MobileRemoteRuntimePort {
+  readPreference?(key: string): string | null;
+  writePreference?(key: string, value: string): void;
   now(): number;
   random(): number;
   randomUUID(): string;
@@ -68,6 +70,8 @@ export interface MobileRemoteConnectionPort {
  * Tauri globals. Platform shells own credentials, navigation and lifecycle.
  */
 export interface MobileRemotePlatform {
+  /** Optional for alternate shells without clipboard access; invoked by user gesture only. */
+  writeClipboardText?(text: string): Promise<void>;
   /** User-initiated, one-shot scan. Aborting must release the camera. */
   scanQr?(video: HTMLVideoElement, signal: AbortSignal): Promise<string>;
   /** Opens an external page using the shell's navigation implementation. */

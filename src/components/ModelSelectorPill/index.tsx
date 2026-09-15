@@ -62,6 +62,8 @@ interface ModelSelectorPillProps {
   effortSegmentOverride?: ModelEffortSegmentState;
   /** Mobile opens the detailed Effort/Speed menu instead of the slider. */
   settingsMenuDefaultAdvanced?: boolean;
+  /** Portal surface styling for constrained hosts such as Mobile Remote. */
+  settingsMenuClassName?: string;
   /** Mobile uses the combined settings menu whenever variant rows exist. */
   preferCombinedSettingsMenu?: boolean;
   /** Prevent opening a picker while its execution inventory is unresolved. */
@@ -88,6 +90,7 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
       isActiveSession = false,
       effortSegmentOverride,
       settingsMenuDefaultAdvanced = false,
+      settingsMenuClassName,
       preferCombinedSettingsMenu = false,
       disabled = false,
       disabledTooltip,
@@ -310,6 +313,7 @@ const ModelSelectorPill = forwardRef<HTMLButtonElement, ModelSelectorPillProps>(
           onModelClick={onClick}
           onChange={handleEffortApply}
           defaultAdvanced={settingsMenuDefaultAdvanced}
+          className={settingsMenuClassName}
           renderTrigger={({ open, onClick: openMenu, previewLevel }) => {
             // While the effort slider is dragged the pill reports the level
             // under the thumb, so the panel is not the only place showing

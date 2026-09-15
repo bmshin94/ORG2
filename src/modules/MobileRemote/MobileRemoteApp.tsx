@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useContext } from "react";
 
-import { MobileRemoteProviders } from "./app";
+import { MobileRemoteProviders, useMobileRemote } from "./app";
+import { MobileAuthContext } from "./auth/MobileAuthContext";
 import { MobileShell } from "./components/MobileShell";
 import { MobileTabBar } from "./components/MobileTabBar";
-import { StopConfirmModal } from "./components/modals/StopConfirmModal";
+import { MobileProfileEntry } from "./components/profile/MobileProfileEntry";
 import { useMobileRemoteCoordinator } from "./navigation/useMobileRemoteCoordinator";
 import { ConnectingLiveBridge } from "./screens/ConnectingLiveBridge";
+import { ConnectingScreen } from "./screens/ConnectingScreen";
 import { ConnectionErrorScreen } from "./screens/ConnectionErrorScreen";
 import { QRScanScreen } from "./screens/QRScanScreen";
 import { SASConfirmScreen } from "./screens/SASConfirmScreen";
@@ -34,16 +36,27 @@ function MobileRemoteRoutes({
     connection,
     nav,
     dispatch,
-    stopConfirming,
-    stopFailed,
+    connectionRecovering,
+    connectionRecoveryError,
     showTabBar,
     selectedSessionName,
     selectedSessionSendCapability,
     handleConnectingComplete,
     handleAcceptPairing,
-    handleConfirmStop,
     handleConnectionRetry,
+    handleConnectionRepair,
   } = useMobileRemoteCoordinator(recoveredPairingIntent);
+  const { bootstrapPending, connectionConfig } = useMobileRemote();
+
+  // Manual recovery owns the handshake; do not remount ConnectingLiveBridge
+  // with an old pending config and start a second connection in parallel.
+  if (bootstrapPending || connectionRecovering) {
+    return (
+      <MobileShell>
+        <ConnectingScreen restoring />
+      </MobileShell>
+    );
+  }
 
   if (connection.status === "error") {
     return (
@@ -51,6 +64,9 @@ function MobileRemoteRoutes({
         <ConnectionErrorScreen
           message={connection.error?.message}
           onRetry={handleConnectionRetry}
+          onRepair={handleConnectionRepair}
+          busy={connectionRecovering}
+          actionError={connectionRecoveryError}
         />
       </MobileShell>
     );
@@ -61,6 +77,7 @@ function MobileRemoteRoutes({
     case "welcome":
       body = (
         <WelcomeScreen
+          profileAction={<MobileProfileEntry />}
           onOpenPairing={() => dispatch({ type: "open_qr_scan" })}
         />
       );
@@ -97,18 +114,13 @@ function MobileRemoteRoutes({
         body = (
           <>
             <SessionChatScreen
+              onCanonicalSession={(sessionId) =>
+                dispatch({ type: "select_session", sessionId })
+              }
               sessionId={nav.selectedSessionId}
               sessionName={selectedSessionName}
               sendCapability={selectedSessionSendCapability}
               onBack={() => dispatch({ type: "back_from_chat" })}
-              onOpenStopModal={() => dispatch({ type: "open_stop_modal" })}
-            />
-            <StopConfirmModal
-              visible={nav.stopModalOpen}
-              confirming={stopConfirming}
-              failed={stopFailed}
-              onCancel={() => dispatch({ type: "close_stop_modal" })}
-              onConfirm={() => void handleConfirmStop().catch(() => undefined)}
             />
           </>
         );
@@ -117,13 +129,7 @@ function MobileRemoteRoutes({
       } else if (nav.activeTab === "settings") {
         body = <SettingsTab />;
       } else {
-        body = (
-          <SessionsScreen
-            onSelectSession={(sessionId) =>
-              dispatch({ type: "select_session", sessionId })
-            }
-          />
-        );
+        body = null;
       }
       break;
     default:
@@ -141,6 +147,20 @@ function MobileRemoteRoutes({
         ) : null
       }
     >
+      {nav.screen === "sessions" || nav.screen === "chat" ? (
+        <SessionsScreen
+          key={JSON.stringify([
+            connectionConfig?.desktopId ?? connection.desktopId,
+            connectionConfig?.host,
+            connectionConfig?.port,
+          ])}
+          active={!nav.selectedSessionId && nav.activeTab === "sessions"}
+          profileAction={<MobileProfileEntry />}
+          onSelectSession={(sessionId) =>
+            dispatch({ type: "select_session", sessionId })
+          }
+        />
+      ) : null}
       {body}
     </MobileShell>
   );
@@ -152,8 +172,10 @@ export function MobileRemoteApp({
   recoveredPairingIntent = null,
   relayUrl,
 }: MobileRemoteAppProps) {
+  const auth = useContext(MobileAuthContext);
   return (
     <MobileRemoteProviders
+      key={JSON.stringify([authUserId, auth?.session.supabaseUrl, relayUrl])}
       authUserId={authUserId}
       relayUrl={relayUrl}
       demoByDefault={false}

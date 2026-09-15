@@ -6,15 +6,20 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
   vi,
 } from "vitest";
 
-import { DevicesTab, derivePairedDesktopsFromInventory } from "./DevicesTab";
+import { DevicesTab } from "./DevicesTab";
 
-const mocks = vi.hoisted(() => ({ switchPairedDesktop: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  switchPairedDesktop: vi.fn(),
+  presence: "online",
+  activeDesktopId: "desktop-1",
+}));
 const reactActEnvironment = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean;
 };
@@ -22,21 +27,26 @@ const reactActEnvironment = globalThis as typeof globalThis & {
 vi.mock("../../app", () => ({
   useMobileRemote: () => ({
     connection: {
-      desktopId: "desktop-1",
+      desktopId: mocks.activeDesktopId,
       desktopName: "Home Mac",
-      presence: "online",
+      presence: mocks.presence,
     },
     pairedDesktops: [
       {
         id: "desktop-1",
         name: "Home Mac",
-        active: true,
+        desktopIdentity: {
+          name: "Home Mac",
+          model: "Mac14,7",
+          username: "alex",
+        },
+        active: mocks.activeDesktopId === "desktop-1",
         updatedAtMs: 1,
       },
       {
         id: "desktop-2",
         name: "Office Mac",
-        active: false,
+        active: mocks.activeDesktopId === "desktop-2",
         updatedAtMs: 2,
       },
     ],
@@ -51,6 +61,8 @@ const translations: Record<string, string> = {
   "devices.thisDeviceSubtitle": "Full remote · Active now",
   "devices.pairedDesktops": "Paired desktops",
   "devices.primary": "Primary",
+  "devices.currentDesktop": "Current computer",
+  "devices.presenceUnknown": "Status unknown",
   "devices.online": "Online",
   "devices.offline": "Offline",
   "devices.unknown": "Connecting",
@@ -66,6 +78,10 @@ vi.mock("react-i18next", () => ({
 }));
 
 describe("DevicesTab", () => {
+  beforeEach(() => {
+    mocks.presence = "online";
+    mocks.activeDesktopId = "desktop-1";
+  });
   beforeAll(() => {
     reactActEnvironment.IS_REACT_ACT_ENVIRONMENT = true;
   });
@@ -85,41 +101,17 @@ describe("DevicesTab", () => {
     expect(html).toContain('data-testid="mobile-remote-paired-desktops"');
     expect(html).toContain("section-layout-row");
     expect(html).toContain("Home Mac");
-    expect(html).toContain("Primary");
+    expect(html).toContain("Mac14,7 · alex");
+    expect(html).toContain("Current computer");
     expect(html).toContain("Online");
     expect(html).toContain("bg-success-6");
   });
 
-  it("does not invent paired devices from the transient connection", () => {
-    expect(
-      derivePairedDesktopsFromInventory({
-        desktops: [],
-        activePresence: "online",
-      })
-    ).toEqual([]);
-  });
-
-  it("keeps inactive local pairings visible but offline", () => {
-    expect(
-      derivePairedDesktopsFromInventory({
-        desktops: [
-          {
-            id: "desktop-old",
-            name: "Office Mac",
-            active: false,
-            updatedAtMs: 1,
-          },
-        ],
-        activePresence: "online",
-      })
-    ).toEqual([
-      {
-        id: "desktop-old",
-        name: "Office Mac",
-        presence: "offline",
-        primary: false,
-      },
-    ]);
+  it("keeps unobserved desktops unknown without a connecting animation", () => {
+    const html = renderToStaticMarkup(React.createElement(DevicesTab));
+    expect(html).toContain("Status unknown");
+    expect(html).not.toContain("Offline");
+    expect(html).not.toContain("animate-pulse");
   });
 
   it("routes an inactive desktop row through the shared switch action", async () => {
@@ -141,7 +133,7 @@ describe("DevicesTab", () => {
     }
   });
 
-  it("disables every desktop row and marks the selected row busy while switching", async () => {
+  it("locks switch controls while keeping the current computer readable", async () => {
     let resolveSwitch!: () => void;
     const pendingSwitch = new Promise<void>((resolve) => {
       resolveSwitch = resolve;
@@ -160,10 +152,19 @@ describe("DevicesTab", () => {
       act(() => officeButton?.click());
 
       const buttons = Array.from(container.querySelectorAll("button"));
-      expect(buttons).toHaveLength(2);
+      expect(buttons).toHaveLength(1);
       expect(buttons.every((button) => button.disabled)).toBe(true);
       expect(officeButton?.getAttribute("aria-busy")).toBe("true");
       expect(container.querySelector('[role="alert"]')).toBeNull();
+      const current = container.querySelector('[aria-current="true"]');
+      expect(current?.tagName).toBe("SPAN");
+      expect(current?.textContent).toContain("Home Mac");
+      expect(current?.textContent).toContain("Current computer");
+      expect(current?.closest("button")).toBeNull();
+      const currentDetails = current?.querySelector(".flex-col");
+      expect(currentDetails?.children[0]?.textContent).toBe("Home Mac");
+      expect(currentDetails?.children[1]?.textContent).toBe("Mac14,7 · alex");
+      expect(currentDetails?.children[2]?.textContent).toBe("Current computer");
 
       await act(async () => {
         resolveSwitch();
@@ -199,6 +200,48 @@ describe("DevicesTab", () => {
       expect(container.querySelector('[role="alert"]')?.textContent).toContain(
         "Could not switch desktops"
       );
+      mocks.switchPairedDesktop.mockResolvedValue(undefined);
+      await act(async () => officeButton?.click());
+      expect(mocks.switchPairedDesktop).toHaveBeenCalledTimes(2);
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+    } finally {
+      act(() => root.unmount());
+      container.remove();
+    }
+  });
+
+  it("moves the current marker and live presence when selection changes", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    try {
+      await act(async () => root.render(React.createElement(DevicesTab)));
+      expect(
+        container.querySelector('[aria-current="true"]')?.textContent
+      ).toContain("Home Mac");
+
+      mocks.activeDesktopId = "desktop-2";
+      mocks.presence = "unknown";
+      await act(async () => root.render(React.createElement(DevicesTab)));
+      expect(
+        container.querySelector('[aria-current="true"]')?.textContent
+      ).toContain("Office Mac");
+      expect(container.textContent).toContain("Connecting");
+      expect(container.textContent).toContain("Status unknown");
+      expect(container.textContent).not.toContain("Online");
+
+      mocks.presence = "online";
+      await act(async () => root.render(React.createElement(DevicesTab)));
+      expect(container.textContent).toContain("Online");
+      expect(container.textContent).not.toContain("Connecting");
+
+      mocks.presence = "offline";
+      await act(async () => root.render(React.createElement(DevicesTab)));
+      expect(container.textContent).toContain("Offline");
+      expect(container.textContent).toContain("Status unknown");
+      expect(
+        container.querySelector('[aria-current="true"]')?.textContent
+      ).toContain("Office Mac");
     } finally {
       act(() => root.unmount());
       container.remove();

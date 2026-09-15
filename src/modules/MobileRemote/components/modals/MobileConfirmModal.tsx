@@ -42,6 +42,7 @@ export function MobileConfirmModal({
       visible
       title={title}
       size="small"
+      className="mobile-confirm-modal"
       closable={false}
       initialFocusRef={cancelRef}
       onClose={() => decide(false)}
@@ -66,7 +67,7 @@ export function MobileConfirmModal({
         </div>
       }
     >
-      <p className="text-sm leading-6 text-text-2">{description}</p>
+      <p className="mobile-type-secondary text-text-2">{description}</p>
     </Modal>
   );
 }

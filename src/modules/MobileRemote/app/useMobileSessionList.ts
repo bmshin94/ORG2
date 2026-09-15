@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import type { MobileRpcClient } from "../connection/mobileRpcClient";
+import { hasValidSessionPresentation } from "../connection/sessionDiscoveryContract";
 import type { MobileSessionRow } from "../connection/types";
 
 /** Owns roster pagination and invalidation, not the transport lifetime. */
@@ -17,6 +18,7 @@ export function useMobileSessionList(
   const [sessionsHasMore, setSessionsHasMore] = useState(false);
   const sessionNextOffsetRef = useRef(0);
   const sessionListGenerationRef = useRef(0);
+  const snapshotRevisionRef = useRef(0);
   const flightRef = useRef<{
     client: MobileRpcClient;
     generation: number;
@@ -30,6 +32,7 @@ export function useMobileSessionList(
       append: boolean,
       requestGeneration: number
     ) => {
+      const snapshotRevision = snapshotRevisionRef.current;
       const targetOffset = append
         ? sessionNextOffsetRef.current + 50
         : Math.max(50, sessionNextOffsetRef.current);
@@ -41,12 +44,23 @@ export function useMobileSessionList(
       } = {};
       const rows: MobileSessionRow[] = [];
       do {
-        list = await client.call<typeof list>("session/list", { offset });
+        list = await client.call<typeof list>("session/list", {
+          offset,
+          limit: 200,
+        });
         if (
           requestGeneration !== sessionListGenerationRef.current ||
+          snapshotRevision !== snapshotRevisionRef.current ||
           clientRef.current !== client
         )
           return;
+        if (
+          list.sessions &&
+          (!Array.isArray(list.sessions) ||
+            !list.sessions.every(hasValidSessionPresentation))
+        ) {
+          throw new Error("Invalid session presentation metadata");
+        }
         rows.push(...(list.sessions ?? []));
         const next = list.nextOffset;
         if (!Number.isSafeInteger(next) || next! <= offset) {
@@ -57,6 +71,7 @@ export function useMobileSessionList(
       } while (list.hasMore && offset < targetOffset);
       if (
         requestGeneration !== sessionListGenerationRef.current ||
+        snapshotRevision !== snapshotRevisionRef.current ||
         clientRef.current !== client
       ) {
         return;
@@ -88,7 +103,10 @@ export function useMobileSessionList(
         current.generation === sessionListGenerationRef.current
       ) {
         if (append) current.append = true;
-        else current.refresh = true;
+        else {
+          current.refresh = true;
+          snapshotRevisionRef.current += 1;
+        }
         return current.promise;
       }
       const flight = {
@@ -99,7 +117,7 @@ export function useMobileSessionList(
         append,
       };
       flightRef.current = flight;
-      flight.promise = Promise.resolve().then(async () => {
+      flight.promise = (async () => {
         try {
           while (
             flightRef.current === flight &&
@@ -121,7 +139,7 @@ export function useMobileSessionList(
         } finally {
           if (flightRef.current === flight) flightRef.current = null;
         }
-      });
+      })();
       return flight.promise;
     },
     [clientRef, readPage]

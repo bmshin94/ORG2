@@ -8,12 +8,12 @@ import { _resetToolRegistry } from "@src/engines/SessionCore/rendering/registry/
 import { BookOpen02Icon, Search01Icon, Wrench01Icon } from "@src/icons";
 
 import type { TranscriptItem } from "../../lib/transcriptReducer";
+import { MobileToolCall } from "./MobileToolCall";
 import {
-  MobileToolCall,
   mobileToolSummary,
   normalizeMobileToolLifecycle,
   resolveMobileToolIconName,
-} from "./MobileToolCall";
+} from "./mobileToolPresentation";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),

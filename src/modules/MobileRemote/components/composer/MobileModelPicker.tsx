@@ -27,6 +27,10 @@ export interface MobileModelPickerProps {
   config: MobileSessionModelConfig | null;
   options: MobileModelOption[];
   loading?: boolean;
+  optionsLoading?: boolean;
+  error?: string;
+  onActivate?: () => void;
+  onRetry?: () => void;
   patching?: boolean;
   disabled?: boolean;
   /** When true, render inline in the composer footer without outer padding. */
@@ -65,6 +69,10 @@ export function MobileModelPicker({
   config,
   options,
   loading = false,
+  optionsLoading = false,
+  error,
+  onActivate,
+  onRetry,
   patching = false,
   disabled = false,
   embedded = false,
@@ -159,6 +167,9 @@ export function MobileModelPicker({
       <div
         className={triggerWrapperClass}
         data-testid="mobile-model-picker-trigger"
+        // Observe intent on the shared button, including its advanced menu.
+        onPointerDownCapture={onActivate}
+        onFocusCapture={onActivate}
       >
         <ModelSelectorPill
           ref={pillRef}
@@ -172,6 +183,7 @@ export function MobileModelPicker({
           effortSegmentOverride={effortSegment}
           preferCombinedSettingsMenu
           settingsMenuDefaultAdvanced
+          settingsMenuClassName="mobile-model-settings-menu"
           dataTestId="mobile-model-picker-pill"
           ariaLabel={t("modelPicker.selectModel")}
           isActiveSession
@@ -186,8 +198,11 @@ export function MobileModelPicker({
         allOptions={options}
         currentModelId={currentModelId}
         currentAccountId={config.accountId}
-        loading={loading}
+        loading={loading || optionsLoading}
         patching={patching}
+        error={error}
+        onRetry={onRetry}
+        retryLabel={t("transcript.retry")}
         loadingLabel={t("modelPicker.loading")}
         emptyLabel={t("modelPicker.empty")}
         onSelect={handleSelectOption}

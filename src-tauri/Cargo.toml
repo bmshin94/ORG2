@@ -431,6 +431,7 @@ dirs = "6.0"             # Get user directories (~/.orgii/data)
 chrono = { workspace = true }  # Date/time handling
 zip = { workspace = true }
 base64 = { workspace = true }
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
 
 # AWS SDK for SSO OIDC archived alongside `crates/cursor-bridge` notes.
 # `aws-config` + `aws-sdk-ssooidc` (and the transitive `aws-lc-sys` BoringSSL

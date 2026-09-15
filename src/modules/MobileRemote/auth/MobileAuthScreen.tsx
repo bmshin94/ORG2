@@ -36,14 +36,14 @@ export function MobileAuthScreen({
 
   return (
     <MobileShell>
-      <main className="flex min-h-0 flex-1 flex-col px-5 py-6">
-        <div className="flex items-center gap-2 text-lg font-semibold text-text-1">
+      <main className="mobile-flow-screen flex flex-1 flex-col px-5 py-6">
+        <div className="mobile-type-heading flex items-center gap-2 font-semibold text-text-1">
           <span aria-hidden="true" className="mobile-brand-mark">
             ●
           </span>
           ORG2
         </div>
-        <div className="flex min-h-0 flex-1 flex-col justify-center gap-5">
+        <div className="mobile-auth-content flex flex-col justify-center gap-5">
           {loading ? (
             <div aria-live="polite" data-testid="mobile-auth-loading">
               <Placeholder
@@ -71,10 +71,10 @@ export function MobileAuthScreen({
           ) : (
             <>
               <div className="space-y-2 text-center">
-                <h1 className="text-xl font-semibold text-text-1">
+                <h1 className="mobile-type-title font-semibold text-text-1">
                   {t("auth.title")}
                 </h1>
-                <p className="text-sm leading-5 text-text-2">
+                <p className="mobile-type-secondary text-text-2">
                   {t("auth.subtitle")}
                 </p>
               </div>
