@@ -1,3 +1,5 @@
+import { createLogger } from "@src/hooks/logger";
+
 import type { MobileRpcClient } from "../connection/mobileRpcClient";
 
 const BATCH = 200;
@@ -49,47 +51,51 @@ export function createMobileReadStateSync() {
     const token = generation;
     const current = () => token === generation && client === transport;
     running = token;
-    void Promise.resolve().then(async () => {
-      try {
-        while (current() && (dirty || pending.size > 0)) {
-          dirty = false;
-          const marks = [...pending].slice(0, BATCH);
-          if (marks.length) {
-            const reply = visitedReply(
-              await transport.call("session/mark_visited", {
-                sessionIds: marks,
-              }),
-              marks
-            );
+    void Promise.resolve()
+      .then(async () => {
+        try {
+          while (current() && (dirty || pending.size > 0)) {
+            dirty = false;
+            const marks = [...pending].slice(0, BATCH);
+            if (marks.length) {
+              const reply = visitedReply(
+                await transport.call("session/mark_visited", {
+                  sessionIds: marks,
+                }),
+                marks
+              );
+              if (!current()) return;
+              if (marks.some((id) => !reply.has(id)))
+                throw new Error("Desktop did not acknowledge the read receipt");
+              marks.forEach((id) => pending.delete(id));
+            }
+            const requestRevision = revision;
+            const ids = watched;
+            const next = new Map<string, boolean>();
+            for (let offset = 0; offset < ids.length; offset += BATCH) {
+              const batch = ids.slice(offset, offset + BATCH);
+              const reply = visitedReply(
+                await transport.call("session/read_state", {
+                  sessionIds: batch,
+                }),
+                batch
+              );
+              if (!current()) return;
+              if (requestRevision !== revision) break;
+              batch.forEach((id) => next.set(id, reply.has(id)));
+            }
             if (!current()) return;
-            if (marks.some((id) => !reply.has(id)))
-              throw new Error("Desktop did not acknowledge the read receipt");
-            marks.forEach((id) => pending.delete(id));
+            if (requestRevision === revision) emit(next);
           }
-          const requestRevision = revision;
-          const ids = watched;
-          const next = new Map<string, boolean>();
-          for (let offset = 0; offset < ids.length; offset += BATCH) {
-            const batch = ids.slice(offset, offset + BATCH);
-            const reply = visitedReply(
-              await transport.call("session/read_state", { sessionIds: batch }),
-              batch
-            );
-            if (!current()) return;
-            if (requestRevision !== revision) break;
-            batch.forEach((id) => next.set(id, reply.has(id)));
-          }
-          if (!current()) return;
-          if (requestRevision === revision) emit(next);
+        } catch {
+          // Unknown is not unread. Retain pending receipts for the next explicit
+          // activation, invalidation, or reconnect; never spin on failure.
+          if (current()) emit(EMPTY);
+        } finally {
+          if (running === token) running = null;
         }
-      } catch {
-        // Unknown is not unread. Retain pending receipts for the next explicit
-        // activation, invalidation, or reconnect; never spin on failure.
-        if (current()) emit(EMPTY);
-      } finally {
-        if (running === token) running = null;
-      }
-    });
+      })
+      .catch((error) => logger.warn("Background operation failed", error));
   };
   const refresh = () => {
     revision++;
@@ -163,3 +169,5 @@ export function createMobileReadStateSync() {
 }
 
 export type MobileReadStateSync = ReturnType<typeof createMobileReadStateSync>;
+
+const logger = createLogger("mobileReadStateSync");

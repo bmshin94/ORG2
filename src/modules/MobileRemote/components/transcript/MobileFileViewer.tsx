@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import Button from "@src/components/Button";
 import { MarkdownFallbackBoundary } from "@src/components/MarkDown/MarkdownFallbackBoundary";
 import { Placeholder } from "@src/components/Placeholder";
+import { createLogger } from "@src/hooks/logger";
 
 import { MobileFileViewerControls } from "./MobileFileViewerControls";
 import { type MobileFileTarget, mobileFilePreview } from "./mobileFileTool";
@@ -132,7 +133,13 @@ export default function MobileFileViewer({
             appearance="ghost"
             className="min-h-11"
             loading={desktopAction.state.phase === "opening"}
-            onClick={desktopAction.open}
+            onClick={() => {
+              void desktopAction
+                .open()
+                .catch((error) =>
+                  logger.warn("Desktop navigation failed", error)
+                );
+            }}
             data-mobile-open-file={target.filePath}
           >
             {t(
@@ -146,3 +153,5 @@ export default function MobileFileViewer({
     </div>
   );
 }
+
+const logger = createLogger("MobileFileViewer");

@@ -130,4 +130,30 @@ describe("useVoiceInput native iOS speech", () => {
     expect(onCommit).not.toHaveBeenCalled();
     await root.unmount();
   });
+  it("handles native cleanup rejection and ignores late transcripts after unmount", async () => {
+    let voice: UseVoiceInputResult | undefined;
+    const onCommit = vi.fn();
+    const root = createSmokeRoot();
+    function Probe() {
+      const value = useVoiceInput({ onCommit });
+      React.useEffect(() => {
+        voice = value;
+      }, [value]);
+      return null;
+    }
+    await root.render(React.createElement(Probe));
+    act(() => voice?.start());
+    await flushAsync();
+    const sessionId = native.start.mock.calls[0]?.[1] as string;
+    native.cancel.mockRejectedValueOnce(new Error("Native cancel unavailable"));
+    native.unregister.mockRejectedValueOnce(
+      new Error("Listener already closed")
+    );
+    await root.unmount();
+    await flushAsync();
+    native.callback?.({ sessionId, kind: "ended", transcript: "late" });
+    expect(native.cancel).toHaveBeenCalledWith(sessionId);
+    expect(native.unregister).toHaveBeenCalledOnce();
+    expect(onCommit).not.toHaveBeenCalled();
+  });
 });

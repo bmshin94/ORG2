@@ -433,7 +433,7 @@ export function useVoiceInput(
           teardown();
           callbacksRef.current.onError?.(failure);
         }
-      })();
+      })().catch((error) => logger.warn("Background operation failed", error));
       return;
     }
 
@@ -502,7 +502,11 @@ export function useVoiceInput(
 
       if (startSessionRef.current !== sessionId) return;
       beginRecognition(Ctor);
-    })();
+    })().catch((error) => {
+      if (startSessionRef.current !== sessionId) return;
+      teardown();
+      callbacksRef.current.onError?.(mapNativeFailure(error));
+    });
   }, [
     beginRecognition,
     ensureNativeListener,
@@ -602,7 +606,10 @@ export function useVoiceInput(
     return () => {
       const nativeSessionId = nativeSessionRef.current;
       nativeSessionRef.current = null;
-      if (nativeSessionId) void cancelNativeSpeech(nativeSessionId);
+      if (nativeSessionId)
+        void cancelNativeSpeech(nativeSessionId).catch((error) =>
+          logger.warn("Background operation failed", error)
+        );
       if (recognitionRef.current) {
         shouldCommitRef.current = false;
         try {
@@ -614,7 +621,10 @@ export function useVoiceInput(
       clearTimer();
       const listener = nativeListenerRef.current;
       nativeListenerRef.current = null;
-      if (listener) void listener.unregister();
+      if (listener)
+        void listener
+          .unregister()
+          .catch((error) => logger.warn("Background operation failed", error));
       const pendingListener = nativeListenerPromiseRef.current;
       if (pendingListener) {
         void pendingListener

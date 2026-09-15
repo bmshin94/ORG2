@@ -7,6 +7,7 @@ import IconButton from "@src/components/Button";
 import Input from "@src/components/Input";
 import InlineAlert from "@src/components/PageNotice";
 import { Placeholder } from "@src/components/Placeholder";
+import { createLogger } from "@src/hooks/logger";
 import {
   ArrowRight01Icon,
   Cancel01Icon,
@@ -506,7 +507,11 @@ export function SessionsScreen({
               onSubmit={(event) => {
                 event.preventDefault();
                 if (composing) return;
-                void search.search(query);
+                void search
+                  .search(query)
+                  .catch((error) =>
+                    logger.warn("Background operation failed", error)
+                  );
                 if (online && query.trim()) searchInput.current?.blur();
               }}
             >
@@ -584,3 +589,5 @@ export function SessionsScreen({
 }
 
 SessionsScreen.displayName = "SessionsScreen";
+
+const logger = createLogger("SessionsScreen");

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { createLogger } from "@src/hooks/logger";
+
 import type { MobileRpcClient } from "../connection/mobileRpcClient";
 import { isPendingPermissions } from "../connection/sessionDiscoveryContract";
 import type { MobilePendingPermission } from "../connection/types";
@@ -92,13 +94,18 @@ export function useMobilePendingInbox({
           }));
       } finally {
         inFlight = false;
-        if (!disposed && dirty) void read();
+        if (!disposed && dirty)
+          void read().catch((error) =>
+            logger.warn("Background operation failed", error)
+          );
       }
     };
     const invalidate = () => {
       version++;
       dirty = true;
-      void read();
+      void read().catch((error) =>
+        logger.warn("Background operation failed", error)
+      );
     };
     refreshRef.current = invalidate;
     const unsubscribe = client?.onNotification((method) => {
@@ -107,7 +114,9 @@ export function useMobilePendingInbox({
     const unwatch = runtime.subscribeVisibility(() => {
       if (!runtime.isHidden()) invalidate();
     });
-    void read();
+    void read().catch((error) =>
+      logger.warn("Background operation failed", error)
+    );
     return () => {
       disposed = true;
       refreshRef.current = () => {};
@@ -125,3 +134,5 @@ export function useMobilePendingInbox({
     refresh,
   };
 }
+
+const logger = createLogger("useMobilePendingInbox");

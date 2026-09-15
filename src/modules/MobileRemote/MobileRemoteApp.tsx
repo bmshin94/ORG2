@@ -1,5 +1,7 @@
 import React, { useContext } from "react";
 
+import { createLogger } from "@src/hooks/logger";
+
 import { MobileRemoteProviders, useMobileRemote } from "./app";
 import { MobileAuthContext } from "./auth/MobileAuthContext";
 import { MobileShell } from "./components/MobileShell";
@@ -63,8 +65,16 @@ function MobileRemoteRoutes({
       <MobileShell>
         <ConnectionErrorScreen
           message={connection.error?.message}
-          onRetry={handleConnectionRetry}
-          onRepair={handleConnectionRepair}
+          onRetry={() => {
+            void handleConnectionRetry().catch((error) =>
+              logger.warn("Connection retry failed", error)
+            );
+          }}
+          onRepair={() => {
+            void handleConnectionRepair().catch((error) =>
+              logger.warn("Connection repair failed", error)
+            );
+          }}
           busy={connectionRecovering}
           actionError={connectionRecoveryError}
         />
@@ -187,3 +197,5 @@ export function MobileRemoteApp({
 }
 
 MobileRemoteApp.displayName = "MobileRemoteApp";
+
+const logger = createLogger("MobileRemoteApp");

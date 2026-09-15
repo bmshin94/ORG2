@@ -1,5 +1,7 @@
 import { z } from "zod/v4";
 
+import { createLogger } from "@src/hooks/logger";
+
 const RequestSchema = z.object({
   requestId: z.string().min(1).max(100),
   sessionIds: z.array(z.string().min(1).max(1024)).min(1).max(200),
@@ -32,18 +34,20 @@ export function startDesktopReadStateBridge(
     dirty = true;
     if (publishing) return;
     publishing = true;
-    void Promise.resolve().then(async () => {
-      try {
-        while (!disposed && dirty) {
-          dirty = false;
-          await port.notifyChanged();
+    void Promise.resolve()
+      .then(async () => {
+        try {
+          while (!disposed && dirty) {
+            dirty = false;
+            await port.notifyChanged();
+          }
+        } catch (error) {
+          if (!disposed) port.onError(error);
+        } finally {
+          publishing = false;
         }
-      } catch (error) {
-        if (!disposed) port.onError(error);
-      } finally {
-        publishing = false;
-      }
-    });
+      })
+      .catch((error) => logger.warn("Background operation failed", error));
   };
   void port
     .listen((payload) => {
@@ -92,3 +96,5 @@ export function startDesktopReadStateBridge(
     unlisten?.();
   };
 }
+
+const logger = createLogger("desktopReadStateBridge");

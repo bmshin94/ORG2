@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Button from "@src/components/Button";
+import { createLogger } from "@src/hooks/logger";
 import Modal from "@src/scaffold/ModalSystem";
 
 export type LoadMessageImage = (
@@ -134,7 +135,9 @@ function MessageImage({
           style={{ minHeight: 44 }}
           disabled={!loadImage || current?.phase === "loading"}
           onClick={() => {
-            void load();
+            void load().catch((error) =>
+              logger.warn("Background operation failed", error)
+            );
           }}
         >
           {!loadImage
@@ -175,3 +178,5 @@ export function MobileMessageImages({
     </>
   );
 }
+
+const logger = createLogger("MobileMessageImages");

@@ -84,7 +84,7 @@ mod tests {
         let sandbox = test_helpers::test_env::sandbox();
         let path = sandbox.path().join("review.txt");
         std::fs::write(&path, "before\n").unwrap();
-        let id = super::super::make_tool_snapshot("review-owner", &[path.clone()]).unwrap();
+        let id = super::super::make_tool_snapshot("review-owner", std::slice::from_ref(&path)).unwrap();
         let conn = database::db::get_connection().unwrap();
         crate::persistence::session_snapshots::ensure_tables_with(&conn).unwrap();
         crate::core::session::persistence::save_snapshot("review-owner", "edit-call", &id).unwrap();

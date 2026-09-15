@@ -2,6 +2,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { PermissionSheet } from "@src/components/PermissionPrompt";
+import { createLogger } from "@src/hooks/logger";
 
 import { useMobileRemote } from "../app";
 import { useMobileSessionIdentity } from "../app/useMobileSessionIdentity";
@@ -398,16 +399,22 @@ function SessionChatContent({
                   optionsLoading: sessionModel.optionsLoading,
                   error: sessionModel.optionsError,
                   onActivate: () => {
-                    void loadSessionModels(sessionId);
+                    void loadSessionModels(sessionId).catch((error) =>
+                      logger.warn("Background operation failed", error)
+                    );
                   },
                   onRetry: () => {
-                    void loadSessionModels(sessionId);
+                    void loadSessionModels(sessionId).catch((error) =>
+                      logger.warn("Background operation failed", error)
+                    );
                   },
                   patching: sessionModel.patching,
                   open: modelPickerOpen,
                   onOpen: () => {
                     setModelPickerOpen(true);
-                    void loadSessionModels(sessionId);
+                    void loadSessionModels(sessionId).catch((error) =>
+                      logger.warn("Background operation failed", error)
+                    );
                   },
                   onClose: () => setModelPickerOpen(false),
                   onSelect: handleSelectModel,
@@ -436,3 +443,5 @@ function SessionChatContent({
 }
 
 SessionChatScreen.displayName = "SessionChatScreen";
+
+const logger = createLogger("SessionChatScreen");

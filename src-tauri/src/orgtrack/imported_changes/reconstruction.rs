@@ -179,10 +179,10 @@ fn update(base: &str, body: &[&str]) -> Option<String> {
             let mut search = cursor;
             while let Some(offset) = text[search..].find(&old) {
                 let at = search + offset;
-                if at == 0 || text.as_bytes()[at - 1] == b'\n' {
-                    if found.replace(at).is_some() {
-                        return None;
-                    }
+                if (at == 0 || text.as_bytes()[at - 1] == b'\n')
+                    && found.replace(at).is_some()
+                {
+                    return None;
                 }
                 // Advance one UTF-8 character, not the whole match, so
                 // overlapping repeated hunks are ambiguous too.
@@ -239,9 +239,9 @@ mod tests {
     #[test]
     fn rejects_fragment_anchor_mismatch_ambiguity_and_unknown_edit() {
         let patch = edit("update", "*** Update File: a\n@@\n-one\n+ONE");
-        assert!(replay(&[patch.clone()], "a", None, None).after.is_none());
+        assert!(replay(std::slice::from_ref(&patch), "a", None, None).after.is_none());
         for base in ["wrong\n", "one\none\n", "someone\n"] {
-            assert!(replay(&[patch.clone()], "a", None, Some(base.into()))
+            assert!(replay(std::slice::from_ref(&patch), "a", None, Some(base.into()))
                 .after
                 .is_none());
         }

@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { createLogger } from "@src/hooks/logger";
+
 import { useMobileRemote } from "../app";
 import type { MobileConnectionConfig } from "../connection/types";
 import { useMobileRemotePlatform } from "../platform";
@@ -75,7 +77,7 @@ export function ConnectingLiveBridge({
         // A confirmed device may instead be waiting for Desktop to restart.
         if (!cancelled) setFailedAttempt(pendingConfig);
       }
-    })();
+    })().catch((error) => logger.warn("Background operation failed", error));
 
     return () => {
       cancelled = true;
@@ -86,3 +88,5 @@ export function ConnectingLiveBridge({
 }
 
 ConnectingLiveBridge.displayName = "ConnectingLiveBridge";
+
+const logger = createLogger("ConnectingLiveBridge");
