@@ -407,7 +407,8 @@
     "openOnGitHub": "Otwórz na GitHub",
     "createPullRequest": "Utwórz pull request",
     "expandView": "Rozwiń widok",
-    "restoreSplitView": "Przywróć widok podzielony"
+    "restoreSplitView": "Przywróć widok podzielony",
+    "overwrite": "Nadpisz"
   },
   "status": {
     "yes": "Tak",
@@ -1057,7 +1058,9 @@
         "skipped": "Pominięte",
         "passed": "Zaliczone"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "Plik zmieniony na dysku",
+    "fileChangedOnDiskBody": "Plik „{{name}}” zmienił się na dysku od czasu otwarcia. Nadpisać go swoją wersją?"
   },
   "git": {
     "loading": "Ładowanie statusu Git...",

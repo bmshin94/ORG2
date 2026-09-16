@@ -407,7 +407,8 @@
     "openOnGitHub": "GitHub에서 열기",
     "createPullRequest": "Pull request 만들기",
     "expandView": "보기 확장",
-    "restoreSplitView": "분할 보기 복원"
+    "restoreSplitView": "분할 보기 복원",
+    "overwrite": "덮어쓰기"
   },
   "status": {
     "yes": "예",
@@ -1057,7 +1058,9 @@
         "skipped": "건너뜀",
         "passed": "통과"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "디스크에서 파일이 변경됨",
+    "fileChangedOnDiskBody": "\"{{name}}\" 파일이 열린 후 디스크에서 변경되었습니다. 내 버전으로 덮어쓸까요?"
   },
   "git": {
     "loading": "Git 상태 로딩 중...",

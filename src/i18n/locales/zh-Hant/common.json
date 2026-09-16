@@ -407,7 +407,8 @@
     "clearSelection": "清除選擇",
     "clearAll": "全部清除",
     "expandView": "展開檢視",
-    "restoreSplitView": "恢復分割檢視"
+    "restoreSplitView": "恢復分割檢視",
+    "overwrite": "覆寫"
   },
   "status": {
     "yes": "是",
@@ -1057,7 +1058,9 @@
         "skipped": "已跳過",
         "passed": "已通過"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "檔案在磁碟上已變更",
+    "fileChangedOnDiskBody": "「{{name}}」自你開啟後已在磁碟上變更。要用你的版本覆寫嗎？"
   },
   "git": {
     "loading": "正在加載 Git 狀態...",

@@ -407,7 +407,8 @@
     "openOnGitHub": "Открыть на GitHub",
     "createPullRequest": "Создать pull request",
     "expandView": "Развернуть представление",
-    "restoreSplitView": "Восстановить разделённый вид"
+    "restoreSplitView": "Восстановить разделённый вид",
+    "overwrite": "Перезаписать"
   },
   "status": {
     "yes": "Да",
@@ -1057,7 +1058,9 @@
         "skipped": "Пропущено",
         "passed": "Пройдено"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "Файл изменён на диске",
+    "fileChangedOnDiskBody": "Файл «{{name}}» изменился на диске после открытия. Перезаписать его вашей версией?"
   },
   "git": {
     "loading": "Загрузка статуса Git...",

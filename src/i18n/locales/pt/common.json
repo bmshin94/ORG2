@@ -407,7 +407,8 @@
     "openOnGitHub": "Abrir no GitHub",
     "createPullRequest": "Criar pull request",
     "expandView": "Expandir visualização",
-    "restoreSplitView": "Restaurar visualização dividida"
+    "restoreSplitView": "Restaurar visualização dividida",
+    "overwrite": "Substituir"
   },
   "status": {
     "yes": "Sim",
@@ -1057,7 +1058,9 @@
         "skipped": "Ignorado",
         "passed": "Aprovado"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "Ficheiro alterado no disco",
+    "fileChangedOnDiskBody": "\"{{name}}\" foi alterado no disco desde que o abriu. Substituir pela sua versão?"
   },
   "git": {
     "loading": "Carregando status do Git...",

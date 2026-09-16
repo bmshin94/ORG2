@@ -228,7 +228,8 @@
     "clearSelection": "Clear selection",
     "clearAll": "Clear All",
     "expandView": "Expand view",
-    "restoreSplitView": "Restore split view"
+    "restoreSplitView": "Restore split view",
+    "overwrite": "Overwrite"
   },
   "status": {
     "yes": "Yes",
@@ -888,7 +889,9 @@
       "webviewHiddenTitle": "Webview temporarily hidden",
       "webviewHiddenBody": "Close the menu or dialog to show it again."
     },
-    "unsavedChangesTitle": "Unsaved Changes"
+    "unsavedChangesTitle": "Unsaved Changes",
+    "fileChangedOnDiskTitle": "File changed on disk",
+    "fileChangedOnDiskBody": "\"{{name}}\" changed on disk since you opened it. Overwrite it with your version?"
   },
   "git": {
     "loading": "Loading git status...",

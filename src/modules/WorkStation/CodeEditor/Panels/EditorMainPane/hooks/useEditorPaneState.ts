@@ -17,6 +17,7 @@ import { type MutableRefObject, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { createLogger } from "@src/hooks/logger";
+import { confirmSaveOverDiskChanges } from "@src/modules/WorkStation/CodeEditor/hooks/fileContent/diskGuard";
 import { invalidateFileCache } from "@src/modules/WorkStation/CodeEditor/hooks/fileContent/useFileContent";
 import { tabToHost } from "@src/store/workstation/tabHost";
 import {
@@ -45,6 +46,8 @@ function isCsvTableFile(filePath: string): boolean {
 
 interface FileContentStateRef {
   content: string;
+  /** Bytes this buffer last agreed with on disk — the save-guard baseline. */
+  originalContent: string;
   hasUnsavedChanges: boolean;
   isBinary: boolean;
   markSaved: () => void;
@@ -181,6 +184,17 @@ export function useEditorPaneState(
               if (filePath) {
                 try {
                   const contentToSave = contentState.content ?? "";
+                  // Same shared-working-tree hazard as ⌘S: confirm before
+                  // replacing bytes written since this buffer loaded. A
+                  // decline keeps the tab open with its edits intact.
+                  if (
+                    !(await confirmSaveOverDiskChanges(
+                      filePath,
+                      contentState.originalContent ?? ""
+                    ))
+                  ) {
+                    return;
+                  }
                   await writeTextFile(filePath, contentToSave);
                   contentState.markSaved();
                   invalidateFileCache(filePath);

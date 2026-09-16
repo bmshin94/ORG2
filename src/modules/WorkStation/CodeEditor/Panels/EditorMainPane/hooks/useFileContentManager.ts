@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { createLogger } from "@src/hooks/logger";
+import { confirmSaveOverDiskChanges } from "@src/modules/WorkStation/CodeEditor/hooks/fileContent/diskGuard";
 import {
   type UseFileContentReturn,
   invalidateFileCache,
@@ -127,8 +128,30 @@ export function useFileContentManager(
 
     setSaving(true);
     try {
-      await writeTextFile(filePath, contentState.content);
-      contentState.markSaved();
+      // An agent shares this working tree, so the file may have been
+      // rewritten since the buffer loaded. Writing unconditionally would
+      // discard that work with no trace; ask before overwriting, and leave
+      // the buffer dirty if the user declines.
+      const content = contentState.content;
+      if (
+        !(await confirmSaveOverDiskChanges(
+          filePath,
+          contentState.originalContent
+        ))
+      ) {
+        return;
+      }
+      await writeTextFile(filePath, content);
+      // The confirm dialog yields, so the user may have switched files or
+      // kept typing while it was open. Only stamp the buffer clean when the
+      // bytes just written are still the bytes it holds; otherwise the edits
+      // made during the dialog would be marked saved without being written.
+      if (
+        activeFilePathRef.current === filePath &&
+        fileContentStateRef.current.content === content
+      ) {
+        contentState.markSaved();
+      }
 
       // Dispatch file save event to Filesync output
       window.dispatchEvent(

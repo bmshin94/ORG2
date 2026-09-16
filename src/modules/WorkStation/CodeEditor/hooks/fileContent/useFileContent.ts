@@ -78,6 +78,7 @@ export function useFileContent(
   const originalContentRef = useRef(originalContent);
   const diskVersionRef = useRef(diskVersion);
   const recentEditsRef = useRef(recentEdits);
+  const hasUnsavedChangesRef = useRef(hasUnsavedChanges);
 
   useEffect(() => {
     versionRef.current = version;
@@ -88,7 +89,8 @@ export function useFileContent(
     originalContentRef.current = originalContent;
     diskVersionRef.current = diskVersion;
     recentEditsRef.current = recentEdits;
-  }, [content, originalContent, diskVersion, recentEdits]);
+    hasUnsavedChangesRef.current = hasUnsavedChanges;
+  }, [content, originalContent, diskVersion, recentEdits, hasUnsavedChanges]);
 
   // Cache unsaved content before switching to a new file
   useEffect(() => {
@@ -311,21 +313,34 @@ export function useFileContent(
     }
   }, [filePath, autoLoad, loadContent]);
 
-  // Subscribe to external file change notifications
-  // When file watcher detects this file changed externally, reload it
+  // Subscribe to external file change notifications.
+  //
+  // Only a CLEAN buffer is reloaded. `loadContent` replaces the buffer with
+  // the bytes on disk and clears the dirty flag, so auto-reloading a dirty
+  // buffer would silently discard the user's unsaved edits — a worse failure
+  // than the stale content it is meant to fix. A dirty buffer keeps its
+  // edits; the save path compares against disk and asks before overwriting
+  // (see `diskGuard.ts`).
+  //
+  // NOTE: no producer calls `onExternalFileChange` today — the Rust
+  // `emit_file_changed`/`emit_files_changed` pair in
+  // `crates/git/src/watch/event_emitter.rs` has no callers, so `file:changed`
+  // is never emitted and this subscription is currently inert. It is kept,
+  // and made safe, so that wiring a producer is a one-line change rather than
+  // one that reintroduces the clobber above.
   useEffect(() => {
     if (!filePath) return;
 
     const unsubscribe = subscribeToFileChanges((changedPath) => {
-      // Check if the changed file matches our current file
-      // Handle both exact match and path ending match (for relative vs absolute)
-      if (
-        changedPath === filePath ||
-        filePath.endsWith(`/${changedPath}`) ||
-        changedPath.endsWith(`/${filePath.split("/").pop()}`)
-      ) {
-        loadContent();
-      }
+      // Exact match, or a repo-relative path naming this same file. The
+      // basename-only clause this replaces matched ANY file with the same
+      // name in ANY directory, so an unrelated `index.ts` could reload this
+      // one.
+      const isSameFile =
+        changedPath === filePath || filePath.endsWith(`/${changedPath}`);
+      if (!isSameFile) return;
+      if (hasUnsavedChangesRef.current) return;
+      loadContent();
     });
 
     return unsubscribe;

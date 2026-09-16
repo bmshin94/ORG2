@@ -407,7 +407,8 @@
     "openOnGitHub": "Auf GitHub öffnen",
     "createPullRequest": "Pull Request erstellen",
     "expandView": "Ansicht erweitern",
-    "restoreSplitView": "Geteilte Ansicht wiederherstellen"
+    "restoreSplitView": "Geteilte Ansicht wiederherstellen",
+    "overwrite": "Überschreiben"
   },
   "status": {
     "yes": "Ja",
@@ -1057,7 +1058,9 @@
         "skipped": "Übersprungen",
         "passed": "Bestanden"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "Datei auf der Festplatte geändert",
+    "fileChangedOnDiskBody": "„{{name}}“ wurde seit dem Öffnen auf der Festplatte geändert. Mit Ihrer Version überschreiben?"
   },
   "git": {
     "loading": "Git-Status wird geladen...",

@@ -407,7 +407,8 @@
     "openOnGitHub": "Ouvrir sur GitHub",
     "createPullRequest": "Créer une pull request",
     "expandView": "Agrandir la vue",
-    "restoreSplitView": "Restaurer la vue partagée"
+    "restoreSplitView": "Restaurer la vue partagée",
+    "overwrite": "Écraser"
   },
   "status": {
     "yes": "Oui",
@@ -1057,7 +1058,9 @@
         "skipped": "Ignorés",
         "passed": "Réussis"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "Fichier modifié sur le disque",
+    "fileChangedOnDiskBody": "« {{name}} » a été modifié sur le disque depuis son ouverture. L'écraser avec votre version ?"
   },
   "git": {
     "loading": "Chargement du statut Git...",

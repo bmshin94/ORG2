@@ -407,7 +407,8 @@
     "openOnGitHub": "Abrir en GitHub",
     "createPullRequest": "Crear pull request",
     "expandView": "Expandir vista",
-    "restoreSplitView": "Restaurar vista dividida"
+    "restoreSplitView": "Restaurar vista dividida",
+    "overwrite": "Sobrescribir"
   },
   "status": {
     "yes": "Sí",
@@ -1057,7 +1058,9 @@
         "skipped": "Omitidas",
         "passed": "Superadas"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "El archivo cambió en el disco",
+    "fileChangedOnDiskBody": "«{{name}}» cambió en el disco desde que lo abriste. ¿Sobrescribirlo con tu versión?"
   },
   "git": {
     "loading": "Cargando estado de Git...",

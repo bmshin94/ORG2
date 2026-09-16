@@ -407,7 +407,8 @@
     "openOnGitHub": "Mở trên GitHub",
     "createPullRequest": "Tạo pull request",
     "expandView": "Mở rộng chế độ xem",
-    "restoreSplitView": "Khôi phục chế độ xem chia đôi"
+    "restoreSplitView": "Khôi phục chế độ xem chia đôi",
+    "overwrite": "Ghi đè"
   },
   "status": {
     "yes": "Có",
@@ -1057,7 +1058,9 @@
         "skipped": "Đã bỏ qua",
         "passed": "Đã đạt"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "Tệp đã thay đổi trên đĩa",
+    "fileChangedOnDiskBody": "\"{{name}}\" đã thay đổi trên đĩa kể từ khi bạn mở. Ghi đè bằng phiên bản của bạn?"
   },
   "git": {
     "loading": "Đang tải trạng thái Git...",

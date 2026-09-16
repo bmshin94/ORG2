@@ -407,7 +407,8 @@
     "openOnGitHub": "GitHub で開く",
     "createPullRequest": "Pull request を作成",
     "expandView": "ビューを展開",
-    "restoreSplitView": "分割ビューに戻す"
+    "restoreSplitView": "分割ビューに戻す",
+    "overwrite": "上書き"
   },
   "status": {
     "yes": "はい",
@@ -1057,7 +1058,9 @@
         "skipped": "スキップ",
         "passed": "成功"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "ディスク上でファイルが変更されました",
+    "fileChangedOnDiskBody": "「{{name}}」は開いた後にディスク上で変更されました。自分のバージョンで上書きしますか？"
   },
   "git": {
     "loading": "Git ステータスを読み込み中...",

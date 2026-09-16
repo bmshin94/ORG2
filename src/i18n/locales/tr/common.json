@@ -407,7 +407,8 @@
     "openOnGitHub": "GitHub'da aç",
     "createPullRequest": "Pull request oluştur",
     "expandView": "Görünümü genişlet",
-    "restoreSplitView": "Bölünmüş görünümü geri yükle"
+    "restoreSplitView": "Bölünmüş görünümü geri yükle",
+    "overwrite": "Üzerine yaz"
   },
   "status": {
     "yes": "Evet",
@@ -1057,7 +1058,9 @@
         "skipped": "Atlandı",
         "passed": "Geçti"
       }
-    }
+    },
+    "fileChangedOnDiskTitle": "Dosya diskte değişti",
+    "fileChangedOnDiskBody": "\"{{name}}\" siz açtıktan sonra diskte değişti. Kendi sürümünüzle üzerine yazılsın mı?"
   },
   "git": {
     "loading": "Git durumu yükleniyor...",

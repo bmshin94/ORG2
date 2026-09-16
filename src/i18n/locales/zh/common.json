@@ -228,7 +228,8 @@
     "clearSelection": "清除选择",
     "clearAll": "全部清除",
     "expandView": "展开视图",
-    "restoreSplitView": "恢复分栏视图"
+    "restoreSplitView": "恢复分栏视图",
+    "overwrite": "覆盖"
   },
   "status": {
     "yes": "是",
@@ -888,7 +889,9 @@
       "webviewHiddenTitle": "网页视图已临时隐藏",
       "webviewHiddenBody": "关闭菜单或弹窗即可重新显示。"
     },
-    "unsavedChangesTitle": "未保存的更改"
+    "unsavedChangesTitle": "未保存的更改",
+    "fileChangedOnDiskTitle": "文件在磁盘上已更改",
+    "fileChangedOnDiskBody": "“{{name}}”自你打开后已在磁盘上更改。用你的版本覆盖它吗？"
   },
   "git": {
     "loading": "正在加载 Git 状态...",
