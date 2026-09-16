@@ -1045,7 +1045,8 @@
       "current": "当前使用",
       "workspaceNumber": "服务 {{index}} / {{count}}",
       "openTerminal": "打开终端",
-      "terminalOpened": "已打开终端"
+      "terminalOpened": "已打开终端",
+      "provider": "ORG2 Market"
     }
   },
   "claudeProfiles": {

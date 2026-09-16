@@ -964,7 +964,8 @@
       "current": "現在",
       "workspaceNumber": "サービス {{index}} / {{count}}",
       "openTerminal": "ターミナルを開く",
-      "terminalOpened": "ターミナルを開きました"
+      "terminalOpened": "ターミナルを開きました",
+      "provider": "ORG2 Market"
     }
   },
   "claudeProfiles": {

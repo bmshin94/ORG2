@@ -78,7 +78,8 @@ export default function HarnessConnectionsSection() {
           <AppConnectionPage
             key={target}
             target={target}
-            onConfigureAccounts={() => setAdvanced(true)}
+            onConfigureAccounts={() => setAdding(true)}
+            onDirtyChange={setProfileDirty}
           />
           <div>
             <Button

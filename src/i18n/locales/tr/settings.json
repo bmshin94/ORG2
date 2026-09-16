@@ -964,7 +964,8 @@
       "current": "Geçerli",
       "workspaceNumber": "Hizmet {{index}} / {{count}}",
       "openTerminal": "Terminali aç",
-      "terminalOpened": "Terminal açıldı"
+      "terminalOpened": "Terminal açıldı",
+      "provider": "ORG2 Market"
     }
   },
   "claudeProfiles": {

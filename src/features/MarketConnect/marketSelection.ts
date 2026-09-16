@@ -6,8 +6,7 @@ interface AppliedMarketSelection {
   entitlementId: string;
 }
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const WORKSPACE = /^ws_[A-Za-z0-9_-]{1,120}$/;
 const ENTITLEMENT = /^ent_[A-Za-z0-9_-]{1,60}$/;
 
@@ -35,7 +34,12 @@ export function parseAppliedMarketSelection(
     };
     const identityUserId = decoded.metadata?.identity_user_id;
     const authorizationWorkspaceId = decoded.metadata?.workspace_id;
-    const workspaceId = decoded.workspace_id;
+    const workspaceId = Object.prototype.hasOwnProperty.call(
+      decoded,
+      "workspace_id"
+    )
+      ? decoded.workspace_id
+      : authorizationWorkspaceId;
     const entitlementId = decoded.entitlement_id;
     if (
       typeof identityUserId !== "string" ||

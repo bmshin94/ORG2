@@ -964,7 +964,8 @@
       "current": "현재",
       "workspaceNumber": "서비스 {{index}} / {{count}}",
       "openTerminal": "터미널 열기",
-      "terminalOpened": "터미널을 열었습니다"
+      "terminalOpened": "터미널을 열었습니다",
+      "provider": "ORG2 Market"
     }
   },
   "claudeProfiles": {

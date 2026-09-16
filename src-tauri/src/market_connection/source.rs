@@ -33,8 +33,22 @@ impl Selection {
                     .ok_or("Invalid Market selection")?,
             )
             .map_err(|_| "Invalid Market selection")?;
-        let selection: Self =
+        // Older manifests used the authorization workspace as the purchase
+        // workspace. Preserve that identity; never substitute another purchase.
+        let mut wire: serde_json::Value =
             serde_json::from_slice(&bytes).map_err(|_| "Invalid Market selection")?;
+        if wire.get("workspace_id").is_none() {
+            let workspace = wire
+                .get("metadata")
+                .and_then(|metadata| metadata.get("workspace_id"))
+                .cloned()
+                .ok_or("Invalid Market selection")?;
+            wire.as_object_mut()
+                .ok_or("Invalid Market selection")?
+                .insert("workspace_id".into(), workspace);
+        }
+        let selection: Self =
+            serde_json::from_value(wire).map_err(|_| "Invalid Market selection")?;
         if uuid::Uuid::parse_str(&selection.metadata.identity_user_id).is_err()
             || !selection.metadata.workspace_id.starts_with("ws_")
             || !(4..=123).contains(&selection.metadata.workspace_id.len())
@@ -342,6 +356,19 @@ pub(crate) fn protocol_base_url(workspace_root: &str, agent: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn legacy_selection_keeps_its_original_workspace() {
+        let mut wire = serde_json::to_value(selection()).unwrap();
+        wire.as_object_mut().unwrap().remove("workspace_id");
+        let key = format!(
+            "market:{}",
+            URL_SAFE_NO_PAD.encode(serde_json::to_vec(&wire).unwrap())
+        );
+        let parsed = Selection::parse(&key, "claude_code").unwrap();
+        assert_eq!(parsed.workspace_id, "ws_fixture");
+        assert_eq!(parsed.entitlement_id, "ent_fixture");
+    }
+
     fn selection() -> Selection {
         Selection {
             metadata: ConnectionMetadata {

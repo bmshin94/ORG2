@@ -26,3 +26,9 @@
 ## Remaining boundary
 
 Key Vault account configuration still delegates to the existing advanced provider/profile editor because its target-specific endpoint, authentication, test receipt, and model-role mapping cannot yet be represented by the simple Market default-profile path. Market does not mutate that persisted v1 contract.
+
+## Follow-up compatibility correction
+
+Read-only inspection of the local managed Claude Code manifest found the older selection shape containing `metadata` and `entitlement_id`, without top-level `workspace_id`. Both Rust and TypeScript now read that shape using its original metadata workspace. New writes remain canonical and include the explicit purchase workspace. Validation and entitlement ownership checks remain in place; this does not select a different purchase or rewrite historical files. A Rust source-boundary test and TypeScript decoding test cover the old shape. UUID parsing also accepts canonical UUID v7, matching Rust.
+
+The earlier blanket visual/serialization conclusions were too broad: actual screenshots exposed fixed-height card overlap and the old selection schema was not covered. Native visual acceptance is separate from these source checks.

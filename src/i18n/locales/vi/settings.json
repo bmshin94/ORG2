@@ -964,7 +964,8 @@
       "current": "Hiện tại",
       "workspaceNumber": "Dịch vụ {{index}} / {{count}}",
       "openTerminal": "Mở terminal",
-      "terminalOpened": "Đã mở terminal"
+      "terminalOpened": "Đã mở terminal",
+      "provider": "ORG2 Market"
     }
   },
   "claudeProfiles": {

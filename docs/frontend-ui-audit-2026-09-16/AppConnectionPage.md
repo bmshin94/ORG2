@@ -1,11 +1,13 @@
 # AppConnectionPage UI audit
 
-| Line                               | Element                              | Verdict          | Reason                                                                                                                                    | Suggested change |
-| ---------------------------------- | ------------------------------------ | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| `HarnessConnectionsSection.tsx:54` | Target application selector          | keep with reason | Reuses the shared `SegmentedTextPill` control and keeps the three application targets in one predictable location.                        | None.            |
-| `AppConnectionPage.tsx:210`        | Current connection panel             | keep with reason | Reuses `SectionContainer`, `SectionRow`, and shared typography classes; it is the single ordinary-user status surface for every target.   | None.            |
-| `AppConnectionPage.tsx:231`        | Select, launch, and restore actions  | keep with reason | All actions use the shared `Button` component with semantic loading and disabled states.                                                  | None.            |
-| `AppConnectionPage.tsx:331`        | Market connection choice card        | keep with reason | Uses the shared `Button` with caller-owned compound card layout; the custom height and padding are needed for a two-line selectable item. | None.            |
-| `AppConnectionPage.tsx:384`        | Provider and connection choice cards | keep with reason | The repeated two-line presentation is centralized in local `ConnectionChoiceButton` while retaining the shared `Button` primitive.        | None.            |
+| Line                        | Element                     | Verdict          | Reason                                                                                                                      | Suggested change                                                                       |
+| --------------------------- | --------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `ConnectionCards.tsx:40`    | Multi-line selectable cards | fix              | Standard fixed button height caused overlapping labels in the actual app                                                    | Applied compound custom layout and automatic height in the existing reusable component |
+| `AppConnectionPage.tsx:342` | Market choices              | fix              | Duplicated connection-card implementation diverged from the existing editor                                                 | Reused ConnectionCards with entitlement identity and title                             |
+| `AppConnectionPage.tsx:389` | Account configuration       | fix              | A displayed account choice only opened another screen without carrying its selection                                        | Render the existing ClaudeProfileEditor or HarnessConnectionEditor directly            |
+| `AppConnectionPage.tsx:227` | Status and actions          | keep with reason | Uses SectionContainer, SectionRow and shared Button; conflict and installation status remain distinct                       | None                                                                                   |
+| `AppConnectionPage.tsx:308` | Provider navigation cards   | keep with reason | Reuses ConnectionCards rather than a separate local card helper; no raw buttons or substitute clickable elements introduced | None                                                                                   |
 
-Verdict totals: **0 fix**, **5 keep with reason**, **0 abstract**.
+Verdict totals: **3 fix**, **2 keep with reason**, **0 abstract**.
+
+Source audit is not visual acceptance. Earlier report incorrectly accepted the fixed-height cards; the user's screenshot demonstrated the missed layout failure. Native rebuild and screenshot verification are tracked separately.

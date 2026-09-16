@@ -964,7 +964,8 @@
       "current": "目前使用",
       "workspaceNumber": "服務 {{index}} / {{count}}",
       "openTerminal": "開啟終端機",
-      "terminalOpened": "已開啟終端機"
+      "terminalOpened": "已開啟終端機",
+      "provider": "ORG2 Market"
     }
   },
   "claudeProfiles": {

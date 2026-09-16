@@ -5,13 +5,18 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import AppConnectionPage from "./AppConnectionPage";
 
+vi.mock("./ClaudeProfileEditor", () => ({ default: () => null }));
+vi.mock("./HarnessConnectionEditor", () => ({ default: () => null }));
+
 const configure = vi.fn();
 const restore = vi.fn();
 const open = vi.fn();
 const reload = vi.fn();
 const refresh = vi.fn();
 let connected = false;
-const identity = "11111111-1111-4111-8111-111111111111";
+let conflict = false;
+let installed = true;
+const identity = "11111111-1111-7111-8111-111111111111";
 const appliedSelection = (entitlementId: string) => {
   const encoded = btoa(
     JSON.stringify({
@@ -101,11 +106,11 @@ vi.mock("./useHarnessConnection", () => ({
   refreshHarnessConnections: (...args: unknown[]) => refresh(...args),
   useHarnessConnection: () => ({
     view: {
-      installed: true,
+      installed,
       config: {
         supported: true,
         mode: connected ? "orgii_managed" : "default",
-        conflict: false,
+        conflict,
         selectedKeyId: connected ? appliedSelection("ent_second") : null,
         selectedModel: connected ? "claude-b" : null,
         targetFiles: [],
@@ -128,6 +133,8 @@ beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   vi.clearAllMocks();
   connected = false;
+  conflict = false;
+  installed = true;
   configure.mockResolvedValue({});
   restore.mockResolvedValue({});
   open.mockResolvedValue({});
@@ -166,15 +173,13 @@ it("selects provider first and keeps duplicate purchases as separate private con
 
   const marketProvider = [...container.querySelectorAll("button")].find(
     (item) =>
-      item.textContent?.startsWith("harnessConnections.marketApps.workspace")
+      item.textContent?.startsWith("harnessConnections.marketApps.provider")
   ) as HTMLButtonElement;
   await act(async () => marketProvider.click());
-  const first = container.querySelector(
-    '[data-testid="market-connection-ent_first"]'
-  ) as HTMLButtonElement;
-  const second = container.querySelector(
-    '[data-testid="market-connection-ent_second"]'
-  ) as HTMLButtonElement;
+  const choices = [...container.querySelectorAll("button")].filter((item) =>
+    item.textContent?.includes("Same service")
+  );
+  const [first, second] = choices;
   expect(first.textContent).toContain("Same service");
   expect(second.textContent).toContain("Same service");
   expect(first.textContent).toContain(
@@ -231,4 +236,24 @@ it("restores only the selected target app", async () => {
   await render("codex");
   await act(async () => button("harnessConnections.restore").click());
   expect(restore).toHaveBeenCalledWith("codex");
+});
+
+it("reports configuration conflicts without calling them unsupported versions", async () => {
+  connected = true;
+  conflict = true;
+  await render("claude_code");
+  expect(container.textContent).toContain("harnessConnections.conflict");
+  expect(container.textContent).not.toContain(
+    "harnessConnections.marketApps.unavailable"
+  );
+  expect(button("harnessConnections.restore").disabled).toBe(true);
+});
+
+it("can restore saved settings even when the client is no longer installed", async () => {
+  connected = true;
+  installed = false;
+  await render("claude_desktop");
+  expect(button("harnessConnections.restore").disabled).toBe(false);
+  await act(async () => button("harnessConnections.restore").click());
+  expect(restore).toHaveBeenCalledWith("claude_desktop");
 });

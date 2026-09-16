@@ -25,6 +25,9 @@ import {
 import { profileForAppliedMarketSelection } from "@src/features/MarketConnect/marketSelection";
 import { recentModelEntriesAtom } from "@src/store/session/recentModelEntriesAtom";
 
+import ClaudeProfileEditor from "./ClaudeProfileEditor";
+import ConnectionCards from "./ConnectionCards";
+import HarnessConnectionEditor from "./HarnessConnectionEditor";
 import {
   refreshHarnessConnections,
   useHarnessConnection,
@@ -51,9 +54,11 @@ function profileLabel(
 export default function AppConnectionPage({
   target,
   onConfigureAccounts,
+  onDirtyChange,
 }: {
   target: ConnectionHarness;
   onConfigureAccounts: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const { t } = useTranslation("settings");
   const recent = useAtomValue(recentModelEntriesAtom);
@@ -65,8 +70,7 @@ export default function AppConnectionPage({
   const state = useHarnessConnection(target);
   const [picker, setPicker] = useState<PickerStep>("closed");
   const [busy, setBusy] = useState<"connect" | "open" | "restore" | null>(null);
-  const [chosenProfile, setChosenProfile] =
-    useState<MarketExecutionProfile | null>(null);
+
   const agent = agentFor(target);
   const marketProfiles = useMemo(
     () => profiles.filter((profile) => profile.modelsByAgent[agent].length > 0),
@@ -76,7 +80,7 @@ export default function AppConnectionPage({
     profiles,
     state.view?.config.selectedKeyId
   );
-  const activeMarketProfile = appliedMarketProfile ?? chosenProfile;
+  const activeMarketProfile = appliedMarketProfile;
   const marketManaged = isMarketManagedView(state.view);
   const configured = Boolean(
     state.view && state.view.config.mode !== "default"
@@ -91,7 +95,12 @@ export default function AppConnectionPage({
       )
     : null;
   const currentName = marketManaged
-    ? (activeMarketName ?? t("harnessConnections.marketApps.workspace"))
+    ? (activeMarketName ??
+      t(
+        profilesLoading
+          ? "harnessConnections.marketApps.loading"
+          : "harnessConnections.missingKey"
+      ))
     : (accountName ?? t("harnessConnections.original"));
   const issue =
     state.error ??
@@ -102,7 +111,8 @@ export default function AppConnectionPage({
     !state.view?.installed ||
     !state.view?.config.supported ||
     state.view?.config.conflict ||
-    issue
+    state.error ||
+    state.view?.configurationIssue
   );
 
   const refresh = async () => {
@@ -110,7 +120,6 @@ export default function AppConnectionPage({
     await state.reload();
   };
   const connectMarket = async (profile: MarketExecutionProfile) => {
-    setChosenProfile(profile);
     setBusy("connect");
     try {
       const selected = recent.find(
@@ -171,7 +180,6 @@ export default function AppConnectionPage({
           force: false,
         });
       }
-      setChosenProfile(null);
       await refresh();
       Message.success({
         content: t("harnessConnections.marketApps.disconnected"),
@@ -189,35 +197,36 @@ export default function AppConnectionPage({
     ? t("harnessConnections.marketApps.checking")
     : !state.view?.installed
       ? t("harnessConnections.marketApps.notInstalled")
-      : unavailable
-        ? t("harnessConnections.marketApps.unavailable")
-        : marketManaged
-          ? t("harnessConnections.proxyHelp")
-          : configured
-            ? t("harnessConnections.applied")
-            : t("harnessConnections.marketApps.original");
-  const duplicateCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    marketProfiles.forEach((profile) =>
-      counts.set(profile.label, (counts.get(profile.label) ?? 0) + 1)
-    );
-    return counts;
-  }, [marketProfiles]);
-  const positions = new Map<string, number>();
+      : state.error
+        ? t("harnessConnections.refreshFailed", { error: state.error })
+        : state.view?.config.conflict
+          ? t("harnessConnections.conflict")
+          : !state.view?.config.supported || state.view.configurationIssue
+            ? (state.view?.configurationIssue ??
+              state.view?.config.message ??
+              t("harnessConnections.marketApps.unavailable"))
+            : marketManaged
+              ? t("harnessConnections.proxyHelp")
+              : configured
+                ? t("harnessConnections.applied")
+                : t("harnessConnections.marketApps.original");
 
   return (
     <div className="flex flex-col gap-4" data-testid={`app-page-${target}`}>
       <SectionContainer title={t("harnessConnections.current")}>
         <SectionRow showHeader={false}>
           <div className="flex w-full flex-col gap-1">
-            <span className="truncate text-base font-medium text-text-1">
+            <span
+              className="truncate text-base font-medium text-text-1"
+              title={currentName}
+            >
               {currentName}
             </span>
             {configured && (
               <span className="text-xs text-text-2">
                 {t(
                   marketManaged
-                    ? "harnessConnections.marketApps.workspace"
+                    ? "harnessConnections.marketApps.provider"
                     : "harnessConnections.connection"
                 )}
               </span>
@@ -256,7 +265,12 @@ export default function AppConnectionPage({
               <Button
                 variant="secondary"
                 loading={busy === "restore"}
-                disabled={busy !== null || unavailable}
+                disabled={
+                  busy !== null ||
+                  state.loading ||
+                  Boolean(state.error) ||
+                  Boolean(state.view?.config.conflict)
+                }
                 onClick={() => void restore()}
               >
                 {t("harnessConnections.restore")}
@@ -289,18 +303,39 @@ export default function AppConnectionPage({
           )}
           {picker === "provider" && (
             <SectionRow showHeader={false}>
-              <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
-                <ProviderButton
-                  title={t("harnessConnections.marketApps.workspace")}
-                  detail={t("harnessConnections.marketApps.workspaceHelp")}
-                  onClick={() => setPicker("market")}
-                />
-                <ProviderButton
-                  title={t("harnessConnections.connection")}
-                  detail={t("harnessConnections.empty")}
-                  onClick={() => setPicker("accounts")}
-                />
-              </div>
+              <ConnectionCards
+                choices={[
+                  {
+                    keyId: "market",
+                    name: t("harnessConnections.marketApps.provider"),
+                    models: [],
+                    endpoint: null,
+                    requiresTest: false,
+                    reason: null,
+                  },
+                  {
+                    keyId: "accounts",
+                    name: t("harnessConnections.connection"),
+                    models: [],
+                    endpoint: null,
+                    requiresTest: false,
+                    reason: null,
+                  },
+                ]}
+                selected=""
+                active={null}
+                disabled={busy !== null}
+                description={(id) =>
+                  t(
+                    id === "market"
+                      ? "harnessConnections.marketApps.workspaceHelp"
+                      : "harnessConnections.empty"
+                  )
+                }
+                onSelect={(id) =>
+                  setPicker(id === "market" ? "market" : "accounts")
+                }
+              />
             </SectionRow>
           )}
           {picker === "market" && (
@@ -319,30 +354,36 @@ export default function AppConnectionPage({
                     {t("harnessConnections.marketApps.nonePurchased")}
                   </p>
                 ) : (
-                  marketProfiles.map((profile) => {
-                    const position = (positions.get(profile.label) ?? 0) + 1;
-                    positions.set(profile.label, position);
-                    const count = duplicateCounts.get(profile.label) ?? 1;
-                    const title =
-                      count > 1
-                        ? `${profile.label} · ${t("harnessConnections.marketApps.workspaceNumber", { index: position, count })}`
-                        : profile.label;
-                    return (
-                      <ConnectionChoiceButton
-                        key={profile.id}
-                        title={title}
-                        detail={`${profile.modelsByAgent[agent].length} · ${t(
-                          "harnessConnections.model"
-                        )}`}
-                        loading={
-                          busy === "connect" && chosenProfile?.id === profile.id
-                        }
-                        disabled={busy !== null || unavailable}
-                        testId={`market-connection-${profile.entitlementId}`}
-                        onClick={() => void connectMarket(profile)}
-                      />
-                    );
-                  })
+                  <ConnectionCards
+                    choices={marketProfiles.map((profile) => ({
+                      keyId: profile.id,
+                      name: profileLabel(
+                        profile,
+                        marketProfiles,
+                        (index, count) =>
+                          t("harnessConnections.marketApps.workspaceNumber", {
+                            index,
+                            count,
+                          })
+                      ),
+                      models: profile.modelsByAgent[agent],
+                      endpoint: null,
+                      requiresTest: false,
+                      reason: null,
+                    }))}
+                    selected={appliedMarketProfile?.id ?? ""}
+                    active={appliedMarketProfile?.id ?? null}
+                    disabled={busy !== null || unavailable}
+                    description={(id) =>
+                      `${marketProfiles.find((profile) => profile.id === id)?.modelsByAgent[agent].length ?? 0} · ${t("harnessConnections.model")}`
+                    }
+                    onSelect={(id) => {
+                      const profile = marketProfiles.find(
+                        (item) => item.id === id
+                      );
+                      if (profile) void connectMarket(profile);
+                    }}
+                  />
                 )}
               </div>
             </SectionRow>
@@ -350,19 +391,17 @@ export default function AppConnectionPage({
           {picker === "accounts" && (
             <SectionRow showHeader={false}>
               <div className="flex w-full flex-col gap-2">
-                {(state.view?.choices ?? []).map((choice) => (
-                  <ConnectionChoiceButton
-                    key={choice.keyId}
-                    title={choice.name}
-                    detail={choice.reason ?? t("harnessConnections.advanced")}
-                    disabled={Boolean(choice.reason)}
-                    onClick={onConfigureAccounts}
+                {target === "codex" ? (
+                  <HarnessConnectionEditor
+                    agentName={target}
+                    onAdd={onConfigureAccounts}
                   />
-                ))}
-                {!state.view?.choices.length && (
-                  <p className={SECTION_DESCRIPTION_CLASSES}>
-                    {t("harnessConnections.empty")}
-                  </p>
+                ) : (
+                  <ClaudeProfileEditor
+                    target={target}
+                    onDirtyChange={onDirtyChange}
+                    onAdd={onConfigureAccounts}
+                  />
                 )}
               </div>
             </SectionRow>
@@ -370,52 +409,5 @@ export default function AppConnectionPage({
         </SectionContainer>
       )}
     </div>
-  );
-}
-
-function ProviderButton({
-  title,
-  detail,
-  onClick,
-}: {
-  title: string;
-  detail: string;
-  onClick: () => void;
-}) {
-  return (
-    <ConnectionChoiceButton title={title} detail={detail} onClick={onClick} />
-  );
-}
-
-function ConnectionChoiceButton({
-  title,
-  detail,
-  testId,
-  disabled,
-  loading,
-  onClick,
-}: {
-  title: string;
-  detail: string;
-  testId?: string;
-  disabled?: boolean;
-  loading?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <Button
-      variant="secondary"
-      appearance="outline"
-      className="h-auto min-w-0 justify-start p-3 text-left"
-      data-testid={testId}
-      disabled={disabled}
-      loading={loading}
-      onClick={onClick}
-    >
-      <span className="flex min-w-0 flex-col gap-1">
-        <span className="font-medium">{title}</span>
-        <span className="text-xs text-text-2">{detail}</span>
-      </span>
-    </Button>
   );
 }

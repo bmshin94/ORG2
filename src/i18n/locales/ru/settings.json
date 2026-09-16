@@ -964,7 +964,8 @@
       "current": "Текущая",
       "workspaceNumber": "Сервис {{index}} из {{count}}",
       "openTerminal": "Открыть терминал",
-      "terminalOpened": "Терминал открыт"
+      "terminalOpened": "Терминал открыт",
+      "provider": "ORG2 Market"
     }
   },
   "claudeProfiles": {

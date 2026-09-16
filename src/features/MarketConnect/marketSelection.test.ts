@@ -6,7 +6,7 @@ import {
   profileForAppliedMarketSelection,
 } from "./marketSelection";
 
-const identity = "11111111-1111-4111-8111-111111111111";
+const identity = "11111111-1111-7111-8111-111111111111";
 const selection = (entitlementId: string) => {
   const json = JSON.stringify({
     metadata: {
@@ -54,4 +54,13 @@ it("rejects malformed, non-ORG2, and credential-like selections", () => {
       `market:${btoa(JSON.stringify({ token: "secret" }))}`
     )
   ).toBeNull();
+});
+
+it("reads legacy manifests using their original authorization workspace", () => {
+  const encoded = `market:${btoa(JSON.stringify({ metadata: { identity_user_id: identity, workspace_id: "ws_original", target: "org2" }, entitlement_id: "ent_original" }))}`;
+  expect(parseAppliedMarketSelection(encoded)).toEqual({
+    identityUserId: identity,
+    workspaceId: "ws_original",
+    entitlementId: "ent_original",
+  });
 });

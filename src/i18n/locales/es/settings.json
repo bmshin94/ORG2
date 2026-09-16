@@ -964,7 +964,8 @@
       "current": "Actual",
       "workspaceNumber": "Servicio {{index}} de {{count}}",
       "openTerminal": "Abrir terminal",
-      "terminalOpened": "Terminal abierta"
+      "terminalOpened": "Terminal abierta",
+      "provider": "ORG2 Market"
     }
   },
   "claudeProfiles": {
