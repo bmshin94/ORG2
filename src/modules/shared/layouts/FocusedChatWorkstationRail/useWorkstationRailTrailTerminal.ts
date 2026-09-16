@@ -30,11 +30,20 @@ export function useWorkstationRailTrailTerminal({
   const setMiniTerminalHostMounted = useSetAtom(miniTerminalHostMountedAtom);
 
   // Claimed sessions are only suppressed in the Workstation pane while this
-  // trail — the panel's only host — is actually mounted.
+  // trail can actually mount the panel that holds them.
+  //
+  // `collapsed` is part of the condition, not just mount/unmount: the rail
+  // stays mounted when it collapses to its 44px track, but the track has no
+  // room for the terminal panel (see `showTrailTerminal` below). Reporting
+  // "hosted" while collapsed would leave every claimed PTY suppressed in the
+  // Workstation pane with no xterm anywhere — and the rail's own Opened Tabs
+  // list filters claimed ids out too, so the session would be reachable from
+  // neither surface until the rail was expanded again.
   useEffect(() => {
+    if (collapsed) return;
     setMiniTerminalHostMounted(true);
     return () => setMiniTerminalHostMounted(false);
-  }, [setMiniTerminalHostMounted]);
+  }, [collapsed, setMiniTerminalHostMounted]);
 
   /**
    * Show the docked terminal. The terminal carries its own width, so the
