@@ -20,6 +20,7 @@ mod target_lock;
 pub use direct::DirectConnection;
 mod file_io;
 mod generators;
+pub mod launch;
 mod manifest;
 mod operations;
 mod proxy;
@@ -143,6 +144,15 @@ pub fn enable_orgii_managed_checked(
 /// Shutdown restoration is deliberately non-forcing: a config edited outside
 /// ORGII is left untouched and reported instead of being overwritten.
 pub fn restore_managed_configs_for_shutdown() -> Result<CliConfigShutdownRestoreReport, String> {
+    restore_managed_configs_matching(|_| Ok(true))
+}
+
+/// Restore selected managed profiles under the existing configuration/target locks.
+/// The predicate must be local and must not re-enter configuration operations.
+/// Unmatched profiles and externally modified files are never replaced.
+pub fn restore_managed_configs_matching(
+    matches: impl Fn(Option<&str>) -> Result<bool, String>,
+) -> Result<CliConfigShutdownRestoreReport, String> {
     let _guard = config_operation_guard()?;
     let mut report = CliConfigShutdownRestoreReport::default();
 
@@ -161,7 +171,19 @@ pub fn restore_managed_configs_for_shutdown() -> Result<CliConfigShutdownRestore
         }
 
         let managed_active = match read_manifest(agent_name) {
-            Ok(Some(manifest)) => manifest.mode == CliConfigMode::OrgiiManaged,
+            Ok(Some(manifest)) => {
+                if manifest.mode != CliConfigMode::OrgiiManaged {
+                    false
+                } else {
+                    match matches(manifest.selected_key_id.as_deref()) {
+                        Ok(selected) => selected,
+                        Err(err) => {
+                            report.failed_agents.push((agent_name.to_string(), err));
+                            continue;
+                        }
+                    }
+                }
+            }
             Ok(None) => false,
             Err(err) => {
                 report.failed_agents.push((agent_name.to_string(), err));
@@ -210,11 +232,62 @@ pub async fn cli_config_restore_default(
     .map_err(|err| format!("Task join error: {err}"))?
 }
 
+/// Restore only a still-selected profile. The compare and restoration share
+/// the target lock, so disconnecting one source cannot undo a newer choice.
+pub fn restore_if_selected(
+    agent_name: &str,
+    expected_key: &str,
+) -> Result<CliConfigManagedStatus, String> {
+    restore_if_selected_matching(agent_name, |key| Ok(key == expected_key))
+}
+
+/// Evaluate source ownership and restore while holding the same target lock.
+/// The matcher must be local and must not re-enter configuration operations.
+pub fn restore_if_selected_matching(
+    agent_name: &str,
+    matches: impl FnOnce(&str) -> Result<bool, String>,
+) -> Result<CliConfigManagedStatus, String> {
+    let _guard = config_operation_guard()?;
+    let _target_lock = target_lock::lock_targets(agent_name)?;
+    recover_pending_transaction_unlocked(agent_name)?;
+    let selection = status_for_unlocked(agent_name)?;
+    if selection.mode == CliConfigMode::Default {
+        return Ok(selection);
+    }
+    let selected_key = selection.selected_key_id.as_deref();
+    if !selected_key.map(matches).transpose()?.unwrap_or(false) {
+        // Already restored or switched: preserve the newer configuration.
+        return status_for_unlocked(agent_name);
+    }
+    restore_agent_default_unlocked(agent_name, false)
+}
+
 /// Apply native credentials without starting or depending on the local proxy.
 pub fn enable_direct(
     agent_name: &str,
     connection: DirectConnection,
     expected: Option<&std::collections::BTreeMap<String, Option<String>>>,
+) -> Result<CliConfigManagedStatus, String> {
+    enable_direct_inner(agent_name, connection, expected, false)
+}
+
+/// Replace a previously managed direct profile after the caller has shown the
+/// current files to the user and supplied their exact hashes. This preserves
+/// optimistic concurrency while allowing an explicit "Use this service"
+/// action to switch away from a profile that another app changed.
+pub fn replace_direct(
+    agent_name: &str,
+    connection: DirectConnection,
+    expected: &std::collections::BTreeMap<String, Option<String>>,
+) -> Result<CliConfigManagedStatus, String> {
+    enable_direct_inner(agent_name, connection, Some(expected), true)
+}
+
+fn enable_direct_inner(
+    agent_name: &str,
+    connection: DirectConnection,
+    expected: Option<&std::collections::BTreeMap<String, Option<String>>>,
+    force: bool,
 ) -> Result<CliConfigManagedStatus, String> {
     let _guard = config_operation_guard()?;
     let _target_lock = target_lock::lock_targets(agent_name)?;
@@ -225,7 +298,7 @@ pub fn enable_direct(
         Some(connection.key_id.clone()),
         Some(connection.provider.clone()),
         Some(connection.model.clone()),
-        false,
+        force,
         Some(&connection),
     )
 }

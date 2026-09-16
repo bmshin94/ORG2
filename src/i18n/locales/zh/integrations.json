@@ -331,7 +331,7 @@
     "claudeCodeDetectErrorHint": "请使用内嵌浏览器登录，或运行 claude auth login 后重新检测",
     "refreshModels": {
       "button": "刷新模型",
-      "failed": "刷新模型失败：{{error}}"
+      "failed": "这个 Market 工作区目前不可用。请重新打开 Market 以刷新授权。"
     },
     "revalidate": "重新验证",
     "confirmRemoveActiveSessions_one": "仍有 {{count}} 个活跃会话在使用此账号，移除后它的下一轮将失败："
@@ -1657,7 +1657,8 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "导入失败：{{message}}",
-    "partialFailure": "部分凭据无法导入："
+    "partialFailure": "部分凭据无法导入：",
+    "importSucceeded": "已保存到“账号”：{{names}}。这些凭据现在可作为连接重复使用。"
   },
   "skills": {
     "shareToOrg": "共享到组织",
@@ -1665,5 +1666,15 @@
     "sharedToOrg": "技能已共享到组织",
     "shareToOrgHint": "组织成员会收到该技能当前的快照；编辑后再次共享即发布更新",
     "shareOrgPlaceholder": "组织"
+  },
+  "marketConnection": {
+    "loadingPurchases": "正在读取购买记录…",
+    "purchasesFailed": "已购服务读取失败，请重试。",
+    "platformUnavailable": "当前平台不支持安全保存凭据，暂时无法连接 Market 买家工作区",
+    "authorizationSaved": "已保存 Market 授权，购买的工作区现在可以直接在 ORG2 中使用。",
+    "failed": "这个应用需要重新授权，请从 Market 再次打开服务。",
+    "title": "Market 服务",
+    "launchFailed": "无法启用这个 Market 工作区。请刷新 Market 授权后重试。",
+    "syncFailed": "无法让已连接的应用切换到这个 ORG2 来源"
   }
 }

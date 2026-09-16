@@ -937,7 +937,31 @@
     "authentication": "Authentification",
     "desktopScope": "Configure Claude Desktop séparément de Claude Code CLI ; quittez complètement Desktop puis rouvrez-le après application",
     "desktopApplied": "Configuration enregistrée — quittez complètement Claude Desktop puis rouvrez-le",
-    "desktopRestored": "Configuration précédente restaurée — quittez complètement Claude Desktop puis rouvrez-le"
+    "desktopRestored": "Configuration précédente restaurée — quittez complètement Claude Desktop puis rouvrez-le",
+    "advancedDescription": "Connexions API personnalisées et migration ponctuelle des identifiants",
+    "marketApps": {
+      "workspace": "Espace Market actuel",
+      "workspaceHelp": "Choisissez un espace acheté dans le sélecteur de modèles et de sources existant d’ORG2 ; les applications connectées suivront automatiquement ce choix",
+      "loading": "Chargement des espaces achetés…",
+      "loadFailed": "Impossible de charger les espaces achetés",
+      "currentValue": "{{workspace}} · {{model}}",
+      "auto": "Modèle automatique",
+      "chooseInPicker": "Choisissez d’abord un espace acheté dans le sélecteur de modèles ORG2",
+      "nonePurchased": "Aucun espace Market acheté",
+      "claudeHelp": "Claude Code et Claude Desktop suivent le même espace ORG2, tout en conservant chacun sa configuration et son point de restauration",
+      "checking": "Vérification de l’application…",
+      "unavailable": "Indisponible pour cette version installée",
+      "notInstalled": "Non installée",
+      "following": "Suit l’espace ORG2 actuel",
+      "original": "Utilise la configuration d’origine de l’application",
+      "connect": "Suivre ORG2",
+      "open": "Ouvrir l’application",
+      "disconnect": "Ne plus suivre",
+      "connected": "L’application suit maintenant l’espace ORG2 actuel",
+      "opened": "Application ouverte",
+      "disconnected": "La configuration précédente de l’application a été restaurée",
+      "actionFailed": "Impossible de mettre à jour cette connexion"
+    }
   },
   "claudeProfiles": {
     "new": "Nouveau profil",

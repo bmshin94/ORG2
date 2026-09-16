@@ -48,6 +48,10 @@ import {
   creatorDefaultModelSelectionAtom,
   extractModelPair,
 } from "@src/store/session/creatorDefaultModelAtom";
+import {
+  findRecentByCredentialSource,
+  recentModelEntriesAtom,
+} from "@src/store/session/recentModelEntriesAtom";
 import { modelPickerStyleAtom } from "@src/store/ui/chatPanel/displayPrefsAtoms";
 import { modelSelectorAtom } from "@src/store/ui/modelSelectorAtom";
 import { isActiveStatus } from "@src/types/session/session";
@@ -105,6 +109,7 @@ const ModelPillComponent: React.FC = () => {
   }
   const isInSession = Boolean(sessionId);
   const session = useAtomValue(sessionByIdAtom(sessionId ?? ""));
+  const recentModelEntries = useAtomValue(recentModelEntriesAtom);
   const runtimeStatus = useAtomValue(sessionRuntimeStatusAtom);
   const { setModel: setSessionModel } = useSessionModelField(sessionId ?? "");
   // Team-conversation composers (imported copies) execute member turns via
@@ -169,6 +174,10 @@ const ModelPillComponent: React.FC = () => {
     if (!session) return creatorDefaultLastModel;
 
     const isHosted = isHostedKey(session.keySource);
+    const marketRecent = findRecentByCredentialSource(
+      recentModelEntries,
+      session.credentialSource
+    );
     return {
       keySource: session.keySource,
       cliAgentType: session.cliAgentType,
@@ -176,8 +185,18 @@ const ModelPillComponent: React.FC = () => {
       model: isHosted ? undefined : session.model,
       listingModel: isHosted ? session.model : undefined,
       selectedAccountId: session.accountId,
+      credentialSource: session.credentialSource,
+      marketProfileId: marketRecent?.marketProfileId,
+      selectedSourceLabel: marketRecent?.accountName,
+      selectedSourceModelType: marketRecent?.modelType,
     };
-  }, [isInSession, session, creatorDefaultLastModel, conversationBinding]);
+  }, [
+    isInSession,
+    session,
+    creatorDefaultLastModel,
+    conversationBinding,
+    recentModelEntries,
+  ]);
 
   const isActiveSession = isInSession ? isActiveStatus(session?.status) : false;
 
@@ -203,6 +222,8 @@ const ModelPillComponent: React.FC = () => {
       provider: lastModel.provider,
       model: lastModel.model,
       selectedAccountId: lastModel.selectedAccountId,
+      credentialSource: lastModel.credentialSource,
+      marketProfileId: lastModel.marketProfileId,
       cliAgentType: lastModel.cliAgentType,
       selectedSourceLabel: lastModel.selectedSourceLabel,
       selectedSourceModelType: lastModel.selectedSourceModelType,
@@ -235,10 +256,12 @@ const ModelPillComponent: React.FC = () => {
         const sessionKeySource = session.keySource;
         const sessionAgent = session.cliAgentType;
         const sessionTier = session.tier;
+        const sessionCredentialSource = session.credentialSource;
 
         const incomingKeySource = config.keySource;
         const incomingAgent = config.cliAgentType;
         const incomingTier = config.tier;
+        const incomingCredentialSource = config.credentialSource;
 
         const keySourceDiffers =
           incomingKeySource !== undefined &&
@@ -252,8 +275,17 @@ const ModelPillComponent: React.FC = () => {
           incomingTier !== undefined &&
           sessionTier !== undefined &&
           incomingTier !== sessionTier;
+        const credentialSourceDiffers =
+          (incomingCredentialSource !== undefined ||
+            sessionCredentialSource !== undefined) &&
+          incomingCredentialSource !== sessionCredentialSource;
 
-        if (keySourceDiffers || agentDiffers || tierDiffers) {
+        if (
+          keySourceDiffers ||
+          agentDiffers ||
+          tierDiffers ||
+          credentialSourceDiffers
+        ) {
           Message.warning(t("sessions:modelPill.immutableInSession"));
           return;
         }

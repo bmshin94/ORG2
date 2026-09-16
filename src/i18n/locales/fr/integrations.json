@@ -330,7 +330,7 @@
     "claudeCodeDetectErrorHint": "Connectez-vous avec le navigateur intégré, ou exécutez claude auth login puis réessayez la détection",
     "refreshModels": {
       "button": "Actualiser la liste des modèles Cursor",
-      "failed": "Échec de l'actualisation depuis Cursor : {{error}}"
+      "failed": "Cet espace de travail Market est indisponible. Rouvrez Market pour actualiser l’autorisation."
     },
     "revalidate": "Revalider",
     "confirmRemoveActiveSessions_one": "{{count}} session active utilise encore ce compte et échouera à son prochain tour :",
@@ -1657,7 +1657,8 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "Échec de l’import : {{message}}",
-    "partialFailure": "Certains identifiants n’ont pas pu être importés :"
+    "partialFailure": "Certains identifiants n’ont pas pu être importés :",
+    "importSucceeded": "Enregistré dans Comptes : {{names}}. Les identifiants importés sont maintenant disponibles comme connexions réutilisables."
   },
   "skills": {
     "shareToOrg": "Partager avec l’organisation",
@@ -1665,5 +1666,15 @@
     "sharedToOrg": "Skill partagé avec l’organisation",
     "shareToOrgHint": "Les membres de l’organisation reçoivent l’instantané actuel de ce skill ; partagez à nouveau après modification pour publier une mise à jour",
     "shareOrgPlaceholder": "Organisation"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Chargement des achats…",
+    "purchasesFailed": "Impossible de charger les achats. Vous pouvez toujours déconnecter la connexion locale.",
+    "platformUnavailable": "Les connexions acheteur Market ne sont pas disponibles sur cette plateforme, car le stockage sécurisé des identifiants n’est pas pris en charge",
+    "authorizationSaved": "Autorisation Market enregistrée. Vos espaces de travail achetés sont maintenant disponibles dans ORG2.",
+    "failed": "La connexion à Market a échoué. Rouvrez la connexion de l’espace de travail.",
+    "title": "Connecter l’espace de travail",
+    "launchFailed": "Impossible d’activer cet espace de travail Market. Actualisez l’autorisation Market et réessayez.",
+    "syncFailed": "Impossible de basculer les applications connectées vers cette source ORG2"
   }
 }

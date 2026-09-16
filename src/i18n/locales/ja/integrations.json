@@ -330,7 +330,7 @@
     "claudeCodeDetectErrorHint": "内蔵ブラウザでサインインするか、claude auth login を実行してから再検出してください",
     "refreshModels": {
       "button": "Cursor モデル一覧を更新",
-      "failed": "Cursor からの更新に失敗しました: {{error}}"
+      "failed": "この Market ワークスペースは利用できません。Market をもう一度開いて認証を更新してください。"
     },
     "revalidate": "再検証",
     "confirmRemoveActiveSessions_one": "{{count}} 件のアクティブなセッションがまだこのアカウントを使用しており、次のターンで失敗します:",
@@ -1657,7 +1657,8 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "インポートに失敗しました: {{message}}",
-    "partialFailure": "一部の認証情報をインポートできませんでした:"
+    "partialFailure": "一部の認証情報をインポートできませんでした:",
+    "importSucceeded": "アカウントに保存しました：{{names}}。インポートした認証情報は再利用可能な接続として使用できます。"
   },
   "skills": {
     "shareToOrg": "組織に共有",
@@ -1665,5 +1666,15 @@
     "sharedToOrg": "Skill を組織に共有しました",
     "shareToOrgHint": "組織のメンバーはこの Skill の現在のスナップショットを受け取ります。編集後に再度共有すると更新が公開されます",
     "shareOrgPlaceholder": "組織"
+  },
+  "marketConnection": {
+    "loadingPurchases": "購入履歴を読み込み中…",
+    "purchasesFailed": "購入履歴を読み込めませんでした。ローカル接続は引き続き解除できます。",
+    "platformUnavailable": "このプラットフォームは認証情報の安全な保存に対応していないため、Market の購入者ワークスペースには接続できません",
+    "authorizationSaved": "Market の認証を保存しました。購入済みワークスペースを ORG2 で利用できます。",
+    "failed": "Market に接続できませんでした。ワークスペースの接続をもう一度開いてください。",
+    "title": "ワークスペースを接続",
+    "launchFailed": "この Market ワークスペースを有効にできませんでした。Market の認証を更新して再試行してください。",
+    "syncFailed": "接続済みアプリをこの ORG2 接続元に切り替えられませんでした"
   }
 }

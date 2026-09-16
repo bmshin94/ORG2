@@ -1,6 +1,7 @@
 import React from "react";
 
 import ModelIcon from "@src/components/ModelIcon";
+import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
 import { getModelAliasDisplayName } from "@src/hooks/models/modelAliasRegistry";
 import type { ModelAccountInfo } from "@src/hooks/models/types";
@@ -175,6 +176,7 @@ export function buildModelSelectionSpotlightItem({
 interface BuildAllModelItemsParams {
   accountLookup: ReadonlyMap<string, ModelAccountInfo>;
   accounts: KeyVaultAccount[];
+  marketSources?: MarketProfileSource[];
   handleModelSelect: (
     modelId: string,
     modelLabel: string,
@@ -187,6 +189,7 @@ interface BuildAllModelItemsParams {
 export function buildAllModelItems({
   accountLookup,
   accounts,
+  marketSources = [],
   handleModelSelect,
   modelAliasVersion,
   resolveGroupLaunchModel,
@@ -203,6 +206,9 @@ export function buildAllModelItems({
         account.status === "ready" &&
         account.hasKey &&
         modelIdsForRow.some((modelId) => accountHasModel(account, modelId))
+    ).length +
+    marketSources.filter((source) =>
+      modelIdsForRow.some((modelId) => source.modelIds.includes(modelId))
     ).length;
 
   const renderAccountCount = (count: number) => (

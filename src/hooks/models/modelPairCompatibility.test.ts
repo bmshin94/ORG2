@@ -80,4 +80,28 @@ describe("model pair compatibility", () => {
       })
     ).toBe(false);
   });
+
+  it("keeps a Market profile only for its selected CLI runtime", () => {
+    const pair = recentPair({
+      accountId: undefined,
+      credentialSource: "market:opaque-selection",
+      cliAgentType: CLI_AGENT.CODEX,
+    });
+    const base = {
+      accounts: [],
+      orgiiPoolEnabled: false,
+      orgiiModelSet: new Map(),
+      orgiiCategoryIds: new Set<string>(),
+    };
+
+    expect(
+      isPairCompatible(pair, { ...base, cliAgentType: CLI_AGENT.CODEX })
+    ).toBe(true);
+    expect(
+      isPairCompatible(pair, {
+        ...base,
+        cliAgentType: CLI_AGENT.CLAUDE_CODE,
+      })
+    ).toBe(false);
+  });
 });

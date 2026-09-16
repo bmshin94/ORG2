@@ -937,7 +937,31 @@
     "authentication": "驗證方式",
     "desktopScope": "單獨設定 Claude Desktop，不影響 Claude Code CLI；套用後需完全結束並重新開啟桌面應用程式",
     "desktopApplied": "桌面設定已儲存，請完全結束並重新開啟 Claude Desktop",
-    "desktopRestored": "已還原先前的桌面設定，請完全結束並重新開啟 Claude Desktop"
+    "desktopRestored": "已還原先前的桌面設定，請完全結束並重新開啟 Claude Desktop",
+    "advancedDescription": "自訂 API 連線和一次性憑證遷移",
+    "marketApps": {
+      "workspace": "目前 Market 工作區",
+      "workspaceHelp": "在 ORG2 原有的模型與來源選擇器中選擇已購工作區；已連線的應用程式會自動跟隨切換",
+      "loading": "正在讀取已購工作區…",
+      "loadFailed": "無法讀取已購工作區",
+      "currentValue": "{{workspace}} · {{model}}",
+      "auto": "自動選擇模型",
+      "chooseInPicker": "請先在 ORG2 模型選擇器中選擇一個已購工作區",
+      "nonePurchased": "尚未購買 Market 工作區",
+      "claudeHelp": "Claude Code 和 Claude Desktop 跟隨同一個 ORG2 工作區，但各自保留獨立的應用程式設定和還原點",
+      "checking": "正在檢查應用程式…",
+      "unavailable": "目前安裝版本暫不可用",
+      "notInstalled": "尚未安裝",
+      "following": "正在跟隨 ORG2 目前工作區",
+      "original": "正在使用應用程式原有設定",
+      "connect": "跟隨 ORG2",
+      "open": "開啟應用程式",
+      "disconnect": "停止跟隨",
+      "connected": "應用程式已開始跟隨 ORG2 目前工作區",
+      "opened": "應用程式已開啟",
+      "disconnected": "已還原應用程式先前的設定",
+      "actionFailed": "無法更新此應用程式連線"
+    }
   },
   "claudeProfiles": {
     "new": "新增設定檔",

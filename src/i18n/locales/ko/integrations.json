@@ -330,7 +330,7 @@
     "claudeCodeDetectErrorHint": "Sign in with the embedded browser, or run claude auth login and try detection again",
     "refreshModels": {
       "button": "Cursor 모델 목록 새로고침",
-      "failed": "Cursor에서 새로고침 실패: {{error}}"
+      "failed": "이 Market 워크스페이스를 사용할 수 없습니다. Market을 다시 열어 인증을 갱신하세요."
     },
     "revalidate": "재검증",
     "confirmRemoveActiveSessions_one": "활성 세션 {{count}}개가 아직 이 계정을 사용 중이며 다음 턴에서 실패합니다:",
@@ -1657,7 +1657,8 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "가져오기 실패: {{message}}",
-    "partialFailure": "일부 자격 증명을 가져오지 못했습니다:"
+    "partialFailure": "일부 자격 증명을 가져오지 못했습니다:",
+    "importSucceeded": "계정에 저장됨: {{names}}. 가져온 자격 증명을 재사용 가능한 연결로 사용할 수 있습니다."
   },
   "skills": {
     "shareToOrg": "조직에 공유",
@@ -1665,5 +1666,15 @@
     "sharedToOrg": "Skill을 조직에 공유했습니다",
     "shareToOrgHint": "조직 멤버는 이 Skill의 현재 스냅샷을 받습니다. 편집 후 업데이트를 게시하려면 다시 공유하세요",
     "shareOrgPlaceholder": "조직"
+  },
+  "marketConnection": {
+    "loadingPurchases": "구매 내역 불러오는 중…",
+    "purchasesFailed": "구매 내역을 불러오지 못했습니다. 로컬 연결은 계속 해제할 수 있습니다.",
+    "platformUnavailable": "이 플랫폼은 자격 증명의 안전한 저장을 지원하지 않아 Market 구매자 작업 공간에 연결할 수 없습니다",
+    "authorizationSaved": "Market 인증을 저장했습니다. 구매한 워크스페이스를 이제 ORG2에서 사용할 수 있습니다.",
+    "failed": "Market 연결을 완료하지 못했습니다. 워크스페이스 연결을 다시 열어 주세요.",
+    "title": "워크스페이스 연결",
+    "launchFailed": "이 Market 워크스페이스를 활성화하지 못했습니다. Market 인증을 갱신한 후 다시 시도하세요.",
+    "syncFailed": "연결된 앱을 이 ORG2 소스로 전환할 수 없습니다"
   }
 }

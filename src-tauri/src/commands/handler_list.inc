@@ -1181,3 +1181,13 @@ agent_core::state::commands::session::wingman_stop,
 agent_core::state::commands::session::wingman_close_windows,
 agent_core::state::commands::session::wingman_show_desktop_control_test,
 agent_core::state::commands::session::wingman_list_monitors,
+
+// Optional Market module: disabled builds return an explicit unavailable result.
+crate::market_connection::market_connection_begin,
+crate::market_connection::market_connection_complete,
+crate::market_connection::market_connection_cancel,
+crate::market_connection::market_connection_status,
+crate::market_connection::market_connection_open_client,
+crate::market_connection::market_connection_options,
+crate::market_connection::market_connection_prepare_session,
+crate::market_connection::market_connection_configure_profile,

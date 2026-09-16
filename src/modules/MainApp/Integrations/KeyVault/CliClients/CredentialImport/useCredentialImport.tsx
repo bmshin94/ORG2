@@ -63,6 +63,10 @@ export interface CredentialImportFailure {
   error: string;
 }
 
+export interface CredentialImportSuccess {
+  displayNames: string[];
+}
+
 interface UseCredentialImportOptions {
   sourceKind?: CredentialSuggestion["sourceKind"];
   /** Called after a fully successful batch so the parent can collapse. */
@@ -107,6 +111,8 @@ export function useCredentialImport({
   const [importErrors, setImportErrors] = useState<CredentialImportFailure[]>(
     []
   );
+  const [importSuccess, setImportSuccess] =
+    useState<CredentialImportSuccess | null>(null);
   const [detectionRefreshKey, setDetectionRefreshKey] = useState(0);
 
   const sourceKindLabel = useCallback(
@@ -216,10 +222,13 @@ export function useCredentialImport({
     setImporting(true);
     setImportError(null);
     setImportErrors([]);
+    setImportSuccess(null);
     try {
       const report = await importCredentialSuggestions(selections);
       const failures = report.items.filter((item) => item.status === "failed");
-      const importedCount = report.items.length - failures.length;
+      const importedItems = report.items.filter(
+        (item) => item.status === "imported"
+      );
 
       if (failures.length > 0) {
         setImportErrors(
@@ -237,7 +246,16 @@ export function useCredentialImport({
         setSelected(new Set());
       }
 
-      if (importedCount > 0) {
+      if (importedItems.length > 0) {
+        setImportSuccess({
+          displayNames: [
+            ...new Set(
+              importedItems.map(
+                (item) => byId.get(item.id)?.displayName ?? item.agentType
+              )
+            ),
+          ],
+        });
         await onRefresh?.();
         refreshDetection();
       }
@@ -360,6 +378,7 @@ export function useCredentialImport({
     importing,
     importError,
     importErrors,
+    importSuccess,
     importColumns,
     handleRowClick,
     handleImport,

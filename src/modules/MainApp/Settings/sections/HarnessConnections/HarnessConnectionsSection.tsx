@@ -6,11 +6,13 @@ import type { ConnectionHarness } from "@src/api/tauri/rpc/schemas/agentOrgs";
 import type { SaveKeyRequest } from "@src/api/types/keys";
 import Message from "@src/components/Message";
 import SegmentedTextPill from "@src/components/SegmentedTextPill";
+import { SectionContainer } from "@src/components/layout/Section";
 import InlineCredentialImport from "@src/modules/MainApp/Integrations/KeyVault/CliClients/CredentialImport/InlineCredentialImport";
 import { KeyVaultWizard } from "@src/scaffold/WizardSystem/variants/KeyVault";
 
 import ClaudeProfileEditor from "./ClaudeProfileEditor";
 import HarnessConnectionEditor from "./HarnessConnectionEditor";
+import MarketNativeAppConnections from "./MarketNativeAppConnections";
 import { refreshHarnessConnections } from "./useHarnessConnection";
 
 export default function HarnessConnectionsSection() {
@@ -47,41 +49,54 @@ export default function HarnessConnectionsSection() {
       className="flex flex-col gap-4"
       data-testid="harness-connections-settings"
     >
-      <div className="overflow-x-auto">
-        <SegmentedTextPill<ConnectionHarness>
-          ariaLabel={t("harnessConnections.appSelector")}
-          value={target}
-          onChange={setTarget}
-          options={[
-            {
-              value: "claude_code",
-              label: "Claude Code CLI",
-              disabled: profileDirty,
-            },
-            {
-              value: "claude_desktop",
-              label: "Claude Desktop",
-              disabled: profileDirty,
-            },
-            { value: "codex", label: "Codex", disabled: profileDirty },
-          ]}
-        />
-      </div>
-      <InlineCredentialImport onAfterImport={refreshHarnessConnections} />
-      {target === "codex" ? (
-        <HarnessConnectionEditor
-          key={target}
-          agentName={target}
-          onAdd={() => setAdding(true)}
-        />
-      ) : (
-        <ClaudeProfileEditor
-          key={target}
-          target={target}
-          onDirtyChange={setProfileDirty}
-          onAdd={() => setAdding(true)}
-        />
-      )}
+      <MarketNativeAppConnections />
+      <SectionContainer
+        title={t("harnessConnections.advanced")}
+        collapsible
+        defaultOpen={false}
+        titleButtonTestId="harness-connections-advanced"
+      >
+        <div className="flex flex-col gap-4 py-3">
+          <p className="text-sm text-text-2">
+            {t("harnessConnections.advancedDescription")}
+          </p>
+          <div className="overflow-x-auto">
+            <SegmentedTextPill<ConnectionHarness>
+              ariaLabel={t("harnessConnections.appSelector")}
+              value={target}
+              onChange={setTarget}
+              options={[
+                {
+                  value: "claude_code",
+                  label: "Claude Code CLI",
+                  disabled: profileDirty,
+                },
+                {
+                  value: "claude_desktop",
+                  label: "Claude Desktop",
+                  disabled: profileDirty,
+                },
+                { value: "codex", label: "Codex", disabled: profileDirty },
+              ]}
+            />
+          </div>
+          <InlineCredentialImport onAfterImport={refreshHarnessConnections} />
+          {target === "codex" ? (
+            <HarnessConnectionEditor
+              key={target}
+              agentName={target}
+              onAdd={() => setAdding(true)}
+            />
+          ) : (
+            <ClaudeProfileEditor
+              key={target}
+              target={target}
+              onDirtyChange={setProfileDirty}
+              onAdd={() => setAdding(true)}
+            />
+          )}
+        </div>
+      </SectionContainer>
     </div>
   );
 }

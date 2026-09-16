@@ -21,6 +21,9 @@ vi.mock("@src/scaffold/WizardSystem/variants/KeyVault", () => ({
 vi.mock("./useHarnessConnection", () => ({
   refreshHarnessConnections: vi.fn(),
 }));
+vi.mock("./MarketNativeAppConnections", () => ({
+  default: () => createElement("div", { "data-testid": "market-native-apps" }),
+}));
 vi.mock("./ClaudeProfileEditor", () => ({
   default: ({ target }: { target: string }) =>
     createElement("section", { "data-target": target }),
@@ -30,7 +33,7 @@ vi.mock("./HarnessConnectionEditor", () => ({
     createElement("section", { "data-target": agentName }),
 }));
 
-it("exposes separate Desktop and CLI selectors and mounts only the selected target", async () => {
+it("keeps Market app wiring primary and provider configuration advanced", async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const container = document.createElement("div");
   document.body.append(container);
@@ -40,11 +43,20 @@ it("exposes separate Desktop and CLI selectors and mounts only the selected targ
       root.render(createElement(HarnessConnectionsSection))
     );
     expect(
+      container.querySelector('[data-testid="market-native-apps"]')
+    ).not.toBeNull();
+    expect(container.querySelector("section")).toBeNull();
+    expect(
+      container.querySelector('[data-testid="credential-import"]')
+    ).toBeNull();
+
+    const advanced = container.querySelector(
+      '[data-testid="harness-connections-advanced"]'
+    ) as HTMLButtonElement;
+    await act(async () => advanced.click());
+    expect(
       container.querySelector("section")?.getAttribute("data-target")
     ).toBe("claude_code");
-    expect(container.textContent).not.toContain(
-      "harnessConnections.description"
-    );
     expect(
       container.querySelector('[data-testid="credential-import"]')
     ).not.toBeNull();

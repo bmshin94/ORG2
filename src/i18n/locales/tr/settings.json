@@ -937,7 +937,31 @@
     "authentication": "Kimlik doğrulama",
     "desktopScope": "Claude Desktop, Claude Code CLI’den ayrı yapılandırılır; uyguladıktan sonra Desktop’ı tamamen kapatıp yeniden açın",
     "desktopApplied": "Yapılandırma kaydedildi — Claude Desktop’ı tamamen kapatıp yeniden açın",
-    "desktopRestored": "Önceki yapılandırma geri yüklendi — Claude Desktop’ı tamamen kapatıp yeniden açın"
+    "desktopRestored": "Önceki yapılandırma geri yüklendi — Claude Desktop’ı tamamen kapatıp yeniden açın",
+    "advancedDescription": "Özel API bağlantıları ve tek seferlik kimlik bilgisi taşıma",
+    "marketApps": {
+      "workspace": "Geçerli Market çalışma alanı",
+      "workspaceHelp": "ORG2’nin mevcut model ve kaynak seçicisinden satın alınmış bir çalışma alanı seçin; bağlı uygulamalar bu seçimi otomatik olarak izler",
+      "loading": "Satın alınan çalışma alanları yükleniyor…",
+      "loadFailed": "Satın alınan çalışma alanları yüklenemedi",
+      "currentValue": "{{workspace}} · {{model}}",
+      "auto": "Otomatik model",
+      "chooseInPicker": "Önce ORG2 model seçicisinden satın alınmış bir çalışma alanı seçin",
+      "nonePurchased": "Henüz satın alınmış Market çalışma alanı yok",
+      "claudeHelp": "Claude Code ve Claude Desktop aynı ORG2 çalışma alanını izlerken her uygulama kendi yapılandırmasını ve geri yükleme noktasını korur",
+      "checking": "Uygulama denetleniyor…",
+      "unavailable": "Bu yüklü sürüm için kullanılamıyor",
+      "notInstalled": "Yüklü değil",
+      "following": "Geçerli ORG2 çalışma alanını izliyor",
+      "original": "Uygulamanın özgün ayarını kullanıyor",
+      "connect": "ORG2’yi izle",
+      "open": "Uygulamayı aç",
+      "disconnect": "İzlemeyi bırak",
+      "connected": "Uygulama artık geçerli ORG2 çalışma alanını izliyor",
+      "opened": "Uygulama açıldı",
+      "disconnected": "Uygulamanın önceki ayarı geri yüklendi",
+      "actionFailed": "Bu uygulama bağlantısı güncellenemedi"
+    }
   },
   "claudeProfiles": {
     "new": "Yeni profil",

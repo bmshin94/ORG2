@@ -937,7 +937,31 @@
     "authentication": "Xác thực",
     "desktopScope": "Cấu hình Claude Desktop riêng với Claude Code CLI; thoát hoàn toàn rồi mở lại Desktop sau khi áp dụng",
     "desktopApplied": "Đã lưu cấu hình — thoát hoàn toàn rồi mở lại Claude Desktop",
-    "desktopRestored": "Đã khôi phục cấu hình trước — thoát hoàn toàn rồi mở lại Claude Desktop"
+    "desktopRestored": "Đã khôi phục cấu hình trước — thoát hoàn toàn rồi mở lại Claude Desktop",
+    "advancedDescription": "Kết nối API tùy chỉnh và di chuyển thông tin xác thực một lần",
+    "marketApps": {
+      "workspace": "Không gian Market hiện tại",
+      "workspaceHelp": "Chọn không gian đã mua trong bộ chọn mô hình và nguồn có sẵn của ORG2; ứng dụng đã kết nối sẽ tự động theo lựa chọn đó",
+      "loading": "Đang tải không gian đã mua…",
+      "loadFailed": "Không thể tải không gian đã mua",
+      "currentValue": "{{workspace}} · {{model}}",
+      "auto": "Mô hình tự động",
+      "chooseInPicker": "Trước tiên hãy chọn một không gian đã mua trong bộ chọn mô hình ORG2",
+      "nonePurchased": "Chưa có không gian Market đã mua",
+      "claudeHelp": "Claude Code và Claude Desktop theo cùng một không gian ORG2, nhưng mỗi ứng dụng giữ cấu hình và điểm khôi phục riêng",
+      "checking": "Đang kiểm tra ứng dụng…",
+      "unavailable": "Không khả dụng cho phiên bản đã cài đặt này",
+      "notInstalled": "Chưa cài đặt",
+      "following": "Đang theo không gian ORG2 hiện tại",
+      "original": "Đang dùng cấu hình gốc của ứng dụng",
+      "connect": "Theo ORG2",
+      "open": "Mở ứng dụng",
+      "disconnect": "Ngừng theo",
+      "connected": "Ứng dụng hiện theo không gian ORG2 hiện tại",
+      "opened": "Đã mở ứng dụng",
+      "disconnected": "Đã khôi phục cấu hình trước của ứng dụng",
+      "actionFailed": "Không thể cập nhật kết nối ứng dụng này"
+    }
   },
   "claudeProfiles": {
     "new": "Hồ sơ mới",

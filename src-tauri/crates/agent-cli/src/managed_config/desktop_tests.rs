@@ -171,3 +171,51 @@ fn stale_catalog_and_external_edit_block_apply_and_restore_without_partial_write
         }
     }
 }
+
+#[cfg(any(target_os = "macos", windows))]
+#[test]
+fn explicit_direct_replacement_accepts_only_the_current_external_edit() {
+    let _lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii"));
+    let _external = ExternalHome::set(temp.path());
+    let status = enable_direct(desktop::TARGET, connection(), None).unwrap();
+    let catalog = status
+        .target_files
+        .iter()
+        .find(|file| file.id == "catalog")
+        .unwrap();
+    std::fs::write(&catalog.target_path, r#"{"entries":[],"external":true}"#).unwrap();
+    let expected: BTreeMap<_, _> = operations::status_for_unlocked(desktop::TARGET)
+        .unwrap()
+        .target_files
+        .into_iter()
+        .map(|file| (file.id, file.current_hash))
+        .collect();
+    let replaced = replace_direct(desktop::TARGET, connection(), &expected).unwrap();
+    assert!(!replaced.conflict);
+    assert_eq!(replaced.selected_key_id.as_deref(), Some("desktop-key"));
+
+    let stale = expected;
+    std::fs::write(
+        &catalog.target_path,
+        r#"{"entries":[],"changed-again":true}"#,
+    )
+    .unwrap();
+    assert!(replace_direct(desktop::TARGET, connection(), &stale).is_err());
+}
+
+#[cfg(any(target_os = "macos", windows))]
+#[test]
+fn disconnect_restores_matching_direct_profile_but_preserves_new_selection() {
+    let _lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii"));
+    let _external = ExternalHome::set(temp.path());
+    enable_direct(desktop::TARGET, connection(), None).unwrap();
+    let untouched = restore_if_selected_matching(desktop::TARGET, |_| Ok(false)).unwrap();
+    assert_eq!(untouched.mode, CliConfigMode::Direct);
+    let restored =
+        restore_if_selected_matching(desktop::TARGET, |key| Ok(key == "desktop-key")).unwrap();
+    assert_eq!(restored.mode, CliConfigMode::Default);
+}

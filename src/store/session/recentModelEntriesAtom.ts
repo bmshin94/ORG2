@@ -25,6 +25,8 @@ export interface RecentModelEntry {
   sourceType: KeySource;
   accountId?: string;
   accountName?: string;
+  credentialSource?: string;
+  marketProfileId?: string;
   modelType: ModelType;
   cliAgentType?: CliAgentType;
   cliAgentLabel?: string;
@@ -36,6 +38,8 @@ const RecentModelEntrySchema = z.object({
   sourceType: z.enum([KEY_SOURCE.OWN, KEY_SOURCE.HOSTED]),
   accountId: z.string().optional(),
   accountName: z.string().optional(),
+  credentialSource: z.string().startsWith("market:").max(1024).optional(),
+  marketProfileId: z.string().startsWith("market:").max(512).optional(),
   modelType: ModelTypeSchema,
   cliAgentType: CliAgentTypeSchema.optional(),
   cliAgentLabel: z.string().optional(),
@@ -59,6 +63,10 @@ export function recentEntriesEquivalent(
 ): boolean {
   if (left.modelId !== right.modelId || left.sourceType !== right.sourceType) {
     return false;
+  }
+
+  if (left.credentialSource || right.credentialSource) {
+    return left.credentialSource === right.credentialSource;
   }
 
   if (left.accountId && right.accountId) {
@@ -94,4 +102,12 @@ export function recordRecentEntry(
     (existing) => !recentEntriesEquivalent(existing, entry)
   );
   return [entry, ...filtered].slice(0, MAX_RECENT);
+}
+
+export function findRecentByCredentialSource(
+  entries: RecentModelEntry[],
+  credentialSource: string | undefined
+): RecentModelEntry | undefined {
+  if (!credentialSource) return undefined;
+  return entries.find((entry) => entry.credentialSource === credentialSource);
 }

@@ -728,6 +728,9 @@ module.exports = (env, argv) => {
         "process.env.ORGII_DEEP_LINK_SCHEME": JSON.stringify(
           process.env.ORGII_DEEP_LINK_SCHEME ?? "orgii"
         ),
+        "process.env.ORGII_MARKET_CONSOLE_ORIGIN": JSON.stringify(
+          process.env.ORGII_MARKET_CONSOLE_ORIGIN ?? "https://market.org2.dev"
+        ),
         // The shell-facing key keeps its historical spelling so existing
         // operator opt-outs retain the same behavior. Frontend code receives
         // only the stable Agent Org availability name.

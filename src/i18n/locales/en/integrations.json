@@ -332,7 +332,7 @@
     "claudeCodeDetectErrorHint": "Sign in with the embedded browser, or run claude auth login and try detection again",
     "refreshModels": {
       "button": "Refresh models",
-      "failed": "Refresh models failed: {{error}}"
+      "failed": "This Market workspace is unavailable. Open Market again to refresh authorization."
     },
     "revalidate": "Revalidate"
   },
@@ -1657,7 +1657,8 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "Import failed: {{message}}",
-    "partialFailure": "Some credentials could not be imported:"
+    "partialFailure": "Some credentials could not be imported:",
+    "importSucceeded": "Saved to Accounts: {{names}}. Imported credentials are now available as reusable connections."
   },
   "skills": {
     "shareToOrg": "Share to organization",
@@ -1665,5 +1666,15 @@
     "sharedToOrg": "Skill shared with the organization",
     "shareToOrgHint": "Members of the organization receive this skill's current snapshot; share again after editing to publish an update",
     "shareOrgPlaceholder": "Organization"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Loading purchases…",
+    "purchasesFailed": "Could not load purchased services. Try again.",
+    "platformUnavailable": "Market buyer connections are not available on this platform because secure credential storage is not supported",
+    "authorizationSaved": "Market authorization saved. Your purchased workspaces are now available in ORG2.",
+    "failed": "This app connection needs authorization. Open the service from Market again.",
+    "title": "Market services",
+    "launchFailed": "Could not activate this Market workspace. Refresh Market authorization and try again.",
+    "syncFailed": "Could not update connected apps to this ORG2 source"
   }
 }

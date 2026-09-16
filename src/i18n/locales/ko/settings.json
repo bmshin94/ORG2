@@ -937,7 +937,31 @@
     "authentication": "인증 방식",
     "desktopScope": "Claude Code CLI와 별도로 Claude Desktop을 설정합니다. 적용 후 앱을 완전히 종료하고 다시 여세요",
     "desktopApplied": "설정을 저장했습니다. Claude Desktop을 완전히 종료하고 다시 여세요",
-    "desktopRestored": "이전 설정을 복원했습니다. Claude Desktop을 완전히 종료하고 다시 여세요"
+    "desktopRestored": "이전 설정을 복원했습니다. Claude Desktop을 완전히 종료하고 다시 여세요",
+    "advancedDescription": "사용자 지정 API 연결 및 일회성 자격 증명 이전",
+    "marketApps": {
+      "workspace": "현재 Market 작업 공간",
+      "workspaceHelp": "ORG2의 기존 모델 및 소스 선택기에서 구매한 작업 공간을 선택하면 연결된 앱이 자동으로 따라갑니다",
+      "loading": "구매한 작업 공간을 불러오는 중…",
+      "loadFailed": "구매한 작업 공간을 불러올 수 없습니다",
+      "currentValue": "{{workspace}} · {{model}}",
+      "auto": "자동 모델",
+      "chooseInPicker": "ORG2 모델 선택기에서 구매한 작업 공간을 먼저 선택하세요",
+      "nonePurchased": "구매한 Market 작업 공간이 없습니다",
+      "claudeHelp": "Claude Code와 Claude Desktop은 같은 ORG2 작업 공간을 따르지만 각 앱의 설정과 복원 지점은 별도로 유지됩니다",
+      "checking": "앱 확인 중…",
+      "unavailable": "설치된 이 버전에서는 사용할 수 없음",
+      "notInstalled": "설치되지 않음",
+      "following": "현재 ORG2 작업 공간을 따르는 중",
+      "original": "앱의 원래 설정 사용 중",
+      "connect": "ORG2 따르기",
+      "open": "앱 열기",
+      "disconnect": "따르기 중지",
+      "connected": "앱이 현재 ORG2 작업 공간을 따릅니다",
+      "opened": "앱을 열었습니다",
+      "disconnected": "이전 앱 설정을 복원했습니다",
+      "actionFailed": "이 앱 연결을 업데이트할 수 없습니다"
+    }
   },
   "claudeProfiles": {
     "new": "새 프로필",

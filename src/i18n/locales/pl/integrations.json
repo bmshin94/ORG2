@@ -330,7 +330,7 @@
     "claudeCodeDetectErrorHint": "Zaloguj się przez osadzoną przeglądarkę albo uruchom claude auth login i spróbuj wykryć ponownie",
     "refreshModels": {
       "button": "Odśwież listę modeli Cursor",
-      "failed": "Odświeżanie z Cursor nie powiodło się: {{error}}"
+      "failed": "Ten obszar roboczy Market jest niedostępny. Otwórz ponownie Market, aby odświeżyć autoryzację."
     },
     "revalidate": "Zweryfikuj ponownie",
     "confirmRemoveActiveSessions_one": "{{count}} aktywna sesja nadal używa tego konta i zakończy się błędem w następnej turze:",
@@ -1657,7 +1657,8 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "Import nie powiódł się: {{message}}",
-    "partialFailure": "Nie udało się zaimportować niektórych poświadczeń:"
+    "partialFailure": "Nie udało się zaimportować niektórych poświadczeń:",
+    "importSucceeded": "Zapisano w Kontach: {{names}}. Zaimportowane dane logowania są teraz dostępne jako połączenia wielokrotnego użytku."
   },
   "skills": {
     "shareToOrg": "Udostępnij organizacji",
@@ -1665,5 +1666,15 @@
     "sharedToOrg": "Skill udostępniony organizacji",
     "shareToOrgHint": "Członkowie organizacji otrzymują bieżącą migawkę tego skilla; po edycji udostępnij ponownie, aby opublikować aktualizację",
     "shareOrgPlaceholder": "Organizacja"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Wczytywanie zakupów…",
+    "purchasesFailed": "Nie udało się wczytać zakupów. Nadal możesz rozłączyć połączenie lokalne.",
+    "platformUnavailable": "Połączenia kupującego Market są niedostępne na tej platformie, ponieważ nie obsługuje ona bezpiecznego przechowywania danych uwierzytelniających",
+    "authorizationSaved": "Autoryzacja Market została zapisana. Kupione obszary robocze są teraz dostępne w ORG2.",
+    "failed": "Nie udało się połączyć z Market. Otwórz ponownie połączenie obszaru roboczego.",
+    "title": "Połącz obszar roboczy",
+    "launchFailed": "Nie udało się aktywować tego obszaru roboczego Market. Odśwież autoryzację Market i spróbuj ponownie.",
+    "syncFailed": "Nie udało się przełączyć połączonych aplikacji na to źródło ORG2"
   }
 }

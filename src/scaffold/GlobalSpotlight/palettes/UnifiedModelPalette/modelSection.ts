@@ -38,6 +38,7 @@ export function entryMatchesActiveConfig(
     | "model"
     | "listingModel"
     | "selectedAccountId"
+    | "credentialSource"
     | "selectedSourceLabel"
     | "selectedSourceModelType"
     | "listingModelType"
@@ -46,6 +47,10 @@ export function entryMatchesActiveConfig(
 ): boolean {
   const activeModel = getActiveModelId(config);
   if (!activeModel || entry.modelId !== activeModel) return false;
+
+  if (entry.credentialSource || config.credentialSource) {
+    return entry.credentialSource === config.credentialSource;
+  }
 
   if (entry.accountId && config.selectedAccountId) {
     return entry.accountId === config.selectedAccountId;

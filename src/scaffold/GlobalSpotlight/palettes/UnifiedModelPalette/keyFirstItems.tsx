@@ -9,6 +9,7 @@
 import React from "react";
 
 import ModelIcon from "@src/components/ModelIcon";
+import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
 import { getModelAliasDisplayName } from "@src/hooks/models/modelAliasRegistry";
 import {
@@ -33,6 +34,7 @@ import { MODEL_SECTION } from "./modelSection";
 
 export const KEY_FIRST_KEY_TEST_ID = "unified-model-key-option";
 export const KEY_FIRST_MODEL_TEST_ID = "unified-model-key-model-option";
+export const MARKET_PROFILE_TEST_ID = "unified-model-market-profile-option";
 
 /** Model ids the account can actually launch (enabled, incl. variant rungs). */
 export function enabledAccountModelIds(account: KeyVaultAccount): string[] {
@@ -99,6 +101,100 @@ export function buildKeyItems({
       action: () =>
         groupCount > 0 ? onSelectKey(account.id) : onCommit(account, ""),
     });
+  });
+}
+
+export function buildMarketProfileItems(options: {
+  sources: MarketProfileSource[];
+  onSelect: (sourceId: string) => void;
+  marketLabel: string;
+}): SpotlightItem[] {
+  return options.sources.map((source) => {
+    const SourceIcon = () => (
+      <ModelIcon agentType={source.modelType} size={14} />
+    );
+    const modelCount = groupModels(source.modelIds).length;
+    return withModelRowAttributes({
+      id: `profile:${source.id}`,
+      label: source.label,
+      icon: SourceIcon,
+      type: "action" as const,
+      data: {
+        isSelector: true,
+        modelSection: MODEL_SECTION.ALL,
+        keyAccountId: source.id,
+        labelContent: (
+          <span className="shrink-0 font-normal text-text-1">
+            {source.label}
+          </span>
+        ),
+        rightContent: (
+          <span className="text-[12px] text-text-3">
+            {options.marketLabel} · {modelCount}
+          </span>
+        ),
+        showDisclosureChevron: modelCount > 0,
+        searchAlias: `${options.marketLabel} ${source.modelType}`,
+        testId: MARKET_PROFILE_TEST_ID,
+      },
+      action: () => options.onSelect(source.id),
+    });
+  });
+}
+
+export function buildMarketProfileModelItems(options: {
+  source: MarketProfileSource;
+  onCommit: (source: MarketProfileSource, modelId: string) => void;
+}): SpotlightItem[] {
+  return groupModels(options.source.modelIds).flatMap((group) => {
+    const variants = [...group.models].sort(compareModelsByVersion);
+    const modelId = variants[0];
+    if (!modelId) return [];
+    const variantInfos = variants.map((variantId) =>
+      resolveModelVariantFields(variantId)
+    );
+    const baseModel =
+      parseModelVariant(modelId)?.baseModel ??
+      variantInfos[0]?.base_model ??
+      modelId;
+    const launchModel =
+      resolveDefaultVariant(baseModel, variantInfos, undefined) ?? modelId;
+    const ModelItemIcon = () => <ModelIcon modelName={modelId} size={14} />;
+    const displayLabel =
+      group.label === "Other" ? formatModelNameFull(modelId) : group.label;
+    return [
+      withModelRowAttributes({
+        id: `market-model:${options.source.id}:${modelId}`,
+        label: `${displayLabel} ${variants.join(" ")}`,
+        icon: ModelItemIcon,
+        type: "action" as const,
+        data: {
+          isSelector: true,
+          modelSection: MODEL_SECTION.ALL,
+          modelId,
+          groupModelIds: variants,
+          labelContent: (
+            <span className="shrink-0 font-normal text-text-1">
+              {displayLabel}
+            </span>
+          ),
+          rightContent:
+            variants.length > 1 ? (
+              <VariantPill
+                modelId={launchModel}
+                groupModelIds={variants}
+                onApply={(nextModelId) =>
+                  options.onCommit(options.source, nextModelId)
+                }
+              />
+            ) : (
+              <VariantPill modelId={launchModel} />
+            ),
+          testId: KEY_FIRST_MODEL_TEST_ID,
+        },
+        action: () => options.onCommit(options.source, launchModel),
+      }),
+    ];
   });
 }
 

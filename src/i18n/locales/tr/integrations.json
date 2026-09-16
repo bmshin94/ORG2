@@ -330,7 +330,7 @@
     "claudeCodeDetectErrorHint": "Yerleşik tarayıcıyla oturum açın veya claude auth login çalıştırıp algılamayı tekrar deneyin",
     "refreshModels": {
       "button": "Cursor model listesini yenile",
-      "failed": "Cursor'dan yenileme başarısız: {{error}}"
+      "failed": "Bu Market çalışma alanı kullanılamıyor. Yetkilendirmeyi yenilemek için Market’i yeniden açın."
     },
     "revalidate": "Yeniden doğrula",
     "confirmRemoveActiveSessions_one": "{{count}} etkin oturum hâlâ bu hesabı kullanıyor ve bir sonraki turunda başarısız olacak:",
@@ -1657,7 +1657,8 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "İçe aktarma başarısız: {{message}}",
-    "partialFailure": "Bazı kimlik bilgileri içe aktarılamadı:"
+    "partialFailure": "Bazı kimlik bilgileri içe aktarılamadı:",
+    "importSucceeded": "Hesaplar'a kaydedildi: {{names}}. İçe aktarılan kimlik bilgileri artık yeniden kullanılabilir bağlantılar olarak kullanılabilir."
   },
   "skills": {
     "shareToOrg": "Organizasyonla paylaş",
@@ -1665,5 +1666,15 @@
     "sharedToOrg": "Skill organizasyonla paylaşıldı",
     "shareToOrgHint": "Organizasyon üyeleri bu Skill'in geçerli anlık görüntüsünü alır; düzenledikten sonra güncelleme yayınlamak için yeniden paylaşın",
     "shareOrgPlaceholder": "Organizasyon"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Satın alımlar yükleniyor…",
+    "purchasesFailed": "Satın alımlar yüklenemedi. Yerel bağlantıyı yine de kesebilirsiniz.",
+    "platformUnavailable": "Bu platform güvenli kimlik bilgisi depolamayı desteklemediği için Market alıcı bağlantıları kullanılamıyor",
+    "authorizationSaved": "Market yetkilendirmesi kaydedildi. Satın aldığınız çalışma alanları artık ORG2’de kullanılabilir.",
+    "failed": "Market bağlantısı tamamlanamadı. Çalışma alanı bağlantısını yeniden açın.",
+    "title": "Çalışma alanını bağla",
+    "launchFailed": "Bu Market çalışma alanı etkinleştirilemedi. Market yetkilendirmesini yenileyip tekrar deneyin.",
+    "syncFailed": "Bağlı uygulamalar bu ORG2 kaynağına geçirilemedi"
   }
 }

@@ -15,6 +15,10 @@ import { useMemo } from "react";
 
 import { isHostedKey } from "@src/api/tauri/session";
 import { isOrgiiTierModel } from "@src/config/orgiiCategories";
+import {
+  findMarketSourceForRecent,
+  useMarketExecutionProfiles,
+} from "@src/features/MarketConnect/marketProfiles";
 import { useKeyVault } from "@src/hooks/keyVault";
 import { withNativeHarnessModels } from "@src/hooks/models/nativeHarnessAccountModels";
 import {
@@ -64,6 +68,15 @@ export function useValidatedLastPair(): LastModelSelection | null {
 
   const { orgiiModelSet, orgiiCategoryIds } =
     useOrgiiPoolCategories(needsOrgiiPool);
+  const isMarketPair = Boolean(pair?.credentialSource?.startsWith("market:"));
+  const {
+    sources: marketSources,
+    loading: marketProfilesLoading,
+    error: marketProfilesError,
+  } = useMarketExecutionProfiles({
+    enabled: isMarketPair && dispatchCategory === "cli_agent",
+    cliAgentType,
+  });
 
   return useMemo(() => {
     if (!pair) return null;
@@ -72,9 +85,23 @@ export function useValidatedLastPair(): LastModelSelection | null {
       orgiiPoolEnabled,
       orgiiModelSet,
       orgiiCategoryIds,
+      cliAgentType,
     });
     if (!ok) return null;
     if (isHostedKey(pair.sourceType)) return deriveLastModelSelection(pair);
+    if (pair.credentialSource?.startsWith("market:")) {
+      if (marketProfilesLoading) return deriveLastModelSelection(pair);
+      if (marketProfilesError) return null;
+      const source = findMarketSourceForRecent(marketSources, pair);
+      if (!source) return null;
+      return deriveLastModelSelection({
+        ...pair,
+        accountName: source.label,
+        marketProfileId: source.profile.id,
+        modelType: source.modelType,
+        cliAgentType: source.cliAgentType,
+      });
+    }
 
     const account = resolveCompatibleOwnKeyAccount(pair, accounts);
     if (!account) return null;
@@ -86,5 +113,15 @@ export function useValidatedLastPair(): LastModelSelection | null {
       modelType: account.modelType,
     };
     return deriveLastModelSelection(reboundPair);
-  }, [pair, accounts, orgiiPoolEnabled, orgiiModelSet, orgiiCategoryIds]);
+  }, [
+    pair,
+    accounts,
+    orgiiPoolEnabled,
+    orgiiModelSet,
+    orgiiCategoryIds,
+    cliAgentType,
+    marketProfilesError,
+    marketProfilesLoading,
+    marketSources,
+  ]);
 }

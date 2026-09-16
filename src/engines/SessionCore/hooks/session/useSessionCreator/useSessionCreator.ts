@@ -343,6 +343,7 @@ export function useSessionCreator(
 
     const hasModelOrAccount =
       !!advancedConfig.selectedAccountId ||
+      !!advancedConfig.credentialSource ||
       !!advancedConfig.model ||
       !!advancedConfig.cliAgentType;
     return hasModelOrAccount;

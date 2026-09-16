@@ -44,6 +44,14 @@ export interface AdvancedConfig {
   branch?: string;
   /** Selected code account ID (when keySource="own_key") */
   selectedAccountId?: string;
+  /**
+   * Opaque, non-secret runtime credential selector (for example a purchased
+   * Market profile). The backend resolves this on every turn; it is never a
+   * static API key and must not be written to the local Key Vault.
+   */
+  credentialSource?: string;
+  /** Stable non-secret identity of the purchased Market profile. */
+  marketProfileId?: string;
   /** Rust Agent provider override for subscription-bound native harness sessions. */
   nativeHarnessType?: NativeHarnessType;
   /**

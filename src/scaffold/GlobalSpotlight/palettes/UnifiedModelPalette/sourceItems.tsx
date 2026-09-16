@@ -2,6 +2,7 @@ import React from "react";
 
 import { KEY_SOURCE } from "@src/api/tauri/session";
 import ModelIcon from "@src/components/ModelIcon";
+import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
 import { accountHasModel } from "@src/hooks/models/useModelAccountLookup";
 import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
@@ -30,7 +31,8 @@ export function toSourceOption(account: KeyVaultAccount): SourceOption {
 export function buildSourceOptions(
   modelIds: string[],
   accounts: KeyVaultAccount[],
-  isCliAgent: boolean
+  isCliAgent: boolean,
+  marketSources: MarketProfileSource[] = []
 ): SourceOption[] {
   const options: SourceOption[] = [];
   const variantSet = new Set(modelIds.filter(Boolean));
@@ -50,6 +52,19 @@ export function buildSourceOptions(
     }
   }
 
+  for (const marketSource of marketSources) {
+    if (modelIds.some((modelId) => marketSource.modelIds.includes(modelId))) {
+      options.push({
+        id: marketSource.id,
+        label: marketSource.label,
+        modelType: marketSource.modelType,
+        type: KEY_SOURCE.OWN,
+        marketSource,
+        modelIds: marketSource.modelIds,
+      });
+    }
+  }
+
   return options;
 }
 
@@ -58,7 +73,7 @@ interface BuildSourceItemsParams {
   selectedModelId: string | null;
   selectedGroupModelIds: string[];
   accounts: KeyVaultAccount[];
-  handleSourceSelect: (source: SourceOption) => void;
+  handleSourceSelect: (source: SourceOption, modelOverride?: string) => void;
   persistDefaultVariantForAccount: (
     accountId: string,
     baseModel: string,
@@ -91,15 +106,23 @@ export function buildSourceItems({
       ? accountById.get(source.accountId)
       : undefined;
 
-    const accountVariantIds = sourceAccount
+    const accountVariantIds = source.marketSource
       ? selectedGroupModelIds.filter((modelId) =>
-          accountHasModel(sourceAccount, modelId)
+          source.marketSource?.modelIds.includes(modelId)
         )
-      : [];
+      : sourceAccount
+        ? selectedGroupModelIds.filter((modelId) =>
+            accountHasModel(sourceAccount, modelId)
+          )
+        : [];
 
     let accountEffectiveModelId: string | undefined;
-    if (sourceAccount && previewBaseModel && accountVariantIds.length > 0) {
-      const persisted = (sourceAccount.defaultVariants ?? []).find(
+    if (
+      (sourceAccount || source.marketSource) &&
+      previewBaseModel &&
+      accountVariantIds.length > 0
+    ) {
+      const persisted = (sourceAccount?.defaultVariants ?? []).find(
         (entry) =>
           entry.base_model === previewBaseModel &&
           accountVariantIds.includes(entry.model)
@@ -112,8 +135,9 @@ export function buildSourceItems({
         accountVariantIds[0];
     }
 
-    const handleApply =
-      sourceAccount && previewBaseModel
+    const handleApply = source.marketSource
+      ? (nextModelId: string) => handleSourceSelect(source, nextModelId)
+      : sourceAccount && previewBaseModel
         ? (nextModelId: string) =>
             persistDefaultVariantForAccount(
               sourceAccount.id,
@@ -124,7 +148,11 @@ export function buildSourceItems({
 
     const hasMultipleVariants = accountVariantIds.length > 1;
     const trailing: React.ReactNode = (() => {
-      if (!sourceAccount || accountVariantIds.length === 0) return null;
+      if (
+        (!sourceAccount && !source.marketSource) ||
+        accountVariantIds.length === 0
+      )
+        return null;
       if (hasMultipleVariants && accountEffectiveModelId) {
         return (
           <VariantPill
@@ -149,6 +177,7 @@ export function buildSourceItems({
         sourceAccountId: source.accountId,
         sourceModelType: source.modelType,
         sourceType: source.type,
+        isMarketProfile: Boolean(source.marketSource),
       },
       action: () => handleSourceSelect(source),
     });

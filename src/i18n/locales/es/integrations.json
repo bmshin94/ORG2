@@ -330,7 +330,7 @@
     "claudeCodeDetectErrorHint": "Inicia sesión con el navegador integrado o ejecuta claude auth login y vuelve a detectar",
     "refreshModels": {
       "button": "Actualizar lista de modelos de Cursor",
-      "failed": "Falló la actualización desde Cursor: {{error}}"
+      "failed": "Este espacio de trabajo de Market no está disponible. Abre Market de nuevo para actualizar la autorización."
     },
     "revalidate": "Revalidar",
     "confirmRemoveActiveSessions_one": "{{count}} sesión activa sigue usando esta cuenta y fallará en su próximo turno:",
@@ -1657,7 +1657,8 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "La importación falló: {{message}}",
-    "partialFailure": "Algunas credenciales no se pudieron importar:"
+    "partialFailure": "Algunas credenciales no se pudieron importar:",
+    "importSucceeded": "Guardado en Cuentas: {{names}}. Las credenciales importadas ya están disponibles como conexiones reutilizables."
   },
   "skills": {
     "shareToOrg": "Compartir con la organización",
@@ -1665,5 +1666,15 @@
     "sharedToOrg": "Skill compartida con la organización",
     "shareToOrgHint": "Los miembros de la organización reciben la instantánea actual de esta Skill; vuelve a compartirla después de editarla para publicar una actualización",
     "shareOrgPlaceholder": "Organización"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Cargando compras…",
+    "purchasesFailed": "No se pudieron cargar las compras. Aún puedes desconectar la conexión local.",
+    "platformUnavailable": "Las conexiones de comprador de Market no están disponibles en esta plataforma porque no admite el almacenamiento seguro de credenciales",
+    "authorizationSaved": "Autorización de Market guardada. Tus espacios de trabajo comprados ya están disponibles en ORG2.",
+    "failed": "No se pudo completar la conexión a Market. Vuelve a abrir la conexión del espacio de trabajo.",
+    "title": "Conectar espacio de trabajo",
+    "launchFailed": "No se pudo activar este espacio de trabajo de Market. Actualiza la autorización de Market e inténtalo de nuevo.",
+    "syncFailed": "No se pudieron cambiar las aplicaciones conectadas a esta fuente de ORG2"
   }
 }

@@ -1018,7 +1018,31 @@
     "authentication": "Authentication",
     "desktopScope": "Configures Claude Desktop separately from Claude Code CLI; fully quit and reopen Desktop after applying",
     "desktopApplied": "Desktop configuration saved — fully quit and reopen Claude Desktop",
-    "desktopRestored": "Previous Desktop configuration restored — fully quit and reopen Claude Desktop"
+    "desktopRestored": "Previous Desktop configuration restored — fully quit and reopen Claude Desktop",
+    "advancedDescription": "Custom API connections and one-time credential migration",
+    "marketApps": {
+      "workspace": "Current Market workspace",
+      "workspaceHelp": "Choose a purchased workspace in ORG2’s existing model and source picker; connected apps follow that choice automatically",
+      "loading": "Loading purchased workspaces…",
+      "loadFailed": "Purchased workspaces could not be loaded",
+      "currentValue": "{{workspace}} · {{model}}",
+      "auto": "Automatic model",
+      "chooseInPicker": "Choose one of your purchased workspaces from the ORG2 model picker",
+      "nonePurchased": "No purchased Market workspaces yet",
+      "claudeHelp": "Claude Code and Claude Desktop share the same ORG2 workspace choice, while each app keeps its own configuration and restore point",
+      "checking": "Checking app…",
+      "unavailable": "Unavailable for this installed version",
+      "notInstalled": "Not installed",
+      "following": "Following the current ORG2 workspace",
+      "original": "Using the app’s original setup",
+      "connect": "Follow ORG2",
+      "open": "Open app",
+      "disconnect": "Stop following",
+      "connected": "The app now follows the current ORG2 workspace",
+      "opened": "App opened",
+      "disconnected": "The app’s previous setup was restored",
+      "actionFailed": "Could not update this app connection"
+    }
   },
   "claudeProfiles": {
     "new": "New profile",

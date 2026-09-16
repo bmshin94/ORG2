@@ -46,6 +46,7 @@ const InlineCredentialImport: React.FC<InlineCredentialImportProps> = ({
     importing,
     importError,
     importErrors,
+    importSuccess,
     importColumns,
     handleRowClick,
     handleImport,
@@ -109,6 +110,13 @@ const InlineCredentialImport: React.FC<InlineCredentialImportProps> = ({
             {importError && (
               <PageNotice type="danger" role="alert">
                 {t("credentialImport.applyFailed", { message: importError })}
+              </PageNotice>
+            )}
+            {importSuccess && (
+              <PageNotice type="success" role="status">
+                {t("credentialImport.importSucceeded", {
+                  names: importSuccess.displayNames.join(", "),
+                })}
               </PageNotice>
             )}
             {importErrors.length > 0 && (

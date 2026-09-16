@@ -10,6 +10,43 @@ import {
 } from "../useSessionCreator/useSessionLaunch/launchPayload";
 
 describe("launchPayload", () => {
+  it("forwards an opaque Market credential source without replacing the workspace", () => {
+    const options = baseLaunchOptions();
+    options.dispatchCategory = DISPATCH_CATEGORY.CLI_AGENT;
+    options.resolvedKeys = {
+      ...options.resolvedKeys,
+      accountId: undefined,
+      credentialSource: "market:opaque-selection",
+      cliAgentType: "claude_code",
+      model: "claude-sonnet",
+    };
+
+    const { launchParams } = buildSessionLaunchPayload(options);
+
+    expect(launchParams.credentialSource).toBe("market:opaque-selection");
+    expect(launchParams.accountId).toBeUndefined();
+    expect(launchParams.workspacePath).toBe("/workspace/repo-one");
+
+    const session = buildSessionFromLaunchResult({
+      agentExecMode: "build",
+      effectiveSource: options.effectiveSource,
+      isBackgroundLaunch: false,
+      launchCliAgentType: "claude_code",
+      launchCredentialSource: launchParams.credentialSource,
+      result: {
+        sessionId: "market-session",
+        category: DISPATCH_CATEGORY.CLI_AGENT,
+        name: "Market session",
+        status: "running",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        userInput: "hello",
+        background: false,
+        model: "claude-sonnet",
+      },
+    });
+    expect(session.credentialSource).toBe("market:opaque-selection");
+  });
+
   it("persists launch workspacePath on the frontend session row", () => {
     const session = buildSessionFromLaunchResult({
       agentExecMode: "build",

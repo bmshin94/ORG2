@@ -937,7 +937,31 @@
     "authentication": "Autenticação",
     "desktopScope": "Configura o Claude Desktop separadamente do Claude Code CLI; encerre e reabra o Desktop após aplicar",
     "desktopApplied": "Configuração salva — encerre completamente e reabra o Claude Desktop",
-    "desktopRestored": "Configuração anterior restaurada — encerre completamente e reabra o Claude Desktop"
+    "desktopRestored": "Configuração anterior restaurada — encerre completamente e reabra o Claude Desktop",
+    "advancedDescription": "Conexões de API personalizadas e migração única de credenciais",
+    "marketApps": {
+      "workspace": "Espaço do Market atual",
+      "workspaceHelp": "Escolha um espaço comprado no seletor existente de modelos e fontes do ORG2; os aplicativos conectados seguirão essa escolha automaticamente",
+      "loading": "Carregando espaços comprados…",
+      "loadFailed": "Não foi possível carregar os espaços comprados",
+      "currentValue": "{{workspace}} · {{model}}",
+      "auto": "Modelo automático",
+      "chooseInPicker": "Escolha primeiro um espaço comprado no seletor de modelos do ORG2",
+      "nonePurchased": "Nenhum espaço do Market comprado",
+      "claudeHelp": "Claude Code e Claude Desktop seguem o mesmo espaço do ORG2, mantendo configurações e pontos de restauração separados",
+      "checking": "Verificando aplicativo…",
+      "unavailable": "Indisponível para esta versão instalada",
+      "notInstalled": "Não instalado",
+      "following": "Seguindo o espaço atual do ORG2",
+      "original": "Usando a configuração original do aplicativo",
+      "connect": "Seguir ORG2",
+      "open": "Abrir aplicativo",
+      "disconnect": "Parar de seguir",
+      "connected": "O aplicativo agora segue o espaço atual do ORG2",
+      "opened": "Aplicativo aberto",
+      "disconnected": "A configuração anterior do aplicativo foi restaurada",
+      "actionFailed": "Não foi possível atualizar esta conexão"
+    }
   },
   "claudeProfiles": {
     "new": "Novo perfil",

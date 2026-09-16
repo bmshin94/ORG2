@@ -330,7 +330,7 @@
     "claudeCodeDetectErrorHint": "Melde dich mit dem eingebetteten Browser an oder führe claude auth login aus und versuche die Erkennung erneut",
     "refreshModels": {
       "button": "Cursor-Modellliste aktualisieren",
-      "failed": "Aktualisierung von Cursor fehlgeschlagen: {{error}}"
+      "failed": "Dieser Market-Arbeitsbereich ist nicht verfügbar. Öffne Market erneut, um die Autorisierung zu aktualisieren."
     },
     "revalidate": "Erneut validieren",
     "confirmRemoveActiveSessions_one": "{{count}} aktive Sitzung verwendet dieses Konto noch und wird in ihrer nächsten Runde fehlschlagen:",
@@ -1657,7 +1657,8 @@
       "cc_switch": "cc-switch"
     },
     "applyFailed": "Import fehlgeschlagen: {{message}}",
-    "partialFailure": "Einige Zugangsdaten konnten nicht importiert werden:"
+    "partialFailure": "Einige Zugangsdaten konnten nicht importiert werden:",
+    "importSucceeded": "Unter „Konten“ gespeichert: {{names}}. Die importierten Anmeldedaten sind jetzt als wiederverwendbare Verbindungen verfügbar."
   },
   "skills": {
     "shareToOrg": "Mit Organisation teilen",
@@ -1665,5 +1666,15 @@
     "sharedToOrg": "Skill mit der Organisation geteilt",
     "shareToOrgHint": "Mitglieder der Organisation erhalten den aktuellen Snapshot dieses Skills; teile ihn nach dem Bearbeiten erneut, um ein Update zu veröffentlichen",
     "shareOrgPlaceholder": "Organisation"
+  },
+  "marketConnection": {
+    "loadingPurchases": "Käufe werden geladen…",
+    "purchasesFailed": "Käufe konnten nicht geladen werden. Die lokale Verbindung kann weiterhin getrennt werden.",
+    "platformUnavailable": "Market-Käuferverbindungen sind auf dieser Plattform nicht verfügbar, da die sichere Speicherung von Zugangsdaten nicht unterstützt wird",
+    "authorizationSaved": "Market-Autorisierung gespeichert. Deine gekauften Arbeitsbereiche sind jetzt in ORG2 verfügbar.",
+    "failed": "Die Market-Verbindung konnte nicht abgeschlossen werden. Öffne die Arbeitsbereichsverbindung erneut.",
+    "title": "Arbeitsbereich verbinden",
+    "launchFailed": "Dieser Market-Arbeitsbereich konnte nicht aktiviert werden. Aktualisiere die Market-Autorisierung und versuche es erneut.",
+    "syncFailed": "Verbundene Apps konnten nicht auf diese ORG2-Quelle umgestellt werden"
   }
 }

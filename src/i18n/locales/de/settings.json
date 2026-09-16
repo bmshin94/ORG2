@@ -937,7 +937,31 @@
     "authentication": "Authentifizierung",
     "desktopScope": "Konfiguriert Claude Desktop getrennt von Claude Code CLI; Desktop nach dem Anwenden vollständig beenden und neu öffnen",
     "desktopApplied": "Desktop-Konfiguration gespeichert — Claude Desktop vollständig beenden und neu öffnen",
-    "desktopRestored": "Vorherige Desktop-Konfiguration wiederhergestellt — Claude Desktop vollständig beenden und neu öffnen"
+    "desktopRestored": "Vorherige Desktop-Konfiguration wiederhergestellt — Claude Desktop vollständig beenden und neu öffnen",
+    "advancedDescription": "Benutzerdefinierte API-Verbindungen und einmaliger Zugangsdatenimport",
+    "marketApps": {
+      "workspace": "Aktueller Market-Arbeitsbereich",
+      "workspaceHelp": "Wähle einen gekauften Arbeitsbereich in der vorhandenen Modell- und Quellenauswahl von ORG2; verbundene Apps folgen der Auswahl automatisch",
+      "loading": "Gekaufte Arbeitsbereiche werden geladen…",
+      "loadFailed": "Gekaufte Arbeitsbereiche konnten nicht geladen werden",
+      "currentValue": "{{workspace}} · {{model}}",
+      "auto": "Automatisches Modell",
+      "chooseInPicker": "Wähle zuerst einen gekauften Arbeitsbereich in der ORG2-Modellauswahl",
+      "nonePurchased": "Noch keine Market-Arbeitsbereiche gekauft",
+      "claudeHelp": "Claude Code und Claude Desktop folgen demselben ORG2-Arbeitsbereich, behalten aber getrennte Konfigurationen und Wiederherstellungspunkte",
+      "checking": "App wird geprüft…",
+      "unavailable": "Für diese installierte Version nicht verfügbar",
+      "notInstalled": "Nicht installiert",
+      "following": "Folgt dem aktuellen ORG2-Arbeitsbereich",
+      "original": "Verwendet die ursprüngliche App-Konfiguration",
+      "connect": "ORG2 folgen",
+      "open": "App öffnen",
+      "disconnect": "Nicht mehr folgen",
+      "connected": "Die App folgt jetzt dem aktuellen ORG2-Arbeitsbereich",
+      "opened": "App geöffnet",
+      "disconnected": "Die vorherige App-Konfiguration wurde wiederhergestellt",
+      "actionFailed": "Diese App-Verbindung konnte nicht aktualisiert werden"
+    }
   },
   "claudeProfiles": {
     "new": "Neues Profil",

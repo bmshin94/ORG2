@@ -2,6 +2,8 @@ import { useCallback, useMemo } from "react";
 
 import { KEY_SOURCE } from "@src/api/tauri/session";
 import { ORGII_ORCHESTRATOR } from "@src/assets/providers";
+import type { MarketProfileSource } from "@src/features/MarketConnect/marketProfiles";
+import { findMarketSourceForRecent } from "@src/features/MarketConnect/marketProfiles";
 import type { AdvancedConfig } from "@src/features/SessionCreator/types";
 import type { KeyVaultAccount } from "@src/hooks/keyVault/types";
 import { isPairCompatible } from "@src/hooks/models/modelPairCompatibility";
@@ -12,7 +14,12 @@ import { resolveDefaultVariant } from "@src/util/defaultModelVariant";
 import { resolveModelVariantFields } from "@src/util/modelVariants";
 
 import type { SpotlightItem } from "../../types";
-import { buildKeyItems, buildKeyModelItems } from "./keyFirstItems";
+import {
+  buildKeyItems,
+  buildKeyModelItems,
+  buildMarketProfileItems,
+  buildMarketProfileModelItems,
+} from "./keyFirstItems";
 import {
   MODEL_SECTION,
   buildGroupByModel,
@@ -31,11 +38,16 @@ import type { UnifiedModelPaletteData } from "./useUnifiedModelPaletteData";
 interface UseUnifiedModelPaletteItemsParams {
   advancedConfig: AdvancedConfig;
   accounts: KeyVaultAccount[];
+  marketSources: MarketProfileSource[];
+  marketProfilesLoading: boolean;
+  marketProfilesError: string | null;
+  refreshMarketProfiles: () => Promise<void>;
   accountLookup: UnifiedModelPaletteData["accountLookup"];
   orgiiModelSet: UnifiedModelPaletteData["orgiiModelSet"];
   orgiiCategoryIds: UnifiedModelPaletteData["orgiiCategoryIds"];
   orgiiPoolEnabled: boolean;
   isCliAgent: boolean;
+  cliAgentType: UnifiedModelPaletteData["cliAgentType"];
   recentEntries: RecentModelEntry[];
   sourceOptions: SourceOption[];
   selectedModelId: string | null;
@@ -50,13 +62,17 @@ interface UseUnifiedModelPaletteItemsParams {
     modelLabel: string,
     groupModelIds: string[]
   ) => void;
-  handleSourceSelect: (source: SourceOption) => void;
+  handleSourceSelect: (source: SourceOption, modelOverride?: string) => void;
   handleRecentSelect: (entry: RecentModelEntry) => void;
   reselectVariant: (entry: RecentModelEntry, nextModelId: string) => void;
   /** Key-first mode inputs (see `keyFirstItems.tsx`). */
   selectedKeyAccountId: string | null;
   handleKeySelect: (accountId: string) => void;
   handleKeyModelSelect: (account: KeyVaultAccount, modelId: string) => void;
+  handleMarketModelSelect: (
+    source: MarketProfileSource,
+    modelId: string
+  ) => void;
   saveKey: UnifiedModelPaletteData["saveKey"];
   modelAliasVersion: number;
   tCommon: (key: string) => string;
@@ -65,11 +81,16 @@ interface UseUnifiedModelPaletteItemsParams {
 export function useUnifiedModelPaletteItems({
   advancedConfig,
   accounts,
+  marketSources,
+  marketProfilesLoading,
+  marketProfilesError,
+  refreshMarketProfiles,
   accountLookup,
   orgiiModelSet,
   orgiiCategoryIds,
   orgiiPoolEnabled,
   isCliAgent,
+  cliAgentType,
   recentEntries,
   sourceOptions,
   selectedModelId,
@@ -82,21 +103,34 @@ export function useUnifiedModelPaletteItems({
   selectedKeyAccountId,
   handleKeySelect,
   handleKeyModelSelect,
+  handleMarketModelSelect,
   saveKey,
   modelAliasVersion,
   tCommon,
 }: UseUnifiedModelPaletteItemsParams) {
   const compatibleRecentEntries = useMemo(
     () =>
-      recentEntries.filter((entry) =>
-        isPairCompatible(entry, {
+      recentEntries.filter((entry) => {
+        if (entry.credentialSource?.startsWith("market:")) {
+          return Boolean(findMarketSourceForRecent(marketSources, entry));
+        }
+        return isPairCompatible(entry, {
           accounts,
           orgiiPoolEnabled,
           orgiiModelSet,
           orgiiCategoryIds,
-        })
-      ),
-    [recentEntries, accounts, orgiiPoolEnabled, orgiiModelSet, orgiiCategoryIds]
+          cliAgentType,
+        });
+      }),
+    [
+      recentEntries,
+      accounts,
+      orgiiPoolEnabled,
+      orgiiModelSet,
+      orgiiCategoryIds,
+      cliAgentType,
+      marketSources,
+    ]
   );
 
   const persistDefaultVariantForAccount = useCallback(
@@ -166,6 +200,7 @@ export function useUnifiedModelPaletteItems({
       sourceType: advancedConfig.keySource ?? KEY_SOURCE.OWN,
       accountId: inferredAccount?.id ?? advancedConfig.selectedAccountId,
       accountName: advancedConfig.selectedSourceLabel ?? inferredAccount?.name,
+      credentialSource: advancedConfig.credentialSource,
       modelType:
         advancedConfig.selectedSourceModelType ??
         advancedConfig.listingModelType ??
@@ -269,6 +304,7 @@ export function useUnifiedModelPaletteItems({
       buildAllModelItems({
         accountLookup,
         accounts,
+        marketSources,
         handleModelSelect,
         modelAliasVersion,
         resolveGroupLaunchModel,
@@ -276,6 +312,7 @@ export function useUnifiedModelPaletteItems({
     [
       accountLookup,
       accounts,
+      marketSources,
       handleModelSelect,
       modelAliasVersion,
       resolveGroupLaunchModel,
@@ -287,6 +324,7 @@ export function useUnifiedModelPaletteItems({
       buildAllModelItems({
         accountLookup,
         accounts,
+        marketSources,
         handleModelSelect: handleModelPreview ?? handleModelSelect,
         modelAliasVersion,
         resolveGroupLaunchModel,
@@ -294,6 +332,7 @@ export function useUnifiedModelPaletteItems({
     [
       accountLookup,
       accounts,
+      marketSources,
       handleModelPreview,
       handleModelSelect,
       modelAliasVersion,
@@ -301,38 +340,95 @@ export function useUnifiedModelPaletteItems({
     ]
   );
 
-  const sourceItems = useMemo(
-    (): SpotlightItem[] =>
-      buildSourceItems({
-        sourceOptions,
-        selectedModelId,
-        selectedGroupModelIds,
-        handleSourceSelect,
-        accounts,
-        persistDefaultVariantForAccount,
-      }),
-    [
+  const sourceItems = useMemo((): SpotlightItem[] => {
+    const items = buildSourceItems({
       sourceOptions,
       selectedModelId,
       selectedGroupModelIds,
       handleSourceSelect,
       accounts,
       persistDefaultVariantForAccount,
-    ]
-  );
+    });
+    if (marketProfilesLoading) {
+      items.push({
+        id: "market-profiles:loading",
+        label: tCommon("integrations:marketConnection.loadingPurchases"),
+        icon: "",
+        type: "action",
+        action: () => {},
+        data: { testId: "market-profiles-loading" },
+      });
+    } else if (marketProfilesError) {
+      items.push({
+        id: "market-profiles:error",
+        label: tCommon("integrations:marketConnection.purchasesFailed"),
+        icon: "",
+        type: "action",
+        action: () => void refreshMarketProfiles(),
+        data: { testId: "market-profiles-error" },
+      });
+    }
+    return items;
+  }, [
+    sourceOptions,
+    selectedModelId,
+    selectedGroupModelIds,
+    handleSourceSelect,
+    accounts,
+    persistDefaultVariantForAccount,
+    marketProfilesLoading,
+    marketProfilesError,
+    refreshMarketProfiles,
+    tCommon,
+  ]);
 
   // ── Key-first mode ────────────────────────────────────────────────────
   // Left column: keys. Right column: the focused key's model families.
-  const keyItems = useMemo(
-    (): SpotlightItem[] =>
-      buildKeyItems({
+  const keyItems = useMemo((): SpotlightItem[] => {
+    const items: SpotlightItem[] = [
+      ...buildKeyItems({
         accounts,
         isCliAgent,
         onSelectKey: handleKeySelect,
         onCommit: handleKeyModelSelect,
       }),
-    [accounts, isCliAgent, handleKeySelect, handleKeyModelSelect]
-  );
+      ...buildMarketProfileItems({
+        sources: marketSources,
+        onSelect: handleKeySelect,
+        marketLabel: tCommon("integrations:marketConnection.title"),
+      }),
+    ];
+    if (marketProfilesLoading) {
+      items.push({
+        id: "market-profiles:loading",
+        label: tCommon("integrations:marketConnection.loadingPurchases"),
+        icon: "",
+        type: "action",
+        action: () => {},
+        data: { testId: "market-profiles-loading" },
+      });
+    } else if (marketProfilesError) {
+      items.push({
+        id: "market-profiles:error",
+        label: tCommon("integrations:marketConnection.purchasesFailed"),
+        icon: "",
+        type: "action",
+        action: () => void refreshMarketProfiles(),
+        data: { testId: "market-profiles-error" },
+      });
+    }
+    return items;
+  }, [
+    accounts,
+    isCliAgent,
+    handleKeySelect,
+    handleKeyModelSelect,
+    marketSources,
+    marketProfilesLoading,
+    marketProfilesError,
+    refreshMarketProfiles,
+    tCommon,
+  ]);
 
   const selectedKeyAccount = useMemo(
     () =>
@@ -342,16 +438,35 @@ export function useUnifiedModelPaletteItems({
     [accounts, selectedKeyAccountId]
   );
 
+  const selectedMarketSource = useMemo(
+    () =>
+      selectedKeyAccountId
+        ? marketSources.find((source) => source.id === selectedKeyAccountId)
+        : undefined,
+    [marketSources, selectedKeyAccountId]
+  );
+
   const keyModelItems = useMemo(
     (): SpotlightItem[] =>
-      selectedKeyAccount
-        ? buildKeyModelItems({
-            account: selectedKeyAccount,
-            onCommit: handleKeyModelSelect,
-            persistDefaultVariantForAccount,
+      selectedMarketSource
+        ? buildMarketProfileModelItems({
+            source: selectedMarketSource,
+            onCommit: handleMarketModelSelect,
           })
-        : [],
-    [selectedKeyAccount, handleKeyModelSelect, persistDefaultVariantForAccount]
+        : selectedKeyAccount
+          ? buildKeyModelItems({
+              account: selectedKeyAccount,
+              onCommit: handleKeyModelSelect,
+              persistDefaultVariantForAccount,
+            })
+          : [],
+    [
+      selectedKeyAccount,
+      selectedMarketSource,
+      handleKeyModelSelect,
+      handleMarketModelSelect,
+      persistDefaultVariantForAccount,
+    ]
   );
 
   const recentHeader = useMemo(

@@ -7,7 +7,8 @@
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    if args.next().as_deref() == Some("--session-provenance-hook") {
+    let command = args.next();
+    if command.as_deref() == Some("--session-provenance-hook") {
         if let Some(source) = args.next() {
             // Hooks are observational: capture failure must never fail or delay
             // the agent tool invocation that triggered this process.

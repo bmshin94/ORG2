@@ -349,7 +349,7 @@ pub(crate) fn authorize_managed(
     Err("Test this endpoint in Harness connections before enabling it".into())
 }
 
-async fn verify_installed_version(agent: &str) -> Result<(), String> {
+pub(crate) async fn verify_installed_version(agent: &str) -> Result<(), String> {
     if ConnectionTarget::try_from(agent)? == ConnectionTarget::ClaudeDesktop {
         let version = desktop::installation()
             .await?
