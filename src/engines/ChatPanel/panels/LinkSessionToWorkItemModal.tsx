@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { Virtuoso } from "react-virtuoso";
 
 import { projectApi } from "@src/api/http/project";
 import { linkSessionToWorkItem } from "@src/api/tauri/agent/session";
@@ -9,6 +8,7 @@ import Button from "@src/components/Button";
 import Input from "@src/components/Input";
 import Message from "@src/components/Message";
 import PageNotice from "@src/components/PageNotice";
+import { VirtualList } from "@src/components/VirtualList";
 import {
   Cancel01Icon,
   HugeiconsIcon,
@@ -206,12 +206,12 @@ const LinkSessionToWorkItemModal: React.FC<LinkSessionToWorkItemModalProps> = ({
               {t("chat.linkWorkItem.empty")}
             </div>
           ) : (
-            <Virtuoso
+            <VirtualList
               data={filteredItems}
               data-testid="session-link-work-item-virtual-list"
               style={{ height: "100%" }}
-              defaultItemHeight={58}
-              increaseViewportBy={{ top: 116, bottom: 232 }}
+              estimatedItemHeight={58}
+              overscanPx={232}
               computeItemKey={(_index, option) =>
                 `${option.project.slug}:${option.item.shortId}`
               }

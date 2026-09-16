@@ -5,7 +5,6 @@
  */
 import React, { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Virtuoso } from "react-virtuoso";
 
 import Button from "@src/components/Button";
 import Checkbox from "@src/components/Checkbox";
@@ -13,6 +12,7 @@ import Input from "@src/components/Input";
 import { ToolbarTooltip } from "@src/components/KeyboardShortcut/ToolbarTooltip";
 import { Placeholder } from "@src/components/Placeholder";
 import Select from "@src/components/Select";
+import { VirtualList } from "@src/components/VirtualList";
 import { HEADER_ICON_SIZE } from "@src/config/workstation/tokens";
 import { useKeyedCopyCheck } from "@src/hooks/ui/useCopyCheck";
 import {
@@ -425,11 +425,11 @@ export const ConsoleTab: React.FC<ConsoleTabProps> = memo(
               fillParentHeight
             />
           ) : filteredEntries.length > CONSOLE_VIRTUALIZATION_THRESHOLD ? (
-            <Virtuoso
+            <VirtualList
               className="h-full overflow-x-hidden"
               data={filteredEntries}
               computeItemKey={(_index, entry) => entry.id}
-              increaseViewportBy={200}
+              overscanPx={200}
               itemContent={(_index, entry) => renderEntry(entry)}
             />
           ) : (

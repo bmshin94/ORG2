@@ -213,7 +213,7 @@ export const GroupItemRenderer: React.FC<GroupItemRendererProps> = memo(
       ) : null;
 
     // Wrap the rendered item in a guaranteed-non-zero-height container.
-    // react-virtuoso measures each item's `offsetHeight`; a zero-height
+    // The virtualizer measures each item’s `offsetHeight`; a zero-height
     // child triggers a "Zero-sized element, this should not happen"
     // console error. The pipeline tries to pre-filter empty events
     // (`willEventRenderContent`) but some shapes still resolve to `null`

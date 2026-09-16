@@ -32,13 +32,13 @@ import React, {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import type { VirtuosoHandle } from "react-virtuoso";
 
 import { useActionSystem } from "@src/ActionSystem";
 import Input from "@src/components/Input";
 import { Placeholder } from "@src/components/Placeholder";
 import type { TreePanelNode } from "@src/components/TreePanelSidebar/types";
 import { TREE_ROW_HEIGHT } from "@src/components/TreeRow";
+import type { VirtualListHandle } from "@src/components/VirtualList";
 import type {
   FlattenedTreeNode,
   StickyScrollNode,
@@ -127,7 +127,7 @@ export const FileTreeContent = memo(
           defaultValue: DEFAULT_NO_RESULTS_MESSAGE,
         });
 
-      const virtuosoRef = useRef<VirtuosoHandle>(null);
+      const listRef = useRef<VirtualListHandle>(null);
       const treeRef = useRef<VirtualizedStickyTreeHandle>(null);
       const containerRef = useRef<HTMLDivElement>(null);
       const memoryStatsKeyRef = useRef(Symbol("file-tree-memory"));
@@ -218,7 +218,7 @@ export const FileTreeContent = memo(
         baseFlattenedNodes,
         onToggleDirectory,
         dispatch,
-        virtuosoRef,
+        listRef,
       });
 
       useImperativeHandle(
@@ -354,7 +354,7 @@ export const FileTreeContent = memo(
         revealPath,
         revealKey,
         selectedPath,
-        virtuosoRef,
+        listRef,
         useVirtualization: flattenedNodes.length > 0,
         flattenedNodesRef,
         lastScrollTopRef,
@@ -422,7 +422,7 @@ export const FileTreeContent = memo(
                   renderItem={renderItem}
                   renderStickyItem={renderStickyItem}
                   onStickyHeaderClick={handleStickyHeaderClick}
-                  virtuosoRef={virtuosoRef}
+                  listRef={listRef}
                   loading={loading}
                   error={error}
                   emptyMessage={resolvedEmptyMessage}

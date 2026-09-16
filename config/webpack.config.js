@@ -538,7 +538,30 @@ module.exports = (env, argv) => {
               cacheGroups: {
                 initialVendors: {
                   test: /[\\/]node_modules[\\/]/,
-                  name: "vendors",
+                  // Split the initial vendor bundle PER ENTRY. `main`
+                  // (src/index.tsx, the Tauri desktop shell) and `mobile`
+                  // (src/mobileRemoteEntry.tsx, the browser Web Remote) are
+                  // separate HTML documents that never load each other's code,
+                  // but a single shared `vendors` chunk made each one download
+                  // and parse the other's static dependencies: the desktop boot
+                  // bundle carried Supabase, the react-markdown/micromark stack
+                  // and the Mobile Remote's icon set purely because
+                  // mobileRemoteEntry.tsx imports them statically.
+                  //
+                  // Naming by the sorted entry names a module actually belongs
+                  // to yields `vendors.main`, `vendors.mobile` and
+                  // `vendors.main-mobile`, so genuinely shared packages (React,
+                  // Jotai, i18next) are still emitted exactly once and shared,
+                  // while single-entry packages stay out of the other document.
+                  name(module, chunks) {
+                    const entryNames = chunks
+                      .map((chunk) => chunk.name)
+                      .filter(Boolean)
+                      .sort();
+                    return entryNames.length > 0
+                      ? `vendors.${entryNames.join("-")}`
+                      : "vendors";
+                  },
                   chunks: "initial",
                   priority: 20,
                   reuseExistingChunk: true,

@@ -2,9 +2,9 @@
 // PanelContent Component
 // ============================================
 import React, { useMemo, useState } from "react";
-import { Virtuoso } from "react-virtuoso";
 
 import Button from "@src/components/Button";
+import { VirtualList } from "@src/components/VirtualList";
 import {
   ArrowDown01Icon,
   ArrowRight01Icon,
@@ -587,11 +587,11 @@ const PanelContent: React.FC<PanelContentProps> = ({
                 onSort={handleSort}
               />
             </div>
-            <Virtuoso
+            <VirtualList
               className="min-h-0 flex-1"
               data={sortedCalls}
               computeItemKey={(_index, call) => call.id}
-              increaseViewportBy={160}
+              overscanPx={160}
               itemContent={(index, call) => (
                 <ApiCallRow
                   call={call}

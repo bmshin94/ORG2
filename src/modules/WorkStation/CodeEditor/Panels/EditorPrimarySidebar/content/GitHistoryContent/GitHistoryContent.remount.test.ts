@@ -44,8 +44,8 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("react-virtuoso", () => ({
-  Virtuoso: ({
+vi.mock("@src/components/VirtualList", () => ({
+  VirtualList: ({
     data,
     itemContent,
   }: {

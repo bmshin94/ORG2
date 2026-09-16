@@ -50,6 +50,10 @@ describe("startup static import graph", () => {
       // Removed in favour of Prism; listed so they cannot creep back.
       "highlight.js",
       "shiki",
+      // The app's own windowed lists run on @tanstack/react-virtual. The last
+      // react-virtuoso consumers are the CodeViewer diff/code panes, which are
+      // reached only through dynamic import(); nothing may pull it into boot.
+      "react-virtuoso",
       // Animation / charts / document viewers.
       "framer-motion",
       "recharts",
