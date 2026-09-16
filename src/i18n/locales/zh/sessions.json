@@ -617,7 +617,7 @@
       "positionUp": "上方",
       "positionDown": "下方",
       "showQuickActions": "显示快捷操作",
-      "showSkills": "固定 Skills",
+      "showSkills": "显示已固定的Skills",
       "showCliUpdate": "显示 CLI 更新",
       "title": "你想做什么？",
       "back": "返回起始页",
