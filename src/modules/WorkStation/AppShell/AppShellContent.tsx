@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Placeholder } from "@src/components/Placeholder";
 import { WORK_STATION_PLACEHOLDER_PAGE_BG_CLASS } from "@src/config/workstation/tokens";
 import { useBrowserContextOptional } from "@src/contexts/workstation/BrowserContext";
+import DetailPaneErrorBoundary from "@src/modules/shared/layouts/DetailPaneErrorBoundary";
 import { CODE_EDITOR_TOUR_TARGETS } from "@src/scaffold/Tutorials/codeEditorTourConfig";
 import {
   mainPaneHasBrowserHostTabsAtom,
@@ -181,9 +182,11 @@ export function AppShellContent({
             display: isAgentStation && !chatPanelFocused ? "block" : "none",
           }}
         >
-          <Suspense fallback={<AppShellLoadingPlaceholder />}>
-            <ActivitySimulator />
-          </Suspense>
+          <DetailPaneErrorBoundary label={t("errors.failedToLoadComponent")}>
+            <Suspense fallback={<AppShellLoadingPlaceholder />}>
+              <ActivitySimulator />
+            </Suspense>
+          </DetailPaneErrorBoundary>
         </div>
       )}
 
@@ -212,7 +215,9 @@ export function AppShellContent({
               display: !showStartPage && isCodeMode ? "block" : "none",
             }}
           >
-            {renderCodeEditor()}
+            <DetailPaneErrorBoundary label={t("errors.failedToLoadComponent")}>
+              {renderCodeEditor()}
+            </DetailPaneErrorBoundary>
           </div>
         )}
 
@@ -223,13 +228,15 @@ export function AppShellContent({
               display: !showStartPage && isBrowserMode ? "block" : "none",
             }}
           >
-            <Suspense fallback={<AppShellLoadingPlaceholder />}>
-              <Browser
-                repoPath={repoPath}
-                repoName={repoName}
-                isActive={isActive && !showStartPage && isBrowserMode}
-              />
-            </Suspense>
+            <DetailPaneErrorBoundary label={t("errors.failedToLoadComponent")}>
+              <Suspense fallback={<AppShellLoadingPlaceholder />}>
+                <Browser
+                  repoPath={repoPath}
+                  repoName={repoName}
+                  isActive={isActive && !showStartPage && isBrowserMode}
+                />
+              </Suspense>
+            </DetailPaneErrorBoundary>
           </div>
         )}
 
@@ -240,9 +247,11 @@ export function AppShellContent({
               display: !showStartPage && isProjectMode ? "block" : "none",
             }}
           >
-            <Suspense fallback={<AppShellLoadingPlaceholder />}>
-              <ProjectManagerCore repoPath={repoPath} repoName={repoName} />
-            </Suspense>
+            <DetailPaneErrorBoundary label={t("errors.failedToLoadComponent")}>
+              <Suspense fallback={<AppShellLoadingPlaceholder />}>
+                <ProjectManagerCore repoPath={repoPath} repoName={repoName} />
+              </Suspense>
+            </DetailPaneErrorBoundary>
           </div>
         )}
       </div>
