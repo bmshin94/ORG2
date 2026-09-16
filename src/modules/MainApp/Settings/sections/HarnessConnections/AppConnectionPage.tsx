@@ -66,6 +66,7 @@ export default function AppConnectionPage({
     profiles,
     loading: profilesLoading,
     error: profilesError,
+    refresh: refreshProfiles,
   } = useMarketExecutionProfiles({ enabled: true });
   const state = useHarnessConnection(target);
   const [picker, setPicker] = useState<PickerStep>("closed");
@@ -99,7 +100,9 @@ export default function AppConnectionPage({
       t(
         profilesLoading
           ? "harnessConnections.marketApps.loading"
-          : "harnessConnections.missingKey"
+          : profilesError
+            ? "harnessConnections.marketApps.loadFailed"
+            : "harnessConnections.missingKey"
       ))
     : (accountName ?? t("harnessConnections.original"));
   const issue =
@@ -346,9 +349,14 @@ export default function AppConnectionPage({
                     {t("harnessConnections.marketApps.loading")}
                   </p>
                 ) : profilesError ? (
-                  <p className="text-sm text-warning-6">
-                    {t("harnessConnections.marketApps.loadFailed")}
-                  </p>
+                  <div className="flex flex-col items-start gap-2">
+                    <p className="text-sm text-warning-6">
+                      {t("harnessConnections.marketApps.loadFailed")}
+                    </p>
+                    <Button onClick={() => void refreshProfiles()}>
+                      {t("harnessConnections.refresh")}
+                    </Button>
+                  </div>
                 ) : marketProfiles.length === 0 ? (
                   <p className={SECTION_DESCRIPTION_CLASSES}>
                     {t("harnessConnections.marketApps.nonePurchased")}

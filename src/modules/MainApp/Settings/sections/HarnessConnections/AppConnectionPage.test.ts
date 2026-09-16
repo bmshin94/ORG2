@@ -13,6 +13,8 @@ const restore = vi.fn();
 const open = vi.fn();
 const reload = vi.fn();
 const refresh = vi.fn();
+const refreshProfiles = vi.fn();
+let profilesError: string | null = null;
 let connected = false;
 let conflict = false;
 let installed = true;
@@ -99,7 +101,8 @@ vi.mock("@src/features/MarketConnect/marketProfiles", () => ({
   useMarketExecutionProfiles: () => ({
     profiles,
     loading: false,
-    error: null,
+    error: profilesError,
+    refresh: refreshProfiles,
   }),
 }));
 vi.mock("./useHarnessConnection", () => ({
@@ -133,6 +136,7 @@ beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   vi.clearAllMocks();
   connected = false;
+  profilesError = null;
   conflict = false;
   installed = true;
   configure.mockResolvedValue({});
@@ -256,4 +260,17 @@ it("can restore saved settings even when the client is no longer installed", asy
   expect(button("harnessConnections.restore").disabled).toBe(false);
   await act(async () => button("harnessConnections.restore").click());
   expect(restore).toHaveBeenCalledWith("claude_desktop");
+});
+
+it("offers a reload after a purchase lookup failure instead of claiming a missing key", async () => {
+  connected = true;
+  profilesError = "temporary_failure";
+  await render("claude_code");
+  await act(async () => button("common:actions.edit").click());
+  const provider = [...container.querySelectorAll("button")].find((item) =>
+    item.textContent?.startsWith("harnessConnections.marketApps.provider")
+  )!;
+  await act(async () => provider.click());
+  await act(async () => button("harnessConnections.refresh").click());
+  expect(refreshProfiles).toHaveBeenCalledOnce();
 });
