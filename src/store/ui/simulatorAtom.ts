@@ -11,6 +11,7 @@ import type { SimulatorEventFilterValue } from "@src/engines/SessionCore/core/ty
 import type { SubagentSession } from "@src/engines/Simulator/hooks/useSubagentSessions";
 import type { AppType } from "@src/engines/Simulator/types/appTypes";
 import { STATION_MODES, type StationMode } from "@src/types/ui/workstation";
+import { withCoalescedWrites } from "@src/util/core/storage/coalescedStorageWrite";
 import { createZodJsonStorage } from "@src/util/core/storage/zodStorage";
 import { getCurrentStationWindowMode } from "@src/util/platform/tauri/windowIdentity";
 
@@ -358,7 +359,11 @@ simulatorPrimarySidebarPositionAtom.debugLabel =
 export const simulatorPrimarySidebarWidthAtom = atomWithStorage<number>(
   "simulatorPrimarySidebarWidth",
   SIMULATOR_PRIMARY_SIDEBAR.defaultWidth,
-  createZodJsonStorage(z.number())
+  // Coalesced: the resize handle writes this once per animation frame while
+  // the divider is being dragged, and a synchronous localStorage write per
+  // frame is a main-thread cost for a value that only matters at rest. The
+  // atom itself still updates synchronously, so the drag stays live.
+  withCoalescedWrites(createZodJsonStorage(z.number()))
 );
 simulatorPrimarySidebarWidthAtom.debugLabel =
   "simulatorPrimarySidebarWidthAtom";
