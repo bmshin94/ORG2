@@ -11,7 +11,9 @@ const WORKSPACE = /^ws_[A-Za-z0-9_-]{1,120}$/;
 const ENTITLEMENT = /^ent_[A-Za-z0-9_-]{1,60}$/;
 
 /** Decode the metadata-only selection written to the managed app manifest.
- * It contains purchase identifiers, never a seller credential or access token. */
+ * It contains purchase identifiers, never a seller credential or access token.
+ * Legacy target grants are decoded for display only; Rust still rejects them
+ * as runtime sources and requires canonical ORG2 authorization. */
 export function parseAppliedMarketSelection(
   value: string | null | undefined
 ): AppliedMarketSelection | null {
@@ -46,7 +48,9 @@ export function parseAppliedMarketSelection(
       !UUID.test(identityUserId) ||
       typeof authorizationWorkspaceId !== "string" ||
       !WORKSPACE.test(authorizationWorkspaceId) ||
-      decoded.metadata?.target !== "org2" ||
+      !["org2", "claude-code", "claude-app", "codex"].includes(
+        String(decoded.metadata?.target)
+      ) ||
       typeof workspaceId !== "string" ||
       !WORKSPACE.test(workspaceId) ||
       typeof entitlementId !== "string" ||

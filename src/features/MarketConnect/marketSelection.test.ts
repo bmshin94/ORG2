@@ -47,7 +47,7 @@ it("matches the exact entitlement from the applied manifest", () => {
   ).toBe(second);
 });
 
-it("rejects malformed, non-ORG2, and credential-like selections", () => {
+it("rejects malformed and credential-like selections", () => {
   expect(parseAppliedMarketSelection("market:not-base64")).toBeNull();
   expect(
     parseAppliedMarketSelection(
@@ -63,4 +63,11 @@ it("reads legacy manifests using their original authorization workspace", () => 
     workspaceId: "ws_original",
     entitlementId: "ent_original",
   });
+});
+
+it("identifies a legacy app-specific purchase for display without changing its identity", () => {
+  const entry = profile("ent_old");
+  entry.entitlementWorkspaceId = "ws_original";
+  const saved = `market:${btoa(JSON.stringify({ metadata: { identity_user_id: identity, workspace_id: "ws_original", target: "claude-code" }, entitlement_id: "ent_old" }))}`;
+  expect(profileForAppliedMarketSelection([entry], saved)).toBe(entry);
 });
