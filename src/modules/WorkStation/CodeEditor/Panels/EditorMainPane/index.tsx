@@ -128,7 +128,7 @@ const EditorContent: React.FC<EditorContentProps> = memo(
     // palette). In All-Tabs mode the unified `+` menu (TabBarPlusMenu)
     // claims ⌘T directly via its own `workstation-new-tab` listener.
     useWorkStationTabShortcutBridge({
-      enabled: true,
+      host: "code",
       onCloseActiveTab: handleWorkStationCloseActiveEditorTab,
     });
 

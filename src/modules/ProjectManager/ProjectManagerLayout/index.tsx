@@ -176,7 +176,7 @@ export const ProjectManagerLayout: React.FC<ProjectManagerLayoutProps> = memo(
     // bridged here; `handleCreateProject` is still surfaced via the
     // ProjectManager trailing tab-bar action.
     useWorkStationTabShortcutBridge({
-      enabled: true,
+      host: "project",
       onCloseActiveTab: handleWorkStationCloseActiveProjectTab,
     });
 
