@@ -940,8 +940,8 @@
     "desktopRestored": "Vorherige Desktop-Konfiguration wiederhergestellt — Claude Desktop vollständig beenden und neu öffnen",
     "advancedDescription": "Benutzerdefinierte API-Verbindungen und einmaliger Zugangsdatenimport",
     "marketApps": {
-      "workspace": "Aktueller Market-Arbeitsbereich",
-      "workspaceHelp": "Wähle einen gekauften Arbeitsbereich in der vorhandenen Modell- und Quellenauswahl von ORG2; verbundene Apps folgen der Auswahl automatisch",
+      "workspace": "Gekaufte Market-Dienste",
+      "workspaceHelp": "Wähle einen gekauften Dienst in der vorhandenen Modell- und Quellenauswahl von ORG2; verbundene Apps folgen der aktuellen Auswahl automatisch",
       "loading": "Gekaufte Arbeitsbereiche werden geladen…",
       "loadFailed": "Gekaufte Arbeitsbereiche konnten nicht geladen werden",
       "currentValue": "{{workspace}} · {{model}}",
@@ -960,7 +960,11 @@
       "connected": "Die App folgt jetzt dem aktuellen ORG2-Arbeitsbereich",
       "opened": "App geöffnet",
       "disconnected": "Die vorherige App-Konfiguration wurde wiederhergestellt",
-      "actionFailed": "Diese App-Verbindung konnte nicht aktualisiert werden"
+      "actionFailed": "Diese App-Verbindung konnte nicht aktualisiert werden",
+      "current": "Aktuell",
+      "workspaceNumber": "Dienst {{index}} von {{count}}",
+      "openTerminal": "Terminal öffnen",
+      "terminalOpened": "Terminal geöffnet"
     }
   },
   "claudeProfiles": {

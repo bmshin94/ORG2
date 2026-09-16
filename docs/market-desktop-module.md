@@ -71,7 +71,7 @@ Current Market workspace
 
 Claude
   Claude Code       Original setup          [Follow ORG2]
-  Claude Desktop    Unsupported version      (disabled)
+  Claude Desktop    Following ORG2           [Open] [Stop following]
 
 Codex
   Codex             Following ORG2           [Open] [Stop following]
@@ -84,9 +84,10 @@ flowchart LR
     Market[Market website<br/>purchase and budget] -->|one-time browser handoff| ORG2
     ORG2[ORG2 source picker<br/>workspace and model] --> Chat[ORG2 chat / CLI session]
     ORG2 -->|only after explicit connect| Claude[Claude Code]
+    ORG2 -->|only after explicit connect| Desktop[Claude Desktop]
     ORG2 -->|only after explicit connect| Codex[Codex]
-    ORG2 -. unsupported format fails closed .-> Desktop[Claude Desktop]
     Claude --> Proxy[ORG2 managed proxy]
+    Desktop --> Proxy
     Codex --> Proxy
     Chat --> Proxy
     Proxy --> Market

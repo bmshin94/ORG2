@@ -17,6 +17,36 @@ import {
 } from "./rpc";
 
 export type MarketProfileAgent = "claude_code" | "codex";
+export type MarketConnectionTarget =
+  | MarketProfileAgent
+  | "claude_desktop"
+  | "org2";
+
+/**
+ * Application-facing reference to a reusable connection. This deliberately
+ * lives outside the persisted provider-profile v1 format: older ORG2 builds
+ * still require `keyId` there and can continue reading that catalog.
+ */
+export type ConnectionSourceRef =
+  | { kind: "key_vault"; keyId: string }
+  | {
+      kind: "market";
+      connection: Connection;
+      entitlementWorkspaceId: string;
+      entitlementId: string;
+    };
+
+/** Buyer-safe option used by app selectors. Internal ids remain values only. */
+export interface ConnectionOption {
+  id: string;
+  title: string;
+  sourceRef: ConnectionSourceRef;
+  modelsByTarget: Record<MarketConnectionTarget, string[]>;
+  modelCount: number;
+  duplicateOrdinal: number | null;
+  duplicateCount: number;
+  profile: MarketExecutionProfile;
+}
 
 /**
  * A purchased Market service adapted to ORG2's existing execution-profile UI.
@@ -84,6 +114,68 @@ export function dedupeMarketProfiles(
     }
   }
   return [...byEntitlement.values()];
+}
+
+function modelsForTarget(
+  profile: MarketExecutionProfile,
+  target: MarketConnectionTarget
+): string[] {
+  if (target === "claude_code" || target === "claude_desktop") {
+    return [...profile.modelsByAgent.claude_code];
+  }
+  if (target === "codex") return [...profile.modelsByAgent.codex];
+  return [
+    ...new Set([
+      ...profile.modelsByAgent.claude_code,
+      ...profile.modelsByAgent.codex,
+    ]),
+  ];
+}
+
+/**
+ * Project purchases into the shared Connection selector contract. Every
+ * entitlement remains independent. Duplicate titles are distinguished only by
+ * structured, non-identifying facts so the UI can localize their presentation.
+ */
+export function marketConnectionOptions(
+  profiles: MarketExecutionProfile[],
+  target?: MarketConnectionTarget
+): ConnectionOption[] {
+  const compatibleProfiles = target
+    ? profiles.filter((profile) => modelsForTarget(profile, target).length > 0)
+    : profiles;
+  const titleCounts = new Map<string, number>();
+  for (const profile of compatibleProfiles) {
+    titleCounts.set(profile.label, (titleCounts.get(profile.label) ?? 0) + 1);
+  }
+  const titlePositions = new Map<string, number>();
+
+  return compatibleProfiles.map((profile) => {
+    const modelsByTarget: Record<MarketConnectionTarget, string[]> = {
+      claude_code: modelsForTarget(profile, "claude_code"),
+      claude_desktop: modelsForTarget(profile, "claude_desktop"),
+      codex: modelsForTarget(profile, "codex"),
+      org2: modelsForTarget(profile, "org2"),
+    };
+    const duplicateCount = titleCounts.get(profile.label) ?? 1;
+    const duplicateOrdinal = (titlePositions.get(profile.label) ?? 0) + 1;
+    titlePositions.set(profile.label, duplicateOrdinal);
+    return {
+      id: profile.id,
+      title: profile.label,
+      sourceRef: {
+        kind: "market" as const,
+        connection: profile.connection,
+        entitlementWorkspaceId: profile.entitlementWorkspaceId,
+        entitlementId: profile.entitlementId,
+      },
+      modelsByTarget,
+      modelCount: modelsByTarget.org2.length,
+      duplicateOrdinal: duplicateCount > 1 ? duplicateOrdinal : null,
+      duplicateCount,
+      profile,
+    };
+  });
 }
 
 export function marketSourcesForAgent(

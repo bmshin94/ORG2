@@ -940,8 +940,8 @@
     "desktopRestored": "Önceki yapılandırma geri yüklendi — Claude Desktop’ı tamamen kapatıp yeniden açın",
     "advancedDescription": "Özel API bağlantıları ve tek seferlik kimlik bilgisi taşıma",
     "marketApps": {
-      "workspace": "Geçerli Market çalışma alanı",
-      "workspaceHelp": "ORG2’nin mevcut model ve kaynak seçicisinden satın alınmış bir çalışma alanı seçin; bağlı uygulamalar bu seçimi otomatik olarak izler",
+      "workspace": "Satın alınan Market hizmetleri",
+      "workspaceHelp": "ORG2’nin mevcut model ve kaynak seçicisinden satın alınmış bir hizmet seçin; bağlı uygulamalar geçerli seçimi otomatik olarak izler",
       "loading": "Satın alınan çalışma alanları yükleniyor…",
       "loadFailed": "Satın alınan çalışma alanları yüklenemedi",
       "currentValue": "{{workspace}} · {{model}}",
@@ -960,7 +960,11 @@
       "connected": "Uygulama artık geçerli ORG2 çalışma alanını izliyor",
       "opened": "Uygulama açıldı",
       "disconnected": "Uygulamanın önceki ayarı geri yüklendi",
-      "actionFailed": "Bu uygulama bağlantısı güncellenemedi"
+      "actionFailed": "Bu uygulama bağlantısı güncellenemedi",
+      "current": "Geçerli",
+      "workspaceNumber": "Hizmet {{index}} / {{count}}",
+      "openTerminal": "Terminali aç",
+      "terminalOpened": "Terminal açıldı"
     }
   },
   "claudeProfiles": {

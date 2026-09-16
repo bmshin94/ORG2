@@ -940,8 +940,8 @@
     "desktopRestored": "Đã khôi phục cấu hình trước — thoát hoàn toàn rồi mở lại Claude Desktop",
     "advancedDescription": "Kết nối API tùy chỉnh và di chuyển thông tin xác thực một lần",
     "marketApps": {
-      "workspace": "Không gian Market hiện tại",
-      "workspaceHelp": "Chọn không gian đã mua trong bộ chọn mô hình và nguồn có sẵn của ORG2; ứng dụng đã kết nối sẽ tự động theo lựa chọn đó",
+      "workspace": "Dịch vụ Market đã mua",
+      "workspaceHelp": "Chọn dịch vụ đã mua trong bộ chọn mô hình và nguồn có sẵn của ORG2; ứng dụng đã kết nối sẽ tự động theo lựa chọn hiện tại",
       "loading": "Đang tải không gian đã mua…",
       "loadFailed": "Không thể tải không gian đã mua",
       "currentValue": "{{workspace}} · {{model}}",
@@ -960,7 +960,11 @@
       "connected": "Ứng dụng hiện theo không gian ORG2 hiện tại",
       "opened": "Đã mở ứng dụng",
       "disconnected": "Đã khôi phục cấu hình trước của ứng dụng",
-      "actionFailed": "Không thể cập nhật kết nối ứng dụng này"
+      "actionFailed": "Không thể cập nhật kết nối ứng dụng này",
+      "current": "Hiện tại",
+      "workspaceNumber": "Dịch vụ {{index}} / {{count}}",
+      "openTerminal": "Mở terminal",
+      "terminalOpened": "Đã mở terminal"
     }
   },
   "claudeProfiles": {

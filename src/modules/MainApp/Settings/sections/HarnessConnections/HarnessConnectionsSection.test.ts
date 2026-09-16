@@ -21,7 +21,7 @@ vi.mock("@src/scaffold/WizardSystem/variants/KeyVault", () => ({
 vi.mock("./useHarnessConnection", () => ({
   refreshHarnessConnections: vi.fn(),
 }));
-vi.mock("./MarketNativeAppConnections", () => ({
+vi.mock("./AppConnectionPage", () => ({
   default: () => createElement("div", { "data-testid": "market-native-apps" }),
 }));
 vi.mock("./ClaudeProfileEditor", () => ({
@@ -59,7 +59,7 @@ it("keeps Market app wiring primary and provider configuration advanced", async 
     ).toBe("claude_code");
     expect(
       container.querySelector('[data-testid="credential-import"]')
-    ).not.toBeNull();
+    ).toBeNull();
     for (const [label, target] of [
       ["Claude Desktop", "claude_desktop"],
       ["Codex", "codex"],
@@ -70,7 +70,11 @@ it("keeps Market app wiring primary and provider configuration advanced", async 
       )!;
       await act(async () => button.click());
       expect(button.getAttribute("aria-pressed")).toBe("true");
-      expect(container.querySelectorAll("section")).toHaveLength(1);
+      expect(container.querySelectorAll("section")).toHaveLength(0);
+      const reopenAdvanced = [...container.querySelectorAll("button")].find(
+        (item) => item.textContent === "harnessConnections.advanced"
+      )!;
+      await act(async () => reopenAdvanced.click());
       expect(
         container.querySelector("section")?.getAttribute("data-target")
       ).toBe(target);

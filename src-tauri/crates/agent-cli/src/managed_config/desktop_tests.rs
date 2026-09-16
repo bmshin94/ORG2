@@ -1,5 +1,5 @@
 #[cfg(any(target_os = "macos", windows))]
-use super::tests::{OrgiiHomeGuard, TEST_ENV_LOCK};
+use super::tests::{test_manifest, test_target, OrgiiHomeGuard, TEST_ENV_LOCK};
 use super::*;
 use std::collections::BTreeMap;
 #[cfg(any(target_os = "macos", windows))]
@@ -33,6 +33,8 @@ fn connection() -> DirectConnection {
         base_url: "https://desktop.example/anthropic".into(),
         api_key: "synthetic-desktop-key".into(),
         desktop_auth_scheme: Some("x-api-key".into()),
+        desktop_helper: None,
+        proxy_token: None,
     }
 }
 
@@ -71,7 +73,6 @@ fn malformed_or_unowned_configuration_and_unsupported_models_are_rejected() {
     for (id, raw) in [
         ("desktop", "[]"),
         ("desktop", "{secret"),
-        ("third_party", r#"{"enterpriseConfig":{}}"#),
         ("catalog", r#"{"entries":{}}"#),
         ("profile", "{}"),
     ] {
@@ -124,11 +125,11 @@ fn desktop_and_cli_apply_restore_and_manifest_ownership_are_independent() {
     );
     let desktop_bytes: Vec<_> = targets
         .iter()
-        .map(|(_, _, path)| std::fs::read(path).unwrap())
+        .map(|(_, _, path)| std::fs::read(path).ok())
         .collect();
     operations::restore_agent_default_unlocked("claude_code", false).unwrap();
     for (index, (_, _, path)) in targets.iter().enumerate() {
-        assert_eq!(std::fs::read(path).unwrap(), desktop_bytes[index]);
+        assert_eq!(std::fs::read(path).ok(), desktop_bytes[index]);
     }
     assert!(restore_managed_configs_for_shutdown()
         .unwrap()
@@ -155,7 +156,7 @@ fn stale_catalog_and_external_edit_block_apply_and_restore_without_partial_write
     let before: Vec<_> = status
         .target_files
         .iter()
-        .map(|file| std::fs::read(&file.target_path).unwrap())
+        .map(|file| std::fs::read(&file.target_path).ok())
         .collect();
     let catalog = status
         .target_files
@@ -167,9 +168,86 @@ fn stale_catalog_and_external_edit_block_apply_and_restore_without_partial_write
     assert!(operations::restore_agent_default_unlocked(desktop::TARGET, false).is_err());
     for (index, file) in status.target_files.iter().enumerate() {
         if file.id != "catalog" {
-            assert_eq!(std::fs::read(&file.target_path).unwrap(), before[index]);
+            assert_eq!(std::fs::read(&file.target_path).ok(), before[index]);
         }
     }
+}
+
+#[cfg(any(target_os = "macos", windows))]
+#[test]
+fn proxy_backed_desktop_profile_uses_helper_and_restores_it_atomically() {
+    let _lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii"));
+    let _external = ExternalHome::set(temp.path());
+    let token = "ab".repeat(32);
+    let helper_path = desktop::credential_helper_path();
+    let mut value = connection();
+    value.api_key.clear();
+    value.desktop_auth_scheme = Some("bearer".into());
+    value.base_url = proxy::claude_desktop_proxy_base_url(&proxy::managed_proxy_url(), &token);
+    value.desktop_helper = Some(desktop::CredentialHelper {
+        path: helper_path.clone(),
+        token: token.clone(),
+        models: vec!["claude-opus-5".into(), value.model.clone()],
+    });
+    value.proxy_token = Some(token.clone());
+
+    let status = enable_direct(desktop::TARGET, value, None).unwrap();
+    assert_eq!(status.mode, CliConfigMode::OrgiiManaged);
+    assert_eq!(status.selected_key_id.as_deref(), Some("desktop-key"));
+    let profile = std::fs::read_to_string(
+        status
+            .target_files
+            .iter()
+            .find(|file| file.id == "profile")
+            .unwrap()
+            .target_path
+            .as_str(),
+    )
+    .unwrap();
+    let profile: serde_json::Value = serde_json::from_str(&profile).unwrap();
+    assert_eq!(profile["inferenceCredentialKind"], "helper-script");
+    assert_eq!(profile["inferenceGatewayAuthScheme"], "bearer");
+    assert!(profile.get("inferenceGatewayApiKey").is_none());
+    assert_eq!(
+        std::fs::read_to_string(&helper_path)
+            .unwrap()
+            .contains(&token),
+        true
+    );
+
+    operations::restore_agent_default_unlocked(desktop::TARGET, false).unwrap();
+    assert!(!helper_path.exists());
+}
+
+#[cfg(any(target_os = "macos", windows))]
+#[test]
+fn restored_legacy_target_does_not_block_the_current_desktop_schema() {
+    let _lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii"));
+    let _external = ExternalHome::set(temp.path());
+    let current = desktop::targets().unwrap();
+    std::fs::create_dir_all(current[0].2.parent().unwrap()).unwrap();
+    std::fs::write(&current[0].2, "{}").unwrap();
+
+    let mut targets = manifest::agent_manifest_targets(desktop::TARGET).unwrap();
+    targets.push(test_target(
+        "removed-runtime-config",
+        &temp.path().join("Claude-3p/claude_desktop_config.json"),
+        &temp.path().join("legacy-profile"),
+    ));
+    let mut stale = test_manifest(desktop::TARGET, targets);
+    stale.mode = CliConfigMode::Default;
+    manifest::write_manifest(&stale).unwrap();
+
+    let applied = enable_direct(desktop::TARGET, connection(), None).unwrap();
+    assert_eq!(applied.target_files.len(), current.len());
+    assert!(applied
+        .target_files
+        .iter()
+        .all(|target| target.id != "removed-runtime-config"));
 }
 
 #[cfg(any(target_os = "macos", windows))]

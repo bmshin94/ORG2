@@ -10,12 +10,21 @@ fn shell_word(value: &str) -> Result<String, String> {
     Ok(format!("'{}'", value.replace('\'', "'\\''")))
 }
 
+fn native_app(agent: &str) -> Option<(&'static str, Option<&'static str>, &'static str)> {
+    match agent {
+        "claude_desktop" => Some((
+            "com.anthropic.claudefordesktop",
+            Some("claude://code/new"),
+            "Claude Desktop",
+        )),
+        "codex" => Some(("com.openai.codex", None, "Codex")),
+        _ => None,
+    }
+}
+
 pub async fn open(agent: String, key: String, model: String) -> Result<(), String> {
     if !cfg!(target_os = "macos") {
         return Err("Opening Market clients is not available on this platform yet".into());
-    }
-    if agent == "claude_desktop" {
-        return Err(super::CLAUDE_DESKTOP_UNSUPPORTED.into());
     }
     crate::harness_connections::verify_installed_version(&agent).await?;
     let selection = super::source::Selection::parse(&key, &agent)?;
@@ -39,9 +48,23 @@ pub async fn open(agent: String, key: String, model: String) -> Result<(), Strin
     }
 
     tokio::task::spawn_blocking(move || {
+        if let Some((bundle_id, deep_link, display_name)) = native_app(&agent) {
+            let mut command = std::process::Command::new("/usr/bin/open");
+            command.args(["-b", bundle_id]);
+            if let Some(value) = deep_link {
+                command.arg(value);
+            }
+            let status = command
+                .status()
+                .map_err(|_| format!("Could not open {display_name}"))?;
+            return if status.success() {
+                Ok(())
+            } else {
+                Err(format!("Could not open {display_name}"))
+            };
+        }
         let executable = match agent.as_str() {
             "claude_code" => "claude",
-            "codex" => "codex",
             _ => return Err("Unsupported Market client".into()),
         };
         let folder = app_paths::orgii_root()
@@ -80,7 +103,7 @@ pub async fn open(agent: String, key: String, model: String) -> Result<(), Strin
 
 #[cfg(test)]
 mod tests {
-    use super::shell_word;
+    use super::{native_app, shell_word};
 
     #[test]
     fn launch_paths_are_quoted_without_shell_expansion() {
@@ -89,5 +112,22 @@ mod tests {
             "'/Users/O'\\''Neil/$(touch unwanted)'"
         );
         assert!(shell_word("bad\npath").is_err());
+    }
+
+    #[test]
+    fn opens_cli_in_terminal_and_desktop_clients_as_native_apps() {
+        assert_eq!(native_app("claude_code"), None);
+        assert_eq!(
+            native_app("claude_desktop"),
+            Some((
+                "com.anthropic.claudefordesktop",
+                Some("claude://code/new"),
+                "Claude Desktop"
+            ))
+        );
+        assert_eq!(
+            native_app("codex"),
+            Some(("com.openai.codex", None, "Codex"))
+        );
     }
 }

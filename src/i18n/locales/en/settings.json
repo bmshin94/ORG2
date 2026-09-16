@@ -1021,8 +1021,8 @@
     "desktopRestored": "Previous Desktop configuration restored — fully quit and reopen Claude Desktop",
     "advancedDescription": "Custom API connections and one-time credential migration",
     "marketApps": {
-      "workspace": "Current Market workspace",
-      "workspaceHelp": "Choose a purchased workspace in ORG2’s existing model and source picker; connected apps follow that choice automatically",
+      "workspace": "Purchased Market services",
+      "workspaceHelp": "Choose a purchased service in ORG2’s existing model and source picker; connected apps follow the current choice automatically",
       "loading": "Loading purchased workspaces…",
       "loadFailed": "Purchased workspaces could not be loaded",
       "currentValue": "{{workspace}} · {{model}}",
@@ -1041,7 +1041,11 @@
       "connected": "The app now follows the current ORG2 workspace",
       "opened": "App opened",
       "disconnected": "The app’s previous setup was restored",
-      "actionFailed": "Could not update this app connection"
+      "actionFailed": "Could not update this app connection",
+      "current": "Current",
+      "workspaceNumber": "Service {{index}} of {{count}}",
+      "openTerminal": "Open terminal",
+      "terminalOpened": "Terminal opened"
     }
   },
   "claudeProfiles": {

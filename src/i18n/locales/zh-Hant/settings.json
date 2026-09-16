@@ -940,8 +940,8 @@
     "desktopRestored": "已還原先前的桌面設定，請完全結束並重新開啟 Claude Desktop",
     "advancedDescription": "自訂 API 連線和一次性憑證遷移",
     "marketApps": {
-      "workspace": "目前 Market 工作區",
-      "workspaceHelp": "在 ORG2 原有的模型與來源選擇器中選擇已購工作區；已連線的應用程式會自動跟隨切換",
+      "workspace": "已購 Market 服務",
+      "workspaceHelp": "在 ORG2 原有的模型與來源選擇器中選擇已購服務；已連線的應用程式會自動跟隨目前選擇",
       "loading": "正在讀取已購工作區…",
       "loadFailed": "無法讀取已購工作區",
       "currentValue": "{{workspace}} · {{model}}",
@@ -960,7 +960,11 @@
       "connected": "應用程式已開始跟隨 ORG2 目前工作區",
       "opened": "應用程式已開啟",
       "disconnected": "已還原應用程式先前的設定",
-      "actionFailed": "無法更新此應用程式連線"
+      "actionFailed": "無法更新此應用程式連線",
+      "current": "目前使用",
+      "workspaceNumber": "服務 {{index}} / {{count}}",
+      "openTerminal": "開啟終端機",
+      "terminalOpened": "已開啟終端機"
     }
   },
   "claudeProfiles": {

@@ -40,7 +40,10 @@ export function modelForExternalTarget(
 export function isMarketManagedView(
   view: HarnessConnectionView | null | undefined
 ): boolean {
-  return Boolean(view?.config.selectedKeyId?.startsWith("market:"));
+  return Boolean(
+    view?.config.mode === "orgii_managed" &&
+    view.config.selectedKeyId?.startsWith("market:")
+  );
 }
 
 function expectedHashes(view: HarnessConnectionView) {

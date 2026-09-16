@@ -940,8 +940,8 @@
     "desktopRestored": "Configuração anterior restaurada — encerre completamente e reabra o Claude Desktop",
     "advancedDescription": "Conexões de API personalizadas e migração única de credenciais",
     "marketApps": {
-      "workspace": "Espaço do Market atual",
-      "workspaceHelp": "Escolha um espaço comprado no seletor existente de modelos e fontes do ORG2; os aplicativos conectados seguirão essa escolha automaticamente",
+      "workspace": "Serviços do Market comprados",
+      "workspaceHelp": "Escolha um serviço comprado no seletor existente de modelos e fontes do ORG2; os aplicativos conectados seguirão automaticamente a escolha atual",
       "loading": "Carregando espaços comprados…",
       "loadFailed": "Não foi possível carregar os espaços comprados",
       "currentValue": "{{workspace}} · {{model}}",
@@ -960,7 +960,11 @@
       "connected": "O aplicativo agora segue o espaço atual do ORG2",
       "opened": "Aplicativo aberto",
       "disconnected": "A configuração anterior do aplicativo foi restaurada",
-      "actionFailed": "Não foi possível atualizar esta conexão"
+      "actionFailed": "Não foi possível atualizar esta conexão",
+      "current": "Atual",
+      "workspaceNumber": "Serviço {{index}} de {{count}}",
+      "openTerminal": "Abrir terminal",
+      "terminalOpened": "Terminal aberto"
     }
   },
   "claudeProfiles": {

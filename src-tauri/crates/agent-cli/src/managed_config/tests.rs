@@ -849,9 +849,17 @@ fn restore_is_a_noop_when_default_mode_is_already_active() {
     manifest.mode = CliConfigMode::Default;
     write_manifest(&manifest).unwrap();
 
-    restore_agent_default_unlocked(CODEX_AGENT, false).unwrap();
+    let restored = restore_agent_default_unlocked(CODEX_AGENT, false).unwrap();
 
     assert_eq!(std::fs::read(&target_path).unwrap(), b"new-user-change");
+    assert_eq!(restored.mode, CliConfigMode::Default);
+    assert!(restored.selected_key_id.is_none());
+    assert!(restored.selected_provider.is_none());
+    assert!(restored.selected_model.is_none());
+    assert!(restored.proxy_url.is_none());
+    let persisted = read_manifest(CODEX_AGENT).unwrap().unwrap();
+    assert!(persisted.selected_key_id.is_none());
+    assert!(persisted.proxy_token.is_none());
 }
 
 #[test]

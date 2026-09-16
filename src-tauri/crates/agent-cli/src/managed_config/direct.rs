@@ -12,6 +12,13 @@ pub struct DirectConnection {
     pub base_url: String,
     pub api_key: String,
     pub desktop_auth_scheme: Option<String>,
+    /// Claude Desktop can fetch the short-lived local-proxy credential from an
+    /// executable helper. The helper contains only a loopback proxy token; it
+    /// never receives a Market bearer or refresh credential.
+    pub desktop_helper: Option<super::desktop::CredentialHelper>,
+    /// Present only when this otherwise-direct Desktop profile is backed by
+    /// ORG2's authenticated local proxy.
+    pub proxy_token: Option<String>,
 }
 
 pub(super) fn generate_direct_configs(
@@ -20,7 +27,9 @@ pub(super) fn generate_direct_configs(
     connection: &DirectConnection,
     previous: Option<&CliConfigProfileManifest>,
 ) -> Result<BTreeMap<String, String>, String> {
-    if connection.api_key.trim().is_empty() || connection.model.trim().is_empty() {
+    if (connection.api_key.trim().is_empty() && connection.desktop_helper.is_none())
+        || connection.model.trim().is_empty()
+    {
         return Err("An API key and model are required".into());
     }
     if agent == super::desktop::TARGET {
@@ -31,6 +40,9 @@ pub(super) fn generate_direct_configs(
     }
     if connection.desktop_auth_scheme.is_some() {
         return Err("Desktop authentication settings cannot be applied to a CLI target".into());
+    }
+    if connection.desktop_helper.is_some() || connection.proxy_token.is_some() {
+        return Err("Desktop proxy settings cannot be applied to a CLI target".into());
     }
     let (file_id, generated) = match agent {
         "claude_code" => (

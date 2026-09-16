@@ -12,10 +12,6 @@ pub(crate) fn register_source() -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(feature = "market-connect")]
-const CLAUDE_DESKTOP_UNSUPPORTED: &str =
-    "Claude Desktop Market connections are unavailable until its current configuration format is verified";
-
 #[derive(Serialize)]
 pub struct ConnectionView {
     identity_user_id: String,
@@ -65,10 +61,7 @@ fn validate_external_profile_request(
     if target != &market_connect::Target::Org2 {
         return Err("Market profile requires ORG2 authorization".into());
     }
-    if agent == "claude_desktop" {
-        return Err(CLAUDE_DESKTOP_UNSUPPORTED.into());
-    }
-    if !matches!(agent, "claude_code" | "codex") {
+    if !matches!(agent, "claude_code" | "claude_desktop" | "codex") {
         return Err("Unsupported Market profile app".into());
     }
     if model.trim().is_empty() || model.len() > 256 {
@@ -199,13 +192,34 @@ pub async fn market_connection_configure_profile(
             model.clone(),
         )
         .await?;
-        let status = crate::cli_managed_proxy::enable_dynamic_managed(
-            agent,
-            selection.clone(),
-            model,
-            expected_hashes,
-        )
-        .await?;
+        let status = if agent == "claude_desktop" {
+            let parsed = source::Selection::parse(&selection, &agent)?;
+            let entries = source::options(parsed.metadata.clone()).await?;
+            let models = entries
+                .iter()
+                .find(|entry| {
+                    entry.workspace_id == parsed.workspace_id
+                        && entry.entitlement_id == parsed.entitlement_id
+                })
+                .and_then(|entry| entry.models_by_agent.get("claude"))
+                .cloned()
+                .ok_or("No Claude models available")?;
+            crate::cli_managed_proxy::enable_dynamic_desktop(
+                selection.clone(),
+                model,
+                models,
+                expected_hashes,
+            )
+            .await?
+        } else {
+            crate::cli_managed_proxy::enable_dynamic_managed(
+                agent,
+                selection.clone(),
+                model,
+                expected_hashes,
+            )
+            .await?
+        };
         Ok(ConfiguredProfile { status, selection })
     }
     #[cfg(not(feature = "market-connect"))]
@@ -262,7 +276,7 @@ mod profile_tests {
             "claude_desktop",
             "claude-model"
         )
-        .is_err());
+        .is_ok());
         assert!(validate_external_profile_request(
             &market_connect::Target::Org2,
             "codex",

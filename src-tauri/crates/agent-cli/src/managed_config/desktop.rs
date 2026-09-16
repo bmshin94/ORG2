@@ -7,6 +7,23 @@ use std::{collections::BTreeMap, path::PathBuf};
 pub const TARGET: &str = "claude_desktop";
 const PROFILE_ID: &str = "01704638-8000-4000-8000-000000000002";
 
+pub struct CredentialHelper {
+    pub path: PathBuf,
+    pub token: String,
+    pub models: Vec<String>,
+}
+
+pub fn credential_helper_path() -> PathBuf {
+    let helper_name = if cfg!(windows) {
+        "claude-desktop-market.cmd"
+    } else {
+        "claude-desktop-market.sh"
+    };
+    app_paths::orgii_root()
+        .join("market-helpers")
+        .join(helper_name)
+}
+
 pub fn supported() -> bool {
     cfg!(any(target_os = "macos", windows))
 }
@@ -15,12 +32,19 @@ pub(super) fn targets() -> Result<Vec<(&'static str, String, PathBuf)>, String> 
     if !supported() {
         return Err("Claude Desktop connections currently support macOS and Windows".into());
     }
-    // Desktop's normal config lives in Electron `userData` (roaming on Windows,
-    // `%APPDATA%\Claude`), while the 3P library is documented under the local
-    // application-data root (`%LOCALAPPDATA%\Claude-3p`). Both roots coincide on macOS.
+    // Desktop's normal config selects 3P mode. The running 3P app owns and
+    // mutates its own `Claude-3p/claude_desktop_config.json`, so ORG2 must not
+    // snapshot or replace that runtime file; doing so creates false conflicts
+    // after every launch. ORG2 owns only the profile catalog and helper below.
     let roaming = app_paths::external_history_data_dir();
     let local = app_paths::external_history_data_local_dir();
     let library = local.join("Claude-3p/configLibrary");
+    let helper_name = if cfg!(windows) {
+        "claude-desktop-market.cmd"
+    } else {
+        "claude-desktop-market.sh"
+    };
+    let helper = credential_helper_path();
     Ok(vec![
         (
             "desktop",
@@ -28,16 +52,12 @@ pub(super) fn targets() -> Result<Vec<(&'static str, String, PathBuf)>, String> 
             roaming.join("Claude/claude_desktop_config.json"),
         ),
         (
-            "third_party",
-            "third-party.json".into(),
-            local.join("Claude-3p/claude_desktop_config.json"),
-        ),
-        (
             "profile",
             "profile.json".into(),
             library.join(format!("{PROFILE_ID}.json")),
         ),
         ("catalog", "catalog.json".into(), library.join("_meta.json")),
+        ("helper", helper_name.into(), helper),
     ])
 }
 
@@ -131,6 +151,24 @@ pub(super) fn generate(
     } else {
         validate_model(&connection.model)?;
     }
+    if let Some(helper) = &connection.desktop_helper {
+        if !connection.api_key.is_empty()
+            || connection.proxy_token.as_deref() != Some(helper.token.as_str())
+            || !helper.path.is_absolute()
+            || helper.models.is_empty()
+            || helper.models.len() > 256
+            || !helper.models.contains(&connection.model)
+            || helper.token.len() != 64
+            || !helper.token.bytes().all(|byte| byte.is_ascii_hexdigit())
+        {
+            return Err("Invalid Desktop credential helper configuration".into());
+        }
+        for model in &helper.models {
+            validate_model(model)?;
+        }
+    } else if connection.proxy_token.is_some() {
+        return Err("Desktop proxy token requires a credential helper".into());
+    }
     let owned = previous.is_some_and(|manifest| manifest.mode != super::CliConfigMode::Default);
     if !owned
         && contents
@@ -147,14 +185,12 @@ pub(super) fn generate(
         return Err("Unsupported Desktop authentication scheme".into());
     }
     let mut generated = BTreeMap::new();
-    for id in ["desktop", "third_party"] {
-        let mut value = object(contents, id)?;
-        if value.get("enterpriseConfig").is_some() {
-            return Err("Claude Desktop has inline enterprise configuration. Resolve it in Desktop before switching.".into());
-        }
-        value["deploymentMode"] = json!("3p");
-        generated.insert(id.into(), value);
+    let mut desktop = object(contents, "desktop")?;
+    if desktop.get("enterpriseConfig").is_some() {
+        return Err("Claude Desktop has inline enterprise configuration. Resolve it in Desktop before switching.".into());
     }
+    desktop["deploymentMode"] = json!("3p");
+    generated.insert("desktop".into(), desktop);
     let mut catalog = object(contents, "catalog")?;
     let mut entries = match catalog.get("entries") {
         Some(value) => value
@@ -182,9 +218,44 @@ pub(super) fn generate(
             "modelDiscoveryEnabled": false
         }),
     );
+    if let Some(helper) = &connection.desktop_helper {
+        let profile = generated
+            .get_mut("profile")
+            .and_then(Value::as_object_mut)
+            .ok_or("Desktop profile is invalid")?;
+        profile.remove("inferenceGatewayApiKey");
+        profile.insert("inferenceCredentialKind".into(), json!("helper-script"));
+        profile.insert(
+            "inferenceCredentialHelper".into(),
+            json!(helper.path.to_string_lossy()),
+        );
+        profile.insert("inferenceCredentialHelperTtlSec".into(), json!(60));
+        let mut models = helper.models.clone();
+        models.sort_by_key(|model| model != &connection.model);
+        models.dedup();
+        profile.insert(
+            "inferenceModels".into(),
+            json!(models
+                .into_iter()
+                .map(|name| json!({"name": name}))
+                .collect::<Vec<_>>()),
+        );
+        let helper_contents = if cfg!(windows) {
+            format!("@echo off\r\necho {}\r\n", helper.token)
+        } else {
+            format!("#!/bin/sh\nprintf '%s\\n' '{}'\n", helper.token)
+        };
+        generated.insert("helper".into(), Value::String(helper_contents));
+    }
     generated
         .into_iter()
         .map(|(id, value)| {
+            if id == "helper" {
+                return value
+                    .as_str()
+                    .map(|raw| (id, raw.to_owned()))
+                    .ok_or_else(|| "Cannot serialize Desktop credential helper".into());
+            }
             serde_json::to_string_pretty(&value)
                 .map(|raw| (id, raw))
                 .map_err(|_| "Cannot serialize Claude Desktop configuration".into())

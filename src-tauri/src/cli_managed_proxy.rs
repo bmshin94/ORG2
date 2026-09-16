@@ -638,6 +638,15 @@ fn apply_auth_header(
 fn protocol_for_agent(agent_name: &str) -> Result<ProxyAgentDescriptor, String> {
     use agent_cli::managed_config::CliManagedProxyProtocol;
 
+    if agent_name == agent_cli::managed_config::desktop::TARGET {
+        return Ok(ProxyAgentDescriptor {
+            protocol: ProxyProtocol::Anthropic,
+            protocol_name: "anthropic",
+            display_name: "Claude Desktop",
+            requires_openai_responses: false,
+        });
+    }
+
     let proxy_protocol = agent_cli::managed_config::managed_proxy_protocol_for_agent(agent_name)
         .ok_or_else(|| {
             agent_cli::managed_config::managed_config_unavailable_reason_for_agent(agent_name)
@@ -908,6 +917,63 @@ pub(crate) async fn enable_dynamic_managed(
     })
     .await
     .map_err(|_| "Client configuration task failed")?
+}
+
+#[cfg(feature = "market-connect")]
+pub(crate) async fn enable_dynamic_desktop(
+    key: String,
+    model: String,
+    models: Vec<String>,
+    expected_hashes: std::collections::BTreeMap<String, Option<String>>,
+) -> Result<agent_cli::managed_config::CliConfigManagedStatus, String> {
+    use agent_cli::managed_config::{desktop::CredentialHelper, DirectConnection};
+
+    if model.is_empty() || model.len() > 256 || !models.iter().any(|entry| entry == &model) {
+        return Err("Unsupported Desktop selection".into());
+    }
+    let source =
+        crate::dynamic_credentials::source(&key)?.ok_or("Dynamic credential source required")?;
+    source.credential(&key, "claude_desktop").await?;
+    ensure_managed_proxy_running().await?;
+    tokio::task::spawn_blocking(move || {
+        if !PROXY_RUNNING.load(Ordering::SeqCst) {
+            return Err(proxy_unavailable_message());
+        }
+        let token = agent_cli::managed_config::generate_proxy_token();
+        let helper_path = agent_cli::managed_config::desktop::credential_helper_path();
+        let base_url = agent_cli::managed_config::claude_desktop_proxy_base_url(
+            &agent_cli::managed_config::managed_proxy_url(),
+            &token,
+        );
+        let status = agent_cli::managed_config::enable_direct(
+            "claude_desktop",
+            DirectConnection {
+                profile: None,
+                key_id: key,
+                provider: "market".into(),
+                model,
+                base_url,
+                api_key: String::new(),
+                desktop_auth_scheme: Some("bearer".into()),
+                desktop_helper: Some(CredentialHelper {
+                    path: helper_path.clone(),
+                    token: token.clone(),
+                    models,
+                }),
+                proxy_token: Some(token),
+            },
+            Some(&expected_hashes),
+        )?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&helper_path, std::fs::Permissions::from_mode(0o700))
+                .map_err(|_| "Could not activate the Desktop credential helper")?;
+        }
+        Ok(status)
+    })
+    .await
+    .map_err(|_| "Desktop configuration task failed")?
 }
 
 #[tauri::command(rename_all = "camelCase")]

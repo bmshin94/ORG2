@@ -940,8 +940,8 @@
     "desktopRestored": "以前の設定を復元しました。Claude Desktop を完全に終了して再起動してください",
     "advancedDescription": "カスタム API 接続と一度限りの認証情報移行",
     "marketApps": {
-      "workspace": "現在の Market ワークスペース",
-      "workspaceHelp": "ORG2 の既存のモデルと接続元の選択画面で購入済みワークスペースを選ぶと、接続済みアプリが自動的に追従します",
+      "workspace": "購入済み Market サービス",
+      "workspaceHelp": "ORG2 の既存のモデルと接続元の選択画面で購入済みサービスを選ぶと、接続済みアプリが現在の選択に自動的に追従します",
       "loading": "購入済みワークスペースを読み込み中…",
       "loadFailed": "購入済みワークスペースを読み込めませんでした",
       "currentValue": "{{workspace}} · {{model}}",
@@ -960,7 +960,11 @@
       "connected": "アプリが現在の ORG2 ワークスペースに追従します",
       "opened": "アプリを開きました",
       "disconnected": "以前のアプリ設定を復元しました",
-      "actionFailed": "このアプリ接続を更新できませんでした"
+      "actionFailed": "このアプリ接続を更新できませんでした",
+      "current": "現在",
+      "workspaceNumber": "サービス {{index}} / {{count}}",
+      "openTerminal": "ターミナルを開く",
+      "terminalOpened": "ターミナルを開きました"
     }
   },
   "claudeProfiles": {

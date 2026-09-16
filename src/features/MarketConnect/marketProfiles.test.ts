@@ -15,6 +15,7 @@ import {
   loadCachedMarketExecutionProfiles,
   loadMarketExecutionProfiles,
   loadMarketExecutionProfilesWithDiagnostics,
+  marketConnectionOptions,
   marketSourcesForAgent,
   prepareMarketProfileSource,
 } from "./marketProfiles";
@@ -111,6 +112,89 @@ describe("Market execution profiles", () => {
         (source) => source.label
       )
     ).toEqual(["Multi-model service", "Second service"]);
+  });
+
+  it("projects every entitlement as a buyer-safe connection option", () => {
+    const first = adaptMarketEntries(connection, entries, 100)[0];
+    const profiles = [
+      first,
+      {
+        ...first,
+        id: "market:user:ent_2",
+        entitlementWorkspaceId: "ws_second",
+        entitlementId: "ent_2",
+        modelsByAgent: {
+          claude_code: ["claude-sonnet", "shared-model"],
+          codex: ["gpt-codex", "shared-model"],
+        },
+      },
+    ];
+
+    const options = marketConnectionOptions(profiles);
+    expect(options).toHaveLength(2);
+    expect(options.map((option) => option.title)).toEqual([
+      "Multi-model service",
+      "Multi-model service",
+    ]);
+    expect(options.map((option) => option.duplicateOrdinal)).toEqual([1, 2]);
+    expect(options.map((option) => option.duplicateCount)).toEqual([2, 2]);
+    expect(options[1]).toMatchObject({
+      modelCount: 3,
+      sourceRef: {
+        kind: "market",
+        entitlementWorkspaceId: "ws_second",
+        entitlementId: "ent_2",
+      },
+    });
+    expect(options[1]).not.toHaveProperty("seller");
+    expect(options[1]).not.toHaveProperty("sellerName");
+  });
+
+  it("filters connection options by the tested client compatibility matrix", () => {
+    const first = adaptMarketEntries(connection, entries, 100)[0];
+    const codexOnly = {
+      ...first,
+      id: "market:user:codex-only",
+      entitlementId: "ent_codex_only",
+      label: "Codex only",
+      modelsByAgent: { claude_code: [], codex: ["gpt-codex"] },
+    };
+
+    expect(
+      marketConnectionOptions([first, codexOnly], "claude_desktop").map(
+        (option) => option.title
+      )
+    ).toEqual(["Multi-model service"]);
+    expect(
+      marketConnectionOptions([first, codexOnly], "codex").map(
+        (option) => option.title
+      )
+    ).toEqual(["Multi-model service", "Codex only"]);
+    expect(
+      marketConnectionOptions([codexOnly], "org2")[0].modelsByTarget.org2
+    ).toEqual(["gpt-codex"]);
+  });
+
+  it("numbers duplicate titles within the compatible target options only", () => {
+    const first = adaptMarketEntries(connection, entries, 100)[0];
+    const codexOnly = {
+      ...first,
+      id: "market:user:codex-only",
+      entitlementId: "ent_codex_only",
+      modelsByAgent: { claude_code: [], codex: ["gpt-codex"] },
+    };
+    const secondClaude = {
+      ...first,
+      id: "market:user:second-claude",
+      entitlementId: "ent_second_claude",
+    };
+
+    const options = marketConnectionOptions(
+      [codexOnly, first, secondClaude],
+      "claude_code"
+    );
+    expect(options.map((option) => option.duplicateOrdinal)).toEqual([1, 2]);
+    expect(options.map((option) => option.duplicateCount)).toEqual([2, 2]);
   });
 
   it("rebinds a recent selection only to a still-compatible catalog profile", () => {

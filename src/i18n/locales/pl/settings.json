@@ -940,8 +940,8 @@
     "desktopRestored": "Przywrócono poprzednią konfigurację — zamknij całkowicie Claude Desktop i otwórz ponownie",
     "advancedDescription": "Niestandardowe połączenia API i jednorazowy import poświadczeń",
     "marketApps": {
-      "workspace": "Bieżący obszar Market",
-      "workspaceHelp": "Wybierz kupiony obszar w istniejącym selektorze modeli i źródeł ORG2; połączone aplikacje będą automatycznie podążać za wyborem",
+      "workspace": "Kupione usługi Market",
+      "workspaceHelp": "Wybierz kupioną usługę w istniejącym selektorze modeli i źródeł ORG2; połączone aplikacje będą automatycznie podążać za bieżącym wyborem",
       "loading": "Wczytywanie kupionych obszarów…",
       "loadFailed": "Nie udało się wczytać kupionych obszarów",
       "currentValue": "{{workspace}} · {{model}}",
@@ -960,7 +960,11 @@
       "connected": "Aplikacja korzysta teraz z bieżącego obszaru ORG2",
       "opened": "Otwarto aplikację",
       "disconnected": "Przywrócono poprzednią konfigurację aplikacji",
-      "actionFailed": "Nie udało się zaktualizować tego połączenia"
+      "actionFailed": "Nie udało się zaktualizować tego połączenia",
+      "current": "Bieżący",
+      "workspaceNumber": "Usługa {{index}} z {{count}}",
+      "openTerminal": "Otwórz terminal",
+      "terminalOpened": "Terminal otwarty"
     }
   },
   "claudeProfiles": {

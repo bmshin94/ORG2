@@ -45,6 +45,8 @@ fn connection(profile: ClaudeProviderProfile) -> DirectConnection {
         api_key: "synthetic-native-secret".into(),
         desktop_auth_scheme: (profile.target == "claude_desktop")
             .then(|| profile.auth_scheme.clone()),
+        desktop_helper: None,
+        proxy_token: None,
         profile: Some(profile),
     }
 }

@@ -940,8 +940,8 @@
     "desktopRestored": "이전 설정을 복원했습니다. Claude Desktop을 완전히 종료하고 다시 여세요",
     "advancedDescription": "사용자 지정 API 연결 및 일회성 자격 증명 이전",
     "marketApps": {
-      "workspace": "현재 Market 작업 공간",
-      "workspaceHelp": "ORG2의 기존 모델 및 소스 선택기에서 구매한 작업 공간을 선택하면 연결된 앱이 자동으로 따라갑니다",
+      "workspace": "구매한 Market 서비스",
+      "workspaceHelp": "ORG2의 기존 모델 및 소스 선택기에서 구매한 서비스를 선택하면 연결된 앱이 현재 선택을 자동으로 따라갑니다",
       "loading": "구매한 작업 공간을 불러오는 중…",
       "loadFailed": "구매한 작업 공간을 불러올 수 없습니다",
       "currentValue": "{{workspace}} · {{model}}",
@@ -960,7 +960,11 @@
       "connected": "앱이 현재 ORG2 작업 공간을 따릅니다",
       "opened": "앱을 열었습니다",
       "disconnected": "이전 앱 설정을 복원했습니다",
-      "actionFailed": "이 앱 연결을 업데이트할 수 없습니다"
+      "actionFailed": "이 앱 연결을 업데이트할 수 없습니다",
+      "current": "현재",
+      "workspaceNumber": "서비스 {{index}} / {{count}}",
+      "openTerminal": "터미널 열기",
+      "terminalOpened": "터미널을 열었습니다"
     }
   },
   "claudeProfiles": {

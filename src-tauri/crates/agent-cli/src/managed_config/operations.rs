@@ -13,11 +13,22 @@ use super::dto::{
 };
 use super::file_io::{file_hash, now_stamp, sha256_bytes, write_sensitive_file_atomic};
 use super::generators::generate_managed_configs;
-use super::manifest::{agent_manifest_targets, read_manifest, targets_with_fallbacks};
+use super::manifest::{
+    agent_manifest_targets, read_manifest, targets_with_fallbacks, write_manifest,
+};
 use super::proxy::{generate_proxy_token, managed_proxy_url};
 use super::registry::{supported_agent, unavailable_agent_message};
 use super::snapshot::{ensure_default_backup_from_snapshot, read_target_snapshots, TargetMutation};
 use super::transaction::execute_transaction;
+
+fn clear_connection_metadata(manifest: &mut CliConfigProfileManifest) {
+    manifest.provider_profile = None;
+    manifest.selected_key_id = None;
+    manifest.selected_provider = None;
+    manifest.selected_model = None;
+    manifest.proxy_url = None;
+    manifest.proxy_token = None;
+}
 
 pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedStatus, String> {
     if !supported_agent(agent_name) {
@@ -36,7 +47,25 @@ pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedSt
         });
     }
 
-    let manifest = read_manifest(agent_name)?;
+    let mut manifest = read_manifest(agent_name)?;
+    if let Some(value) = manifest.as_mut() {
+        if value.mode == CliConfigMode::Default
+            && (value.provider_profile.is_some()
+                || value.selected_key_id.is_some()
+                || value.selected_provider.is_some()
+                || value.selected_model.is_some()
+                || value.proxy_url.is_some()
+                || value.proxy_token.is_some())
+        {
+            // Versions before this migration restored the app files but kept
+            // the old route metadata. Remove it as soon as status is read so
+            // a disconnected app cannot look connected or retain a loopback
+            // authorization token on disk.
+            clear_connection_metadata(value);
+            value.updated_at = now_stamp();
+            write_manifest(value)?;
+        }
+    }
     let fallback_targets = agent_manifest_targets(agent_name)?;
     let (mode, selected_key_id, selected_provider, selected_model, proxy_url, targets) =
         if let Some(manifest) = &manifest {
@@ -163,16 +192,27 @@ pub(super) fn apply_connection_unlocked(
     let fallback_targets = agent_manifest_targets(agent_name)?;
     let existing_manifest = read_manifest(agent_name)?;
     if let Some(manifest) = &existing_manifest {
-        for target in &manifest.target_files {
-            if !fallback_targets
-                .iter()
-                .any(|current| current.id == target.id && current.target_path == target.target_path)
-            {
-                return Err("Harness configuration root changed. Restore the original root before switching.".into());
+        if manifest.mode != CliConfigMode::Default {
+            for target in &manifest.target_files {
+                if !fallback_targets.iter().any(|current| {
+                    current.id == target.id && current.target_path == target.target_path
+                }) {
+                    return Err("Harness configuration root changed. Restore the original root before switching.".into());
+                }
             }
         }
     }
-    let targets = targets_with_fallbacks(existing_manifest.as_ref(), &fallback_targets);
+    // A Default manifest only records history. Build the next switch from the
+    // adapter's current target set so removed targets from older releases do
+    // not permanently block a new, explicitly requested connection.
+    let targets = if existing_manifest
+        .as_ref()
+        .is_some_and(|manifest| manifest.mode == CliConfigMode::Default)
+    {
+        fallback_targets.clone()
+    } else {
+        targets_with_fallbacks(existing_manifest.as_ref(), &fallback_targets)
+    };
     let snapshots = read_target_snapshots(&targets)?;
     let mut current_contents = BTreeMap::new();
 
@@ -272,7 +312,10 @@ pub(super) fn apply_connection_unlocked(
         managed_targets.push(target);
     }
 
-    manifest.mode = if direct.is_some() {
+    let proxy_backed_direct = direct
+        .and_then(|value| value.proxy_token.as_ref())
+        .is_some();
+    manifest.mode = if direct.is_some() && !proxy_backed_direct {
         CliConfigMode::Direct
     } else {
         CliConfigMode::OrgiiManaged
@@ -282,8 +325,10 @@ pub(super) fn apply_connection_unlocked(
     manifest.selected_key_id = key_id;
     manifest.selected_provider = provider;
     manifest.selected_model = model;
-    manifest.proxy_url = direct.is_none().then_some(proxy_url);
-    manifest.proxy_token = direct.is_none().then_some(proxy_token);
+    manifest.proxy_url = (direct.is_none() || proxy_backed_direct).then_some(proxy_url);
+    manifest.proxy_token = direct
+        .and_then(|value| value.proxy_token.clone())
+        .or_else(|| direct.is_none().then_some(proxy_token));
     manifest.updated_at = now_stamp();
     execute_transaction(agent_name, &snapshots, &mutations, &manifest)?;
     status_for_unlocked(agent_name)
@@ -299,6 +344,12 @@ pub(super) fn restore_agent_default_unlocked(
     let mut manifest = read_manifest(agent_name)?
         .ok_or_else(|| format!("No Default backup exists for {agent_name} yet"))?;
     if manifest.mode == CliConfigMode::Default {
+        // Older manifests retained the previous Market selection after the
+        // files were restored. Remove that routing metadata without touching
+        // the user's already-restored app configuration.
+        clear_connection_metadata(&mut manifest);
+        manifest.updated_at = now_stamp();
+        write_manifest(&manifest)?;
         return status_for_unlocked(agent_name);
     }
     let snapshots = read_target_snapshots(&manifest.target_files)?;
@@ -342,6 +393,7 @@ pub(super) fn restore_agent_default_unlocked(
     }
 
     manifest.mode = CliConfigMode::Default;
+    clear_connection_metadata(&mut manifest);
     manifest.updated_at = now_stamp();
     execute_transaction(agent_name, &snapshots, &mutations, &manifest)?;
     status_for_unlocked(agent_name)

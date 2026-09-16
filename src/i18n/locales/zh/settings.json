@@ -1021,8 +1021,8 @@
     "desktopRestored": "已恢复之前的桌面配置，请完全退出并重新打开 Claude Desktop",
     "advancedDescription": "自定义 API 连接和一次性凭据迁移",
     "marketApps": {
-      "workspace": "当前 Market 工作区",
-      "workspaceHelp": "在 ORG2 原有的模型与来源选择器中选择已购工作区；已连接的应用会自动跟随切换",
+      "workspace": "已购 Market 服务",
+      "workspaceHelp": "在 ORG2 原有的模型与来源选择器中选择已购服务；已连接的应用会自动跟随当前选择",
       "loading": "正在读取已购工作区…",
       "loadFailed": "无法读取已购工作区",
       "currentValue": "{{workspace}} · {{model}}",
@@ -1041,7 +1041,11 @@
       "connected": "应用已开始跟随 ORG2 当前工作区",
       "opened": "应用已打开",
       "disconnected": "已恢复应用之前的配置",
-      "actionFailed": "无法更新此应用连接"
+      "actionFailed": "无法更新此应用连接",
+      "current": "当前使用",
+      "workspaceNumber": "服务 {{index}} / {{count}}",
+      "openTerminal": "打开终端",
+      "terminalOpened": "已打开终端"
     }
   },
   "claudeProfiles": {

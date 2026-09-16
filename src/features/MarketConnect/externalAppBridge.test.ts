@@ -79,6 +79,9 @@ describe("external Market app routing", () => {
   it("recognizes only opaque Market selections as connected", () => {
     expect(isMarketManagedView(view("market:opaque"))).toBe(true);
     expect(isMarketManagedView(view("key-vault-id"))).toBe(false);
+    const restored = view("market:stale");
+    restored.config.mode = "default";
+    expect(isMarketManagedView(restored)).toBe(false);
   });
 
   it("updates only clients that already opted into Market", async () => {
