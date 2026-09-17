@@ -27,6 +27,8 @@ export async function openCloudBilling(
 }
 export function useOpenCloudBilling(): () => void {
   return useCallback(() => {
-    void openCloudBilling();
+    void openCloudBilling().catch((error: unknown) => {
+      log.error("unexpected Cloud billing failure", error);
+    });
   }, []);
 }
