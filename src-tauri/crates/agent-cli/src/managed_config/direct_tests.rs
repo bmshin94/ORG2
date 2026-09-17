@@ -246,9 +246,12 @@ fn claude_code_model_switch_is_runtime_drift_but_other_edits_still_conflict() {
     enable_direct("claude_code", connection("first-key"), None).unwrap();
     let applied = std::fs::read_to_string(&path).unwrap();
 
-    // Claude Code persists `/model` into the managed settings file.
+    // Claude Code persists `/model`, `/theme` and `/effort` into the managed
+    // settings file (acceptance 2026-09-17 saw `theme` written on first run).
     let mut settings: serde_json::Value = serde_json::from_str(&applied).unwrap();
     settings["model"] = "claude-sonnet-5-org2-other-package".into();
+    settings["theme"] = "light".into();
+    settings["effortLevel"] = "high".into();
     std::fs::write(&path, serde_json::to_string_pretty(&settings).unwrap()).unwrap();
     let status = operations::status_for_unlocked("claude_code").unwrap();
     assert!(

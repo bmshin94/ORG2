@@ -210,12 +210,12 @@ pub(super) fn generate_claude_code_managed_config(
 }
 
 /// Claude Code persists a few choices into the same settings.json that ORG2
-/// manages: `/model` rewrites `model`. Those runtime-owned fields are expected
-/// to drift after a launch and must not read as a third-party edit. Every
-/// other field (including the managed `env`, `modelPicker` and
-/// `availableModels`) still has to match the applied profile byte for byte at
-/// the JSON level.
-pub(super) const CLAUDE_CODE_RUNTIME_OWNED_FIELDS: &[&str] = &["model"];
+/// manages: `/model` rewrites `model`, the first run and `/theme` write
+/// `theme`, `/effort` writes `effortLevel`. Those runtime-owned fields are
+/// expected to drift after a launch and must not read as a third-party edit.
+/// Every other field (including the managed `env`, `modelPicker` and
+/// `availableModels`) still has to match the applied profile at the JSON level.
+pub(super) const CLAUDE_CODE_RUNTIME_OWNED_FIELDS: &[&str] = &["model", "theme", "effortLevel"];
 
 pub(super) fn claude_code_runtime_drift_only(current: &[u8], applied: &[u8]) -> bool {
     fn normalized(bytes: &[u8]) -> Option<serde_json::Map<String, serde_json::Value>> {
