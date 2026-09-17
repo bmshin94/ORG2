@@ -73,7 +73,12 @@ pub(super) async fn configure(
         let binary =
             resolve_cli_binary_for_registry_name(&agent).ok_or("Claude Code unavailable")?;
         let probe = probe_cli_binary_version(&binary).await;
-        let version = probe.version.ok_or("Claude Code version unavailable")?;
+        let version = probe.version.ok_or_else(|| match probe.error.as_deref() {
+            Some(error) if !error.is_empty() => {
+                format!("Claude Code version unavailable: {error}")
+            }
+            _ => "Claude Code version unavailable".to_string(),
+        })?;
         let parts = version
             .trim_start_matches('v')
             .split('.')

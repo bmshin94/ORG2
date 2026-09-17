@@ -369,9 +369,14 @@ pub(crate) async fn verify_installed_version(agent: &str) -> Result<(), String> 
         return Err("Install this harness before configuring a connection".into());
     }
     let probe = probe_cli_binary_version(&binary).await;
-    let version = probe
-        .version
-        .ok_or("Cannot verify the installed harness version")?;
+    let version = probe.version.ok_or_else(|| {
+        // The launcher may not see interactive-shell PATH entries; the probe
+        // detail ("env: node: No such file or directory") tells the user why.
+        match probe.error.as_deref().filter(|error| !error.is_empty()) {
+            Some(error) => format!("Cannot verify the installed harness version: {error}"),
+            None => "Cannot verify the installed harness version".to_string(),
+        }
+    })?;
     let numbers = version
         .trim_start_matches('v')
         .split('.')
