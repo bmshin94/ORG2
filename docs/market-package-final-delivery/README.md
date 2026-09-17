@@ -14,6 +14,5 @@ commit in this branch. "Blocked" rows name the external dependency.
 | 6 | Login / authorization lifecycle (no saved grant, signed-out ORG2 → web enable → launch → auto sign-in → Package sync; account / Cloud URL switch; expired grant) | acceptance | Open — needs the user at the browser login step. |
 | 7 | Credential renewal and supplier rotation | acceptance | Renewal: open. Rotation: **Blocked** — only one healthy Claude supplier. |
 | 8 | Admin access restriction (Neonforge, Harry, Junyu Feishu open_ids) | config + acceptance | **Blocked** — same-app open_ids not provided. |
-| 9 | Final-build regression: successful failed-message Retry, external CLI restart + config restore, foreground/hidden/closed resource usage | acceptance | Open — needs a private debug build of this branch. |
-
+| 9 | Final-build regression: successful failed-message Retry, external CLI restart + config restore, foreground/hidden/closed resource usage | acceptance | In progress — **restart on the final build passed** (`evidence/final-build-restart-84330574d.md`: queue, 10 native histories, 20 table counts and external config identical; signed in; sessions listed). Still open: failed-message Retry, Restore original setup → re-apply, idle resource sampling. |
 No ORG2 installer, Beta, release or tag is produced by this work.
