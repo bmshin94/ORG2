@@ -177,7 +177,8 @@ pub async fn market_connection_activate_service(
             },
             request,
         )
-        .await?;
+        .await
+        .inspect_err(|error| tracing::warn!(error = %error, "[Market] activate_service failed"))?;
         serde_json::to_value(access).map_err(|_| "Invalid usage authorization".into())
     }
     #[cfg(not(feature = "market-connect"))]
@@ -619,7 +620,12 @@ pub async fn market_connection_open_client(
 ) -> Result<(), String> {
     #[cfg(feature = "market-connect")]
     {
-        external_client::open(agent, selection, model).await
+        let agent_name = agent.clone();
+        external_client::open(agent, selection, model)
+            .await
+            .inspect_err(|error| {
+                tracing::warn!(agent = %agent_name, error = %error, "[Market] open_client failed")
+            })
     }
     #[cfg(not(feature = "market-connect"))]
     {
@@ -653,7 +659,12 @@ pub async fn market_connection_configure_catalog(
 ) -> Result<ConfiguredProfile, String> {
     #[cfg(feature = "market-connect")]
     {
-        configure_catalog::configure(request).await
+        let agent = request.agent.clone();
+        configure_catalog::configure(request)
+            .await
+            .inspect_err(|error| {
+                tracing::warn!(agent = %agent, error = %error, "[Market] configure_catalog failed")
+            })
     }
     #[cfg(not(feature = "market-connect"))]
     {
