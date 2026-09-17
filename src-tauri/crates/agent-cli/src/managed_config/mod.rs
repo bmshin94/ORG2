@@ -230,6 +230,64 @@ pub fn restore_managed_configs_matching(
     Ok(report)
 }
 
+/// Releases before the Claude Code overlay rewrote the user's own settings.json
+/// (with a default backup). On the first start after upgrading, restore such a
+/// file from its backup so the connection can be re-applied as an overlay. The
+/// restore is non-forcing: a file edited outside ORG2 since the last apply is
+/// left in place and reported; the existing conflict UI then covers it.
+pub fn migrate_native_overlay_targets() -> Result<CliConfigShutdownRestoreReport, String> {
+    let _guard = config_operation_guard()?;
+    let mut report = CliConfigShutdownRestoreReport::default();
+    for adapter in MANAGED_CONFIG_ADAPTERS {
+        let agent_name = adapter.agent_name;
+        if !adapter
+            .targets
+            .iter()
+            .any(|target| target.kind == registry::ManagedConfigTargetKind::Overlay)
+        {
+            continue;
+        }
+        let _target_lock = match target_lock::lock_targets(agent_name) {
+            Ok(lock) => lock,
+            Err(err) => {
+                report.failed_agents.push((agent_name.to_string(), err));
+                continue;
+            }
+        };
+        if let Err(err) = recover_pending_transaction_unlocked(agent_name) {
+            report.failed_agents.push((agent_name.to_string(), err));
+            continue;
+        }
+        let legacy = match (
+            read_manifest(agent_name),
+            manifest::agent_manifest_targets(agent_name),
+        ) {
+            (Ok(Some(manifest)), Ok(current)) => {
+                manifest.mode != CliConfigMode::Default
+                    && manifest.target_files.iter().any(|target| {
+                        registry::is_overlay_target(agent_name, &target.id)
+                            && !current
+                                .iter()
+                                .any(|c| c.id == target.id && c.target_path == target.target_path)
+                    })
+            }
+            (Ok(None), _) => false,
+            (Err(err), _) | (_, Err(err)) => {
+                report.failed_agents.push((agent_name.to_string(), err));
+                continue;
+            }
+        };
+        if !legacy {
+            continue;
+        }
+        match restore_agent_default_unlocked(agent_name, false) {
+            Ok(_) => report.restored_agents.push(agent_name.to_string()),
+            Err(err) => report.failed_agents.push((agent_name.to_string(), err)),
+        }
+    }
+    Ok(report)
+}
+
 #[tauri::command(rename_all = "camelCase")]
 pub async fn cli_config_get_status(agent_name: String) -> Result<CliConfigManagedStatus, String> {
     tokio::task::spawn_blocking(move || {

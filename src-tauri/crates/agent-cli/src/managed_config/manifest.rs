@@ -77,8 +77,14 @@ pub(super) fn agent_manifest_targets(
         .targets
         .iter()
         .map(|target| {
-            let target_path =
-                crate::generic_config::resolve_config_path(agent_name, target.file_id)?;
+            let target_path = match target.kind {
+                super::registry::ManagedConfigTargetKind::Native => {
+                    crate::generic_config::resolve_config_path(agent_name, target.file_id)?
+                }
+                super::registry::ManagedConfigTargetKind::Overlay => {
+                    paths::cli_config_profile_overlay_dir(agent_name).join(target.profile_file_name)
+                }
+            };
             Ok(manifest_target(
                 agent_name,
                 target.file_id,

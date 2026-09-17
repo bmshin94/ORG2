@@ -58,6 +58,8 @@ pub struct CliConfigTargetFileStatus {
     pub last_applied_hash: Option<String>,
     pub current_hash: Option<String>,
     pub conflict: bool,
+    /// ORG2-owned overlay file: the app's own configuration is never touched.
+    pub overlay: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -68,6 +70,8 @@ pub struct CliConfigManagedStatus {
     pub mode: CliConfigMode,
     pub has_default_backup: bool,
     pub conflict: bool,
+    /// Every target is an ORG2-owned overlay (the app must be launched with it).
+    pub overlay: bool,
     pub selected_key_id: Option<String>,
     pub selected_provider: Option<String>,
     pub selected_model: Option<String>,

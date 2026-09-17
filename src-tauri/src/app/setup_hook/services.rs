@@ -146,6 +146,20 @@ pub(crate) fn start_backend_services(
     // removed module after an unclean exit before starting any proxy listener.
     // Use the same hash-checked restoration as shutdown, off the setup thread.
     tauri::async_runtime::spawn_blocking(|| {
+        match agent_cli::managed_config::migrate_native_overlay_targets() {
+            Ok(report) => {
+                if !report.restored_agents.is_empty() || !report.failed_agents.is_empty() {
+                    tracing::info!(
+                        restored = report.restored_agents.len(),
+                        conflicts = report.failed_agents.len(),
+                        "[CLI Managed Config] restored native files replaced by overlays"
+                    );
+                }
+            }
+            Err(_) => tracing::warn!(
+                "[CLI Managed Config] overlay migration failed; native configurations retained"
+            ),
+        }
         match agent_cli::managed_config::restore_managed_configs_matching(
             crate::dynamic_credentials::is_unavailable,
         ) {

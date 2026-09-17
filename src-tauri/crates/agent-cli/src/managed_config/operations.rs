@@ -39,6 +39,7 @@ pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedSt
             mode: CliConfigMode::Default,
             has_default_backup: false,
             conflict: false,
+            overlay: false,
             selected_key_id: None,
             selected_provider: None,
             selected_model: None,
@@ -91,6 +92,7 @@ pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedSt
 
     let mut any_backup = false;
     let mut any_conflict = false;
+    let mut all_overlay = true;
     let target_files: Vec<CliConfigTargetFileStatus> = targets
         .into_iter()
         .map(|target| {
@@ -98,7 +100,12 @@ pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedSt
             let default_backup_path = PathBuf::from(&target.default_backup_path);
             let current_hash = file_hash(&target_path)?;
             let has_default_backup = target.default_was_missing || default_backup_path.exists();
-            let mut conflict = mode != CliConfigMode::Default
+            let overlay = target_is_overlay(agent_name, &target);
+            all_overlay &= overlay;
+            // An overlay is ORG2-owned: nothing the user runs edits it, so a
+            // hash mismatch there is not a third-party change to protect.
+            let mut conflict = !overlay
+                && mode != CliConfigMode::Default
                 && target.last_applied_hash.is_some()
                 && current_hash != target.last_applied_hash;
             if conflict
@@ -132,9 +139,11 @@ pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedSt
                 last_applied_hash: target.last_applied_hash,
                 current_hash,
                 conflict,
+                overlay,
             })
         })
         .collect::<Result<_, String>>()?;
+    let overlay = all_overlay && !target_files.is_empty();
 
     Ok(CliConfigManagedStatus {
         agent_name: agent_name.to_string(),
@@ -142,6 +151,7 @@ pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedSt
         mode,
         has_default_backup: any_backup,
         conflict: any_conflict,
+        overlay,
         selected_key_id,
         selected_provider,
         selected_model,
@@ -245,12 +255,40 @@ pub(super) fn apply_connection_unlocked(
                 snapshot.target_path.display()
             )
         })?;
+        // An overlay is regenerated from scratch on every apply: it holds only
+        // what ORG2 puts there, never a previous picker or role mapping.
+        let content = if target_is_overlay(agent_name, target) {
+            String::new()
+        } else {
+            content
+        };
         current_contents.insert(target.id.clone(), content);
+    }
+    if agent_name == super::registry::CLAUDE_CODE_AGENT
+        && super::registry::is_overlay_target(
+            agent_name,
+            super::registry::CLAUDE_CODE_CONFIG_FILE_ID,
+        )
+    {
+        // The user's own settings.json stays untouched, so overrides in it
+        // that would beat the overlay's proxy credential must be surfaced now.
+        let native = crate::generic_config::resolve_config_path(
+            agent_name,
+            super::registry::CLAUDE_CODE_CONFIG_FILE_ID,
+        )?;
+        match std::fs::read_to_string(&native) {
+            Ok(raw) => super::generators::inspect_claude_code_user_settings(&raw)?,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(_) => return Err("Cannot read the Claude Code user settings".into()),
+        }
     }
 
     if let Some(existing_manifest) = &existing_manifest {
         if existing_manifest.mode != CliConfigMode::Default && !force {
             for target in &existing_manifest.target_files {
+                if target_is_overlay(agent_name, target) {
+                    continue;
+                }
                 if let Some(last_hash) = &target.last_applied_hash {
                     let current_hash = snapshots
                         .get(&target.id)
@@ -282,12 +320,15 @@ pub(super) fn apply_connection_unlocked(
         .as_ref()
         .filter(|manifest| manifest.native_model_catalog)
     {
-        if agent_name == "claude_code" {
-            let target = manifest
-                .target_files
-                .iter()
-                .find(|target| target.id == "settings")
-                .ok_or("Native model picker backup missing")?;
+        let target = manifest
+            .target_files
+            .iter()
+            .find(|target| target.id == "settings");
+        // An overlay is regenerated from scratch, so there is no previous
+        // picker to peel off; only a legacy native file needs its original back.
+        if let Some(target) = target
+            .filter(|target| agent_name == "claude_code" && !target_is_overlay(agent_name, target))
+        {
             let original = if target.default_was_missing {
                 String::new()
             } else {
@@ -406,6 +447,16 @@ pub(super) fn apply_connection_unlocked(
     status_for_unlocked(agent_name)
 }
 
+/// A manifest target is an overlay only when the adapter declares it so AND
+/// the recorded path is the overlay file: a manifest left by a release that
+/// still rewrote the native file keeps native (backup/conflict) semantics
+/// until it is restored.
+pub(super) fn target_is_overlay(agent_name: &str, target: &CliConfigTargetFileManifest) -> bool {
+    super::registry::is_overlay_target(agent_name, &target.id)
+        && std::path::Path::new(&target.target_path)
+            .starts_with(app_paths::cli_config_profile_overlay_dir(agent_name))
+}
+
 fn claude_code_settings_target(agent_name: &str, target_id: &str) -> bool {
     agent_name == super::registry::CLAUDE_CODE_AGENT
         && target_id == super::registry::CLAUDE_CODE_CONFIG_FILE_ID
@@ -446,7 +497,10 @@ pub(super) fn restore_agent_default_unlocked(
     let mut mutations = BTreeMap::new();
 
     for target in &manifest.target_files {
-        if manifest.mode != CliConfigMode::Default && !force {
+        if manifest.mode != CliConfigMode::Default
+            && !force
+            && !target_is_overlay(agent_name, target)
+        {
             if let Some(last_hash) = &target.last_applied_hash {
                 let current_hash = snapshots
                     .get(&target.id)
