@@ -22,18 +22,18 @@ It uses the already deployed Cloud OAuth server and its public desktop client.
 
 ## Architecture review
 
-| Layer                       | Verdict | Evidence / decision                                                                                                                                                                                  |
-| --------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1 Compilation               | keep    | Whole-repository TypeScript check and changed-file ESLint pass; no Rust changes in this PR.                                                                                                          |
-| 2 Ownership and duplication | fix     | One `CloudOAuthFlow` owns the pending verifier, receiver, timer and subscription. Existing sign-in surfaces retain the shared hook.                                                                  |
-| 3 Naming                    | keep    | OAuth client ID denotes public refresh provenance; it is not an administrator credential.                                                                                                            |
-| 4 Semantic boundaries       | fix     | Browser identity, desktop refresh and billing browser session have separate owners.                                                                                                                  |
-| 5 Defaults                  | keep    | Only official Cloud uses the new protocol; existing custom-endpoint code retains the previous entry path.                                                                                            |
-| 6 Domain boundaries         | keep    | No Market grant, workspace or native enrollment code is included.                                                                                                                                    |
-| 7 Discoverability           | keep    | Controller is independent of UI/store; production adapter uses the instrumented application store.                                                                                                   |
-| 8 Wire                      | fix     | Exact endpoints, redirect and scopes; S256, single-use state, bounded response bodies, no token URL fragments or client secret. Real production exchange and read-only RPCs pass.                    |
-| 9 Initialization parity     | keep    | Settings, add/join org, share and other callers use the same sign-in hook. The live harness uses the actual controller but substitutes the receiver and commit adapter; it is not native acceptance. |
-| 10 Resolver symmetry        | fix     | Tokens, expiry and client ID travel together through persistence and cross-window adoption. Endpoint/account changes invalidate pending work.                                                        |
+| Layer                       | Verdict | Evidence / decision                                                                                                                                                                          |
+| --------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 Compilation               | keep    | Whole-repository TypeScript check and changed-file ESLint pass; no Rust changes in this PR.                                                                                                  |
+| 2 Ownership and duplication | fix     | One `CloudOAuthFlow` owns the pending verifier, receiver, timer and subscription. Existing sign-in surfaces retain the shared hook.                                                          |
+| 3 Naming                    | keep    | OAuth client ID denotes public refresh provenance; it is not an administrator credential.                                                                                                    |
+| 4 Semantic boundaries       | fix     | Browser identity, desktop refresh and billing browser session have separate owners.                                                                                                          |
+| 5 Defaults                  | keep    | Only official Cloud uses the new protocol; existing custom-endpoint code retains the previous entry path.                                                                                    |
+| 6 Domain boundaries         | keep    | No Market grant, workspace or native enrollment code is included.                                                                                                                            |
+| 7 Discoverability           | keep    | Controller is independent of UI/store; production adapter uses the instrumented application store.                                                                                           |
+| 8 Wire                      | fix     | Exact endpoints, redirect and scopes; S256, single-use state, bounded response bodies, no token URL fragments or client secret. Real production exchange and read-only RPCs pass.            |
+| 9 Initialization parity     | keep    | Settings, add/join org, share and other callers use the same sign-in hook. Actual macOS native button-to-browser-to-loopback-to-store acceptance also passes in an isolated numbered bundle. |
+| 10 Resolver symmetry        | fix     | Tokens, expiry and client ID travel together through persistence and cross-window adoption. Endpoint/account changes invalidate pending work.                                                |
 
 ## Lifecycle and performance
 
@@ -42,16 +42,35 @@ It uses the already deployed Cloud OAuth server and its public desktop client.
 | Background work    | fix     | One pending ten-minute expiry, auth subscription and loopback receiver | Cancellation on replacement, expiry, browser-open failure, identity/endpoint switch and hook teardown | Controller cancellation, late-start, expiry and entry-point tests |
 | Memory             | keep    | One attempt; 64 KiB maximum OAuth response                             | No polling or growing cache; verifier released on completion/cancel                                   | Duplicate-callback and fake-clock cleanup tests                   |
 | Scope/isolation    | fix     | Captured endpoint, identity and attempt generation                     | Reject stale exchanges before commit; receiver state includes its exact port                          | Account/endpoint switch and mismatch tests                        |
-| Rendering/hot path | keep    | No new component, render subscription or recurring refresh loop        | Uses existing app-lifetime OAuth listener; expiry remains active while hidden as security cleanup     | Source review; native CPU/RSS measurement not run                 |
+| Rendering/hot path | keep    | No new component, render subscription or recurring refresh loop        | Uses existing app-lifetime OAuth listener; expiry remains active while hidden as security cleanup     | Source review and short macOS native visible/hidden idle samples  |
 
-Visible/hidden native idle, full desktop UI callback delivery, native restart,
-and primary/secondary desktop instance acceptance remain untested. The live
-controller harness does not exercise these boundaries. Provider ingestion and
-sync topology are outside this PR's scope.
+Real macOS acceptance used an unsigned local numbered instance built from runtime
+commit `d75c685f3`, with production webpack assets, separate auth/data/history roots,
+separate ports and updater disabled. The original app data was not changed.
 
-Performance verdict: blocked — real Tauri lifecycle/CPU/RSS measurement has not
-been run for this branch. Unit and browser/controller evidence do not establish
-native performance or complete native acceptance.
+- First sign-in from the actual App button opened system Chrome, completed GitHub
+  account selection, returned through the native loopback listener and displayed
+  the existing account profile. The callback listener closed after completion.
+- Quit/relaunch restored the account without browser interaction. To exercise the
+  real refresh path, the test changed only expiry metadata in this disposable
+  instance's authoritative shared auth file while closed. On restart, the app
+  renewed expiry and rotated both access and refresh tokens; user and public OAuth
+  client provenance were unchanged. No runtime adapter or fabricated token was used.
+- Local sign-out followed by a second App sign-in reused the Cloud session in
+  system Chrome and completed with **zero browser login/consent clicks**.
+- Four two-second-spaced samples each observed native-process visible idle CPU
+  at 0.0% / RSS 75.0–76.1 MiB and hidden idle CPU at 0.1–0.3% / RSS 113.1–120.7 MiB.
+  These short debug-bundle samples are a lifecycle check, not a performance
+  improvement, total WebKit memory measurement, or long-running memory benchmark.
+- Quit removed the native process and released callback, IDE and proxy ports.
+  Controller tests cover cancellation, expiry, duplicate callback, account/endpoint
+  invalidation and late completion; native repeated login and restart cover the
+  real integration. No new recurring work or unbounded retained state was added.
+
+Performance verdict: pass for the changed OAuth resource lifecycle on the tested
+macOS instance. Windows/Linux native UI acceptance, a second physical machine,
+long-duration memory behavior, provider ingestion and sync topology were not
+measured and are not claimed. No ORG2 installer was published.
 
 ## Executed verification
 
@@ -70,5 +89,11 @@ native performance or complete native acceptance.
   `list_my_orgs`, and matched profile ID to token subject. Sessions were distinct,
   shared the same identity, and the first remained valid after the second login.
   Credentials stayed in harness memory; only boolean results were recorded.
-- No native artifact was built or released as part of this PR. No production
-  organization or billing data was changed by the read-only verification.
+- `node scripts/ci/run-unit-tests.mjs < <PR changed paths>`: 396 files /
+  3,112 tests passed, one existing test skipped. This includes the real sidebar
+  hook with the OAuth config boundary stubbed and verifies S256, receiver port
+  binding, explicit click ownership and cancellation cleanup.
+- `pnpm exec tauri build --debug --bundles app --no-sign --config <isolated numbered-instance config>`:
+  passed with the numbered deep-link scheme, production frontend assets and updater
+  disabled. The bundle was used locally only; no installer, tag or release was
+  published. No organization or billing records were changed by acceptance.
