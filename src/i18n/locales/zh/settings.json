@@ -1007,6 +1007,8 @@
     "apply": "使用此连接",
     "applied": "配置已保存，请新建工具会话以使用此配置",
     "restore": "恢复原始配置",
+    "disconnect": "断开",
+    "overlayHelp": "ORG2 把 Claude Code 的连接配置放在单独的文件（{{path}}）里，不会改 ~/.claude/settings.json。「打开终端」会用这个文件启动 Claude Code；在别的终端里用 claude --settings 加同一路径即可。你自己的设置、登录和对话历史保持不变。",
     "restored": "原始配置已恢复，请新建工具会话",
     "refresh": "刷新",
     "refreshed": "工具连接已刷新",

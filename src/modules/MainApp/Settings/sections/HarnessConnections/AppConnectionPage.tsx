@@ -239,11 +239,15 @@ export default function AppConnectionPage({
             ? (state.view?.configurationIssue ??
               state.view?.config.message ??
               t("harnessConnections.marketApps.unavailable"))
-            : marketManaged
-              ? t("harnessConnections.proxyHelp")
-              : configured
-                ? t("harnessConnections.applied")
-                : t("harnessConnections.marketApps.original");
+            : configured && state.view?.config.overlay
+              ? t("harnessConnections.overlayHelp", {
+                  path: state.view.config.targetFiles[0]?.targetPath ?? "",
+                })
+              : marketManaged
+                ? t("harnessConnections.proxyHelp")
+                : configured
+                  ? t("harnessConnections.applied")
+                  : t("harnessConnections.marketApps.original");
 
   return (
     <div className="flex flex-col gap-4" data-testid={`app-page-${target}`}>
@@ -313,7 +317,11 @@ export default function AppConnectionPage({
                 }
                 onClick={() => void restore()}
               >
-                {t("harnessConnections.restore")}
+                {t(
+                  state.view?.config.overlay
+                    ? "harnessConnections.disconnect"
+                    : "harnessConnections.restore"
+                )}
               </Button>
             )}
           </div>

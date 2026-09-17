@@ -926,6 +926,8 @@
     "apply": "使用此連線",
     "applied": "設定已儲存，請建立新的工具工作階段以使用此設定",
     "restore": "還原原始設定",
+    "disconnect": "斷開",
+    "overlayHelp": "ORG2 把 Claude Code 的連線設定放在單獨的檔案（{{path}}）裡，不會修改 ~/.claude/settings.json。「開啟終端機」會用這個檔案啟動 Claude Code；在其他終端機用 claude --settings 加同一路徑即可。你自己的設定、登入和對話歷史保持不變。",
     "restored": "原始設定已還原，請建立新的工具工作階段",
     "refresh": "重新整理",
     "refreshed": "工具連線已重新整理",

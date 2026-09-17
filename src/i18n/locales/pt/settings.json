@@ -926,6 +926,8 @@
     "apply": "Usar esta conexão",
     "applied": "Configuração salva: inicie uma nova sessão da ferramenta",
     "restore": "Restaurar configuração original",
+    "disconnect": "Desconectar",
+    "overlayHelp": "O ORG2 mantém as configurações do Claude Code num arquivo separado ({{path}}) e nunca edita ~/.claude/settings.json. \"Abrir terminal\" inicia o Claude Code com esse arquivo; em outro terminal execute claude --settings com o mesmo caminho. Suas configurações, login e histórico de conversas ficam como estão.",
     "restored": "Configuração original restaurada: inicie uma nova sessão da ferramenta",
     "refresh": "Atualizar",
     "refreshed": "Conexões de ferramentas atualizadas",

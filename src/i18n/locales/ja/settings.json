@@ -926,6 +926,8 @@
     "apply": "この接続を使用",
     "applied": "設定を保存しました。新しいツールセッションを開始してください",
     "restore": "元の設定に戻す",
+    "disconnect": "接続解除",
+    "overlayHelp": "ORG2 は Claude Code の設定を別ファイル（{{path}}）に保持し、~/.claude/settings.json は変更しません。「ターミナルを開く」はそのファイルで Claude Code を起動します。別のターミナルでは同じパスで claude --settings を実行してください。自分の設定・ログイン・会話履歴はそのままです。",
     "restored": "元の設定に戻しました。新しいツールセッションを開始してください",
     "refresh": "更新",
     "refreshed": "ツールの接続を更新しました",

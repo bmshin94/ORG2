@@ -22,6 +22,7 @@ const refreshProfiles = vi.fn();
 let profilesError: string | null = null;
 let connected = false;
 let conflict = false;
+let overlay = false;
 let installed = true;
 const identity = "11111111-1111-7111-8111-111111111111";
 const appliedSelection = (entitlementId: string) => {
@@ -126,9 +127,20 @@ vi.mock("./useHarnessConnection", () => ({
         supported: true,
         mode: connected ? "orgii_managed" : "default",
         conflict,
+        overlay,
         selectedKeyId: connected ? appliedSelection("ent_second") : null,
         selectedModel: connected ? "claude-b" : null,
-        targetFiles: [],
+        targetFiles: overlay
+          ? [
+              {
+                id: "settings",
+                targetPath:
+                  "/home/.orgii/cli-config-profiles/claude_code/overlay/settings.json",
+                overlay: true,
+                conflict: false,
+              },
+            ]
+          : [],
       },
       choices: [{ keyId: "key-a", name: "My API", models: ["model-a"] }],
     },
@@ -151,6 +163,7 @@ beforeEach(() => {
   connected = false;
   profilesError = null;
   conflict = false;
+  overlay = false;
   installed = true;
   configure.mockResolvedValue({});
   restore.mockResolvedValue({});
@@ -272,6 +285,17 @@ it("restores only the selected target app", async () => {
   await render("codex");
   await act(async () => button("harnessConnections.restore").click());
   expect(restore).toHaveBeenCalledWith("codex");
+});
+
+it("describes the Claude Code overlay and offers disconnect instead of restore", async () => {
+  connected = true;
+  overlay = true;
+  await render("claude_code");
+  expect(container.textContent).toContain("harnessConnections.overlayHelp");
+  expect(container.textContent).not.toContain("harnessConnections.conflict");
+  expect(button("harnessConnections.restore")).toBeUndefined();
+  await act(async () => button("harnessConnections.disconnect").click());
+  expect(restore).toHaveBeenCalledWith("claude_code");
 });
 
 it("reports configuration conflicts without calling them unsupported versions", async () => {

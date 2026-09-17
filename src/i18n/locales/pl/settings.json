@@ -926,6 +926,8 @@
     "apply": "Użyj tego połączenia",
     "applied": "Konfiguracja zapisana — rozpocznij nową sesję narzędzia",
     "restore": "Przywróć pierwotną konfigurację",
+    "disconnect": "Rozłącz",
+    "overlayHelp": "ORG2 trzyma swoje ustawienia Claude Code w osobnym pliku ({{path}}) i nigdy nie edytuje ~/.claude/settings.json. „Otwórz terminal” uruchamia Claude Code z tym plikiem; w innym terminalu uruchom claude --settings z tą samą ścieżką. Twoje ustawienia, logowanie i historia rozmów pozostają bez zmian.",
     "restored": "Pierwotna konfiguracja przywrócona — rozpocznij nową sesję narzędzia",
     "refresh": "Odśwież",
     "refreshed": "Odświeżono połączenia narzędzi",

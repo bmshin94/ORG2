@@ -277,6 +277,7 @@ export const CliConfigTargetFileStatusSchema = z.object({
   lastAppliedHash: z.string().nullable().optional(),
   currentHash: z.string().nullable().optional(),
   conflict: z.boolean(),
+  overlay: z.boolean().optional(),
 });
 
 export const CliConfigManagedStatusSchema = z.object({
@@ -285,6 +286,7 @@ export const CliConfigManagedStatusSchema = z.object({
   mode: CliConfigModeSchema,
   hasDefaultBackup: z.boolean(),
   conflict: z.boolean(),
+  overlay: z.boolean().optional(),
   selectedKeyId: z.string().nullable().optional(),
   selectedProvider: z.string().nullable().optional(),
   selectedModel: z.string().nullable().optional(),

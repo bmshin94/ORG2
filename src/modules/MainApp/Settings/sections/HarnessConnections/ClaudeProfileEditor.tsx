@@ -346,7 +346,11 @@ export default function ClaudeProfileEditor({
             }
             onClick={() => void act("restore")}
           >
-            {t("harnessConnections.restore")}
+            {t(
+              view?.config.overlay
+                ? "harnessConnections.disconnect"
+                : "harnessConnections.restore"
+            )}
           </Button>
         </div>
       </SectionRow>

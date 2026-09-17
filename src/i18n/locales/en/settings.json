@@ -1007,6 +1007,8 @@
     "apply": "Use this connection",
     "applied": "Configuration saved — start a new harness session to use it",
     "restore": "Restore original setup",
+    "disconnect": "Disconnect",
+    "overlayHelp": "ORG2 keeps its Claude Code settings in a separate file ({{path}}) and never edits ~/.claude/settings.json. Open terminal starts Claude Code with that file; from another terminal run claude --settings with the same path. Your own settings, login and conversation history stay as they are.",
     "restored": "Original setup restored — start a new harness session",
     "refresh": "Refresh",
     "refreshed": "Harness connections refreshed",
