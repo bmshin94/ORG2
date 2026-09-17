@@ -1,0 +1,19 @@
+# Market Package final delivery — tracking (2026-09-17)
+
+Follow-up to ORG2 #1899 / Cloud #104 / #105 (all merged 2026-09-17). Each row
+is closed only by evidence recorded under `evidence/` in this directory or by a
+commit in this branch. "Blocked" rows name the external dependency.
+
+| # | Item | Kind | Status |
+|---|------|------|--------|
+| 1 | Billing tail: source of the extra small request after external Claude Code calls | analysis + doc | **Closed**: it is Claude Code's automatic title call (`ai-title` record). It is billed to the Package pinned in `ANTHROPIC_DEFAULT_HAIKU_MODEL` (the connection's default), not to the Package picked with `/model`. Reproduced with a `--settings` overlay on the default `~/.claude` home: foreground → Coding for beginner 47127 µUSD, title → Sonnet overlap 2263 µUSD, both settled at Admin 45%/35%. See `evidence/claude-code-title-call.md`. |
+| 2 | Auxiliary calls (title/memory/compaction) attribution | code | Open — decide: document "auxiliary calls bill the default Package" in App Connections, or route them per session. |
+| 3 | "Configuration changed outside ORG2" after external `/model` | code | Open — Claude Code rewrites `model` in settings.json on `/model`; the conflict fingerprint must treat that field as runtime-owned (like Codex `projects`). |
+| 4 | Claude Desktop isolation for acceptance | tooling + acceptance | In progress — `open -n -a Claude --env CLAUDE_USER_DATA_DIR=<dir>` starts an independent instance; verify main instance untouched, then dual-Package selection, call, billing, restart, restore. |
+| 5 | Codex full chain (ORG2 + official app, Luna/model switch, context, billing) | acceptance | **Blocked** until the Codex weekly window resets (2026-09-19 09:22Z). 2026-09-17 15:25Z direct call returned 429 `usage_limit_reached` with `X-Codex-Primary-Used-Percent: 100`; the `gpt-reserve` pool (14% used) did not substitute. |
+| 6 | Login / authorization lifecycle (no saved grant, signed-out ORG2 → web enable → launch → auto sign-in → Package sync; account / Cloud URL switch; expired grant) | acceptance | Open — needs the user at the browser login step. |
+| 7 | Credential renewal and supplier rotation | acceptance | Renewal: open. Rotation: **Blocked** — only one healthy Claude supplier. |
+| 8 | Admin access restriction (Neonforge, Harry, Junyu Feishu open_ids) | config + acceptance | **Blocked** — same-app open_ids not provided. |
+| 9 | Final-build regression: successful failed-message Retry, external CLI restart + config restore, foreground/hidden/closed resource usage | acceptance | Open — needs a private debug build of this branch. |
+
+No ORG2 installer, Beta, release or tag is produced by this work.
