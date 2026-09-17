@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use super::dto::{
-    CliConfigManagedStatus, CliConfigMode, CliConfigProfileManifest, CliConfigTargetFileStatus,
-    CliManagedConfigSelection,
+    CliConfigManagedStatus, CliConfigMode, CliConfigProfileManifest, CliConfigTargetFileManifest,
+    CliConfigTargetFileStatus, CliManagedConfigSelection,
 };
 use super::file_io::{file_hash, now_stamp, sha256_bytes, write_sensitive_file_atomic};
 use super::generators::generate_managed_configs;
@@ -112,6 +112,11 @@ pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedSt
                     Vec::new()
                 };
                 conflict = !super::desktop::runtime_mode_matches(&current);
+            }
+            if conflict && claude_code_settings_target(agent_name, &target.id) {
+                let current = std::fs::read(&target_path)
+                    .map_err(|_| "Cannot inspect Claude Code settings")?;
+                conflict = !claude_code_runtime_drift_only(&target, &current);
             }
             any_backup |= has_default_backup;
             any_conflict |= conflict;
@@ -255,6 +260,10 @@ pub(super) fn apply_connection_unlocked(
                         && super::desktop::owns_runtime_mode(target)
                     {
                         super::desktop::runtime_mode_matches(&snapshots[&target.id].bytes)
+                    } else if current_hash != Some(last_hash)
+                        && claude_code_settings_target(agent_name, &target.id)
+                    {
+                        claude_code_runtime_drift_only(target, &snapshots[&target.id].bytes)
                     } else {
                         false
                     };
@@ -397,6 +406,24 @@ pub(super) fn apply_connection_unlocked(
     status_for_unlocked(agent_name)
 }
 
+fn claude_code_settings_target(agent_name: &str, target_id: &str) -> bool {
+    agent_name == super::registry::CLAUDE_CODE_AGENT
+        && target_id == super::registry::CLAUDE_CODE_CONFIG_FILE_ID
+}
+
+/// The committed managed profile is the only trusted copy of what ORG2 applied;
+/// it is used only while its hash still matches the manifest.
+fn claude_code_runtime_drift_only(target: &CliConfigTargetFileManifest, current: &[u8]) -> bool {
+    let Some(last_applied) = target.last_applied_hash.as_deref() else {
+        return false;
+    };
+    let Ok(applied) = std::fs::read(&target.managed_profile_path) else {
+        return false;
+    };
+    sha256_bytes(&applied) == last_applied
+        && super::generators::claude_code_runtime_drift_only(current, &applied)
+}
+
 pub(super) fn restore_agent_default_unlocked(
     agent_name: &str,
     force: bool,
@@ -429,6 +456,10 @@ pub(super) fn restore_agent_default_unlocked(
                     && super::desktop::owns_runtime_mode(target)
                 {
                     super::desktop::runtime_mode_matches(&snapshots[&target.id].bytes)
+                } else if current_hash != Some(last_hash)
+                    && claude_code_settings_target(agent_name, &target.id)
+                {
+                    claude_code_runtime_drift_only(target, &snapshots[&target.id].bytes)
                 } else {
                     false
                 };

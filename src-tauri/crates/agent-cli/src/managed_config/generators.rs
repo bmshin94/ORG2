@@ -209,6 +209,29 @@ pub(super) fn generate_claude_code_managed_config(
         .map_err(|err| format!("JSON serialize error: {err}"))
 }
 
+/// Claude Code persists a few choices into the same settings.json that ORG2
+/// manages: `/model` rewrites `model`. Those runtime-owned fields are expected
+/// to drift after a launch and must not read as a third-party edit. Every
+/// other field (including the managed `env`, `modelPicker` and
+/// `availableModels`) still has to match the applied profile byte for byte at
+/// the JSON level.
+pub(super) const CLAUDE_CODE_RUNTIME_OWNED_FIELDS: &[&str] = &["model"];
+
+pub(super) fn claude_code_runtime_drift_only(current: &[u8], applied: &[u8]) -> bool {
+    fn normalized(bytes: &[u8]) -> Option<serde_json::Map<String, serde_json::Value>> {
+        let mut value: serde_json::Value = serde_json::from_slice(bytes).ok()?;
+        let object = value.as_object_mut()?;
+        for field in CLAUDE_CODE_RUNTIME_OWNED_FIELDS {
+            object.remove(*field);
+        }
+        Some(std::mem::take(object))
+    }
+    match (normalized(current), normalized(applied)) {
+        (Some(current), Some(applied)) => current == applied,
+        _ => false,
+    }
+}
+
 fn quote_env_value(value: &str) -> String {
     let escaped = value.replace('\\', "\\\\").replace('"', "\\\"");
     format!("\"{escaped}\"")

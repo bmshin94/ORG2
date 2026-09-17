@@ -231,3 +231,59 @@ fn official_anthropic_uses_native_api_key_authentication() {
     );
     assert!(settings["env"].get("ANTHROPIC_AUTH_TOKEN").is_none());
 }
+
+#[test]
+fn claude_code_model_switch_is_runtime_drift_but_other_edits_still_conflict() {
+    let _lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii"));
+    let _external = ExternalHome::set(temp.path());
+    let dir = temp.path().join(".claude");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("settings.json");
+    let original = "{\"permissions\":{\"allow\":[\"Read\"]},\"env\":{\"KEEP\":\"value\"}}";
+    std::fs::write(&path, original).unwrap();
+    enable_direct("claude_code", connection("first-key"), None).unwrap();
+    let applied = std::fs::read_to_string(&path).unwrap();
+
+    // Claude Code persists `/model` into the managed settings file.
+    let mut settings: serde_json::Value = serde_json::from_str(&applied).unwrap();
+    settings["model"] = "claude-sonnet-5-org2-other-package".into();
+    std::fs::write(&path, serde_json::to_string_pretty(&settings).unwrap()).unwrap();
+    let status = operations::status_for_unlocked("claude_code").unwrap();
+    assert!(
+        !status.conflict,
+        "a runtime model switch is not a third-party edit"
+    );
+    assert!(status.target_files.iter().all(|target| !target.conflict));
+    // A re-apply and a plain restore both still work after that drift.
+    enable_direct("claude_code", connection("second-key"), None).unwrap();
+    assert!(std::fs::read_to_string(&path)
+        .unwrap()
+        .contains("second-key"));
+
+    // Any other field, including the managed env, remains a conflict.
+    let mut settings: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    settings["model"] = "claude-sonnet-5-org2-other-package".into();
+    settings["env"]["KEEP"] = "changed-outside".into();
+    std::fs::write(&path, serde_json::to_string_pretty(&settings).unwrap()).unwrap();
+    assert!(
+        operations::status_for_unlocked("claude_code")
+            .unwrap()
+            .conflict
+    );
+    assert!(enable_direct("claude_code", connection("third-key"), None).is_err());
+    assert!(operations::restore_agent_default_unlocked("claude_code", false).is_err());
+
+    // Back to model-only drift: restore without force returns the original file.
+    settings["env"]["KEEP"] = "value".into();
+    std::fs::write(&path, serde_json::to_string_pretty(&settings).unwrap()).unwrap();
+    assert!(
+        !operations::status_for_unlocked("claude_code")
+            .unwrap()
+            .conflict
+    );
+    operations::restore_agent_default_unlocked("claude_code", false).unwrap();
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+}
