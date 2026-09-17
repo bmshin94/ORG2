@@ -44,6 +44,7 @@ import {
   schedulePendingOrg2CloudAuthLoopbackExpiry,
 } from "@src/features/Org2Cloud/org2CloudAuthLoopback";
 import { resetOrgEntitlementCoordinator } from "@src/features/Org2Cloud/org2CloudEntitlementCoordinator";
+import { org2CloudOAuth } from "@src/features/Org2Cloud/org2CloudOAuth";
 import {
   CLOUD_INVITE_DEEP_LINK_HOST,
   type CloudInviteDeepLink,
@@ -284,6 +285,15 @@ export function useDeepLinkHandler(): void {
       try {
         const { onUrl } = await import("@fabianlars/tauri-plugin-oauth");
         const unlisten = await onUrl((url: string) => {
+          if (org2CloudOAuth.isCallback(url)) {
+            void org2CloudOAuth.complete(url).catch(() => {
+              logWarn(
+                "DeepLinkHandler",
+                "ORG2 OAuth sign-in failed; start sign-in again"
+              );
+            });
+            return;
+          }
           const pending = readPendingOrg2CloudAuthLoopback();
           if (!pending) return;
           if (handleOrg2CloudAuthUrl(url, pending.callbackUrl)) {
@@ -318,6 +328,7 @@ export function useDeepLinkHandler(): void {
     void setupOAuthListener();
     return () => {
       disposed = true;
+      org2CloudOAuth.cancel();
       oauthUnlistenRef.current?.();
       oauthUnlistenRef.current = null;
     };

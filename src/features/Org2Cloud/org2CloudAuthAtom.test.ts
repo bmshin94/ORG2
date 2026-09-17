@@ -40,6 +40,18 @@ describe("org2CloudAuthAtom storage schema", () => {
     );
   });
 
+  it("retains OAuth refresh provenance when a new store hydrates persisted auth", () => {
+    const state = { ...VALID_STATE, oauthClientId: "desktop-client" };
+    storage.setItem(ORG2_CLOUD_AUTH_STORAGE_KEY, state);
+    const store = createStore();
+    const unsubscribe = store.sub(org2CloudAuthAtom, () => {});
+    try {
+      expect(store.get(org2CloudAuthAtom)).toEqual(state);
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it("round-trips the signed-out null state", () => {
     storage.setItem(ORG2_CLOUD_AUTH_STORAGE_KEY, null);
     expect(storage.getItem(ORG2_CLOUD_AUTH_STORAGE_KEY, VALID_STATE)).toBe(

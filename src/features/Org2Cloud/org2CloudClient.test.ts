@@ -606,3 +606,35 @@ describe("listMyOrgs runtimeTelemetry (0010 member runtime)", () => {
     ]);
   });
 });
+
+it("refreshes OAuth Server sessions with their public client and retains provenance", async () => {
+  localStorage.removeItem(ORG2_CLOUD_AUTH_STORAGE_KEY);
+  fetchMock.mockResolvedValueOnce(
+    jsonResponse({
+      access_token: "oauth-at-2",
+      refresh_token: "oauth-rt-2",
+      expires_in: 3600,
+    })
+  );
+  const state: Org2CloudAuthState = {
+    kind: "org2_cloud",
+    supabaseUrl: ORG2_CLOUD_OFFICIAL_SUPABASE_URL,
+    supabaseAnonKey: ORG2_CLOUD_OFFICIAL_ANON_KEY,
+    userId: "oauth-user",
+    accessToken: "old",
+    refreshToken: "oauth-rt-1",
+    expiresAt: 0,
+    oauthClientId: "desktop-client",
+  };
+  const fresh = await ensureFreshSession(state);
+  expect(fresh?.oauthClientId).toBe("desktop-client");
+  expect(fresh?.refreshToken).toBe("oauth-rt-2");
+  const [url, init] = fetchMock.mock.calls[0];
+  expect(url).toBe(`${ORG2_CLOUD_OFFICIAL_SUPABASE_URL}/auth/v1/oauth/token`);
+  expect(new URLSearchParams(init.body).get("client_id")).toBe(
+    "desktop-client"
+  );
+  expect(new URLSearchParams(init.body).get("refresh_token")).toBe(
+    "oauth-rt-1"
+  );
+});

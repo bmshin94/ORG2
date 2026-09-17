@@ -55,7 +55,8 @@ export interface CloudProfile {
 const RefreshResponseSchema = z.object({
   access_token: z.string(),
   refresh_token: z.string(),
-  expires_at: z.number(),
+  expires_at: z.number().optional(),
+  expires_in: z.number().positive().max(86400).optional(),
 });
 
 export interface RefreshedTokens {
@@ -410,9 +411,13 @@ export async function getEntitlementState(
  */
 async function refreshSessionAttempt(
   refreshToken: string,
-  endpoint: { supabaseUrl: string; anonKey: string } = getCloudEndpoint()
+  endpoint: {
+    supabaseUrl: string;
+    anonKey: string;
+    oauthClientId?: string;
+  } = getCloudEndpoint()
 ): Promise<RefreshAttemptResult> {
-  const key = `${endpoint.supabaseUrl}\0${endpoint.anonKey}\0${refreshToken}`;
+  const key = `${endpoint.supabaseUrl}\0${endpoint.anonKey}\0${endpoint.oauthClientId ?? ""}\0${refreshToken}`;
   if (inFlightRefresh?.key === key) return inFlightRefresh.promise;
 
   const promise = (async (): Promise<RefreshAttemptResult> => {
@@ -424,14 +429,22 @@ async function refreshSessionAttempt(
       const { response, payload } = await runCloudRequestWithTimeout(
         async (signal) => {
           const response = await fetchWithTransportRetry(
-            `${endpoint.supabaseUrl}/auth/v1/token?grant_type=refresh_token`,
+            `${endpoint.supabaseUrl}/auth/v1/${endpoint.oauthClientId ? "oauth/token" : "token?grant_type=refresh_token"}`,
             {
               method: "POST",
               headers: {
                 apikey: endpoint.anonKey,
-                "content-type": "application/json",
+                "content-type": endpoint.oauthClientId
+                  ? "application/x-www-form-urlencoded"
+                  : "application/json",
               },
-              body: JSON.stringify({ refresh_token: refreshToken }),
+              body: endpoint.oauthClientId
+                ? new URLSearchParams({
+                    grant_type: "refresh_token",
+                    client_id: endpoint.oauthClientId,
+                    refresh_token: refreshToken,
+                  }).toString()
+                : JSON.stringify({ refresh_token: refreshToken }),
               signal,
             }
           );
@@ -451,7 +464,11 @@ async function refreshSessionAttempt(
         };
       }
       const parsed = RefreshResponseSchema.safeParse(payload);
-      if (!parsed.success) {
+      if (
+        !parsed.success ||
+        (parsed.data.expires_at === undefined &&
+          parsed.data.expires_in === undefined)
+      ) {
         log.warn("token refresh returned unexpected shape");
         return { tokens: null, permanentlyRejected: false };
       }
@@ -459,7 +476,9 @@ async function refreshSessionAttempt(
         tokens: {
           accessToken: parsed.data.access_token,
           refreshToken: parsed.data.refresh_token,
-          expiresAt: parsed.data.expires_at,
+          expiresAt:
+            parsed.data.expires_at ??
+            Math.floor(Date.now() / 1000) + parsed.data.expires_in!,
         },
         permanentlyRejected: false,
       };
@@ -561,6 +580,7 @@ export function adoptPersistedSessionRotation(
     accessToken: persisted.accessToken,
     refreshToken: persisted.refreshToken,
     expiresAt: persisted.expiresAt,
+    oauthClientId: persisted.oauthClientId,
   };
 }
 
@@ -598,6 +618,7 @@ export async function ensureFreshSession(
       const attempt = await refreshSessionAttempt(state.refreshToken, {
         supabaseUrl: state.supabaseUrl,
         anonKey: state.supabaseAnonKey,
+        oauthClientId: state.oauthClientId,
       });
       const refreshed = attempt.tokens;
       return {
