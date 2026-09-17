@@ -23,12 +23,16 @@ import Message from "@src/components/Message";
 import { useChatSessionId } from "@src/engines/ChatPanel/ChatSessionContext";
 import { projectOutgoingUserMessage } from "@src/engines/ChatPanel/hooks/useInputArea/projectOutgoingUserMessage";
 import { useUserIntentSubmit } from "@src/engines/ChatPanel/hooks/useWorkspaceChat/useUserIntentSubmit";
-import { editTruncationTimestampAtom } from "@src/engines/SessionCore";
+import {
+  editTruncationTimestampAtom,
+  triggerSessionReloadAtom,
+} from "@src/engines/SessionCore";
 import {
   beginOptimisticTurn,
   failOptimisticTurn,
 } from "@src/engines/SessionCore/control/optimisticTurnStatus";
 import { cancelTurnForTimelineBoundary } from "@src/engines/SessionCore/control/sessionTimelineBoundary";
+import { LOCAL_EXECUTION_TAIL_EVENT_PREFIX } from "@src/engines/SessionCore/conversations/localConversationExecutionTail";
 import { sessionIdAtom } from "@src/engines/SessionCore/core/atoms";
 import { eventStoreProxy } from "@src/engines/SessionCore/core/store/EventStoreProxy";
 import {
@@ -298,6 +302,49 @@ export function useEditUserMessage(
         return;
       }
 
+      // A landed execution-tail row is a child Session's user turn projected
+      // onto the canonical root (`runlanded-<childEventId>`). The root never
+      // ran it, so rewinding the root (kill runner, revert files, clear resume
+      // state) would destroy unrelated context and still run the resend on the
+      // wrong Session with no durable-queue runner. Re-admit it through the
+      // canonical router instead so it carries `conversationDispatch`, runs on
+      // an execution child, and registers its runner for the surface.
+      if (
+        initiatedSessionId &&
+        eventId.startsWith(LOCAL_EXECUTION_TAIL_EVENT_PREFIX)
+      ) {
+        const resendImages =
+          imageDataUrls && imageDataUrls.length > 0 ? imageDataUrls : undefined;
+        const projection = projectOutgoingUserMessage({
+          displayText: newText,
+          allowCanvasInterception:
+            !resendImages && !isCliSession(initiatedSessionId),
+        });
+        try {
+          const handled = await onFailedUserIntentRetry?.({
+            displayText: projection.displayContent,
+            agentContent: projection.agentContent,
+            imageDataUrls: resendImages,
+          });
+          if (!handled) {
+            await submitUserIntent({
+              sessionId: initiatedSessionId,
+              displayContent: projection.displayContent,
+              agentContent: projection.agentContent,
+              imageDataUrls: resendImages,
+              source: "dispatch",
+            });
+          }
+        } catch (error) {
+          log.error(
+            "[useEditUserMessage] landed execution-tail resend failed:",
+            error
+          );
+          Message.error(t("errors.errorOccurred"));
+        }
+        return;
+      }
+
       let revertFiles = true;
 
       if (
@@ -391,6 +438,10 @@ export function useEditUserMessage(
                   )
                 ),
             ]);
+            // Eviction empties the mounted anchor; nothing else re-hydrates
+            // it until the session is reopened. Bump the reload epoch so the
+            // sync owner reloads the rewound transcript from SQLite now.
+            store.set(triggerSessionReloadAtom, initiatedSessionId);
           }
         }
 

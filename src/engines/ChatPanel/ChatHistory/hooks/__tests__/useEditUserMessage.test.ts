@@ -29,6 +29,8 @@ import { useEditUserMessage } from "../useEditUserMessage";
 const {
   checkSnapshotChangesSpy,
   durableHydrationRows,
+  evictSessionSpy,
+  invokeTauriSpy,
   flushMessageQueueSpy,
   hydrateMessageQueueSpy,
   messageQueueHydrated,
@@ -46,6 +48,8 @@ const {
 } = vi.hoisted(() => ({
   checkSnapshotChangesSpy: vi.fn(async () => false),
   durableHydrationRows: { current: [] as Array<Record<string, unknown>> },
+  evictSessionSpy: vi.fn(async () => undefined),
+  invokeTauriSpy: vi.fn(async () => 0),
   flushMessageQueueSpy: vi.fn(async () => undefined),
   hydrateMessageQueueSpy: vi.fn(async () => undefined),
   messageQueueHydrated: { current: true },
@@ -105,7 +109,15 @@ vi.mock(
 
 vi.mock("@src/engines/SessionCore", () => ({
   editTruncationTimestampAtom: {},
+  triggerSessionReloadAtom: { debugLabel: "triggerSessionReloadAtom" },
 }));
+
+vi.mock(
+  "@src/engines/SessionCore/conversations/localConversationExecutionTail",
+  () => ({
+    LOCAL_EXECUTION_TAIL_EVENT_PREFIX: "runlanded-",
+  })
+);
 
 vi.mock("@src/engines/SessionCore/control/optimisticTurnStatus", () => ({
   beginOptimisticTurn: vi.fn(),
@@ -126,7 +138,7 @@ vi.mock("@src/engines/SessionCore/core/store/EventStoreProxy", () => ({
     updateById: updateByIdSpy,
     upsert: upsertSpy,
     truncateBeforeId: truncateBeforeIdSpy,
-    evictSession: vi.fn(async () => undefined),
+    evictSession: evictSessionSpy,
   },
 }));
 
@@ -166,7 +178,7 @@ vi.mock("@src/store/ui/todoAtom", () => ({
 }));
 
 vi.mock("@src/util/platform/tauri/init", () => ({
-  invokeTauri: vi.fn(async () => 0),
+  invokeTauri: invokeTauriSpy,
 }));
 
 vi.mock("../../components/RevertConfirmDialog", () => ({
@@ -233,6 +245,8 @@ describe("useEditUserMessage resend projection", () => {
   beforeEach(() => {
     checkSnapshotChangesSpy.mockClear();
     durableHydrationRows.current = [];
+    evictSessionSpy.mockClear();
+    invokeTauriSpy.mockClear();
     flushMessageQueueSpy.mockClear();
     hydrateMessageQueueSpy.mockClear();
     hydrateMessageQueueSpy.mockImplementation(async () => {
@@ -1065,6 +1079,160 @@ describe("useEditUserMessage resend projection", () => {
     expect(flushMessageQueueSpy).toHaveBeenCalledOnce();
     expect(submitUserIntentSpy).not.toHaveBeenCalled();
     expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+  });
+
+  it("resends a landed execution-tail row through the canonical router without rewinding the root", async () => {
+    surfaceSessionId.current = "cliagent-root";
+    storeSessionId.current = "cliagent-root";
+    const canonicalRetry = vi.fn().mockResolvedValue(true);
+    failedUserIntentRetryForTest = canonicalRetry;
+    resolveDispatchForTest = () => ({
+      action: "replace",
+      dispatch: {
+        kind: "canonical_conversation",
+        root: {
+          authority: "local-session",
+          authorityScope: [],
+          conversationId: "cliagent-root",
+        },
+        target: { cliAgentType: "claude_code", model: "claude-sonnet-5" },
+      },
+    });
+    act(() =>
+      root.render(
+        createElement(Harness, {
+          onReady: (fn: EditUserMessageFn) => {
+            editUserMessage = fn;
+          },
+        })
+      )
+    );
+    // The child ran this turn; Claude Code answered "API Error: 502" as an
+    // agent row, so the queue row completed and the optimistic bubble was
+    // replaced by the landed child user row re-stamped onto the root.
+    const landed = {
+      event: {
+        id: "runlanded-child-user-1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        source: "user",
+        functionName: "user_message",
+        uiCanonical: "",
+        displayText: "run the failing tail again",
+        displayStatus: "completed",
+        sessionId: "cliagent-root",
+        result: {
+          deliveryStatus: "completed",
+          turnIntentId: "turn-intent-landed",
+        },
+      },
+      chunk_id: "runlanded-child-user-1",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(landed, "run the failing tail again");
+    });
+
+    expect(canonicalRetry).toHaveBeenCalledOnce();
+    expect(canonicalRetry).toHaveBeenCalledWith(
+      expect.objectContaining({ displayText: "run the failing tail again" })
+    );
+    expect(submitUserIntentSpy).not.toHaveBeenCalled();
+    expect(invokeTauriSpy).not.toHaveBeenCalledWith(
+      "cli_agent_truncate_after_chunk",
+      expect.anything()
+    );
+    expect(evictSessionSpy).not.toHaveBeenCalled();
+    expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
+    expect(checkSnapshotChangesSpy).not.toHaveBeenCalled();
+    expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the direct dispatcher for a landed tail row when the router declines", async () => {
+    surfaceSessionId.current = "cliagent-root";
+    storeSessionId.current = "cliagent-root";
+    const canonicalRetry = vi.fn().mockResolvedValue(false);
+    failedUserIntentRetryForTest = canonicalRetry;
+    act(() =>
+      root.render(
+        createElement(Harness, {
+          onReady: (fn: EditUserMessageFn) => {
+            editUserMessage = fn;
+          },
+        })
+      )
+    );
+    const landed = {
+      event: {
+        id: "runlanded-child-user-2",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        source: "user",
+        displayText: "try once more",
+        displayStatus: "completed",
+        result: { deliveryStatus: "completed" },
+      },
+      chunk_id: "runlanded-child-user-2",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(landed, "try once more");
+    });
+
+    expect(canonicalRetry).toHaveBeenCalledOnce();
+    expect(submitUserIntentSpy).toHaveBeenCalledOnce();
+    expect(submitUserIntentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "cliagent-root",
+        displayContent: "try once more",
+        source: "dispatch",
+      })
+    );
+    expect(invokeTauriSpy).not.toHaveBeenCalled();
+    expect(evictSessionSpy).not.toHaveBeenCalled();
+    expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
+  });
+
+  it("reloads the rewound cli session after evicting it so the anchor is not left empty", async () => {
+    surfaceSessionId.current = "cliagent-plain";
+    storeSessionId.current = "cliagent-plain";
+    act(() =>
+      root.render(
+        createElement(Harness, {
+          onReady: (fn: EditUserMessageFn) => {
+            editUserMessage = fn;
+          },
+        })
+      )
+    );
+
+    await act(async () => {
+      await editUserMessage?.(chatItem(), "edit an earlier native turn");
+    });
+
+    expect(invokeTauriSpy).toHaveBeenCalledWith(
+      "cli_agent_truncate_after_chunk",
+      expect.objectContaining({
+        sessionId: "cliagent-plain",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      })
+    );
+    expect(evictSessionSpy).toHaveBeenCalledWith("cliagent-plain");
+    const evictOrder = evictSessionSpy.mock.invocationCallOrder[0] ?? 0;
+    const reloadCallIndex = storeSetSpy.mock.calls.findIndex(
+      ([atom]) =>
+        (atom as { debugLabel?: string }).debugLabel ===
+        "triggerSessionReloadAtom"
+    );
+    expect(reloadCallIndex).toBeGreaterThanOrEqual(0);
+    expect(storeSetSpy.mock.calls[reloadCallIndex]?.[1]).toBe("cliagent-plain");
+    const reloadOrder =
+      storeSetSpy.mock.invocationCallOrder[reloadCallIndex] ?? 0;
+    expect(reloadOrder).toBeGreaterThan(evictOrder);
+    expect(submitUserIntentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "cliagent-plain",
+        displayContent: "edit an earlier native turn",
+      })
+    );
   });
 
   it("retries against the mounted SideChat session instead of global active", async () => {
