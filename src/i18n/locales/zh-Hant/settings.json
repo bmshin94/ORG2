@@ -960,6 +960,7 @@
       "terminalOpened": "已開啟終端機",
       "provider": "ORG2 Market",
       "multiPackageHelp": "可同時選擇最多 8 個方案和一個預設模型，連線後可在 App 內切換方案",
+      "auxiliaryBilling": "Claude Code 自動產生標題、記憶和壓縮上下文的呼叫計入預設套餐；只有對話本身跟隨你用 /model 選擇的套餐",
       "defaultModel": "預設模型",
       "packageLimit": "最多選擇 8 個方案"
     }

@@ -960,6 +960,7 @@
       "terminalOpened": "Terminal ouvert",
       "provider": "ORG2 Market",
       "multiPackageHelp": "Sélectionnez jusqu’à 8 forfaits et un modèle par défaut pour changer de forfait dans l’application",
+      "auxiliaryBilling": "Les appels automatiques de Claude Code pour le titre, la mémoire et la compaction sont facturés au forfait par défaut ; seule la conversation suit le forfait choisi avec /model",
       "defaultModel": "Modèle par défaut",
       "packageLimit": "Sélectionnez jusqu’à 8 forfaits"
     }

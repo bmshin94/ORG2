@@ -960,6 +960,7 @@
       "terminalOpened": "Đã mở terminal",
       "provider": "ORG2 Market",
       "multiPackageHelp": "Chọn tối đa 8 gói và một mô hình mặc định, sau đó chuyển gói trong ứng dụng",
+      "auxiliaryBilling": "Các lời gọi tự động của Claude Code cho tiêu đề, bộ nhớ và nén ngữ cảnh được tính vào gói mặc định; chỉ cuộc trò chuyện mới theo gói bạn chọn bằng /model",
       "defaultModel": "Mô hình mặc định",
       "packageLimit": "Chọn tối đa 8 gói"
     }

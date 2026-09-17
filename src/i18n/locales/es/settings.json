@@ -960,6 +960,7 @@
       "terminalOpened": "Terminal abierta",
       "provider": "ORG2 Market",
       "multiPackageHelp": "Selecciona hasta 8 paquetes y un modelo predeterminado para cambiar de paquete dentro de la app",
+      "auxiliaryBilling": "Las llamadas automáticas de Claude Code para título, memoria y compactación se facturan al paquete predeterminado; solo el chat sigue el paquete elegido con /model",
       "defaultModel": "Modelo predeterminado",
       "packageLimit": "Selecciona hasta 8 paquetes"
     }

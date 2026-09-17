@@ -960,6 +960,7 @@
       "terminalOpened": "Terminal açıldı",
       "provider": "ORG2 Market",
       "multiPackageHelp": "En fazla 8 paket ve varsayılan bir model seçin, ardından uygulama içinde paketler arasında geçiş yapın",
+      "auxiliaryBilling": "Claude Code'un otomatik başlık, bellek ve sıkıştırma çağrıları varsayılan pakete faturalanır; yalnızca sohbet /model ile seçtiğiniz paketi izler",
       "defaultModel": "Varsayılan model",
       "packageLimit": "En fazla 8 paket seçin"
     }

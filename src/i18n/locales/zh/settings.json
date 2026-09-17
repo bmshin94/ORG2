@@ -1041,6 +1041,7 @@
       "terminalOpened": "已打开终端",
       "provider": "ORG2 Market",
       "multiPackageHelp": "可同时选择最多 8 个套餐和一个默认模型，连接后可在 App 内切换套餐",
+      "auxiliaryBilling": "Claude Code 自动生成标题、记忆和压缩上下文的调用计入默认套餐；只有对话本身跟随你用 /model 选择的套餐",
       "defaultModel": "默认模型",
       "packageLimit": "最多选择 8 个套餐"
     }

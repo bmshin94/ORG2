@@ -960,6 +960,7 @@
       "terminalOpened": "터미널을 열었습니다",
       "provider": "ORG2 Market",
       "multiPackageHelp": "최대 8개 패키지와 기본 모델을 선택한 후 앱 안에서 패키지를 전환하세요",
+      "auxiliaryBilling": "Claude Code의 자동 제목·메모리·컴팩션 호출은 기본 패키지에 청구됩니다. /model로 선택한 패키지를 따르는 것은 대화 자체만입니다",
       "defaultModel": "기본 모델",
       "packageLimit": "최대 8개 패키지를 선택하세요"
     }

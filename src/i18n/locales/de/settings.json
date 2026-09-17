@@ -960,6 +960,7 @@
       "terminalOpened": "Terminal geöffnet",
       "provider": "ORG2 Market",
       "multiPackageHelp": "Wähle bis zu 8 Pakete und ein Standardmodell, um Pakete in der App zu wechseln",
+      "auxiliaryBilling": "Automatische Titel-, Memory- und Komprimierungsaufrufe von Claude Code werden dem Standardpaket berechnet; nur der Chat selbst folgt dem mit /model gewählten Paket",
       "defaultModel": "Standardmodell",
       "packageLimit": "Wähle bis zu 8 Pakete"
     }

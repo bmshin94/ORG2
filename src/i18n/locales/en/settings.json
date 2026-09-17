@@ -1041,6 +1041,7 @@
       "terminalOpened": "Terminal opened",
       "provider": "ORG2 Market",
       "multiPackageHelp": "Select up to 8 packages and a default model, then switch packages inside the app",
+      "auxiliaryBilling": "Claude Code's automatic title, memory and compaction calls are billed to the default package; only the chat itself follows the package you pick with /model",
       "defaultModel": "Default model",
       "packageLimit": "Select up to 8 packages"
     }

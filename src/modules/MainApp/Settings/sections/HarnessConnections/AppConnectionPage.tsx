@@ -388,6 +388,11 @@ export default function AppConnectionPage({
                 <p className={SECTION_DESCRIPTION_CLASSES}>
                   {t("harnessConnections.marketApps.multiPackageHelp")}
                 </p>
+                {target === "claude_code" && (
+                  <p className={SECTION_DESCRIPTION_CLASSES}>
+                    {t("harnessConnections.marketApps.auxiliaryBilling")}
+                  </p>
+                )}
                 {profilesLoading ? (
                   <p className={SECTION_DESCRIPTION_CLASSES}>
                     {t("harnessConnections.marketApps.loading")}

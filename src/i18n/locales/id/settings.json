@@ -1041,6 +1041,7 @@
       "terminalOpened": "Terminal dibuka",
       "provider": "ORG2 Market",
       "multiPackageHelp": "Pilih hingga 8 paket dan satu model default, lalu beralih paket di dalam aplikasi",
+      "auxiliaryBilling": "Panggilan otomatis Claude Code untuk judul, memori, dan pemadatan ditagihkan ke paket default; hanya obrolan itu sendiri yang mengikuti paket yang dipilih dengan /model",
       "defaultModel": "Model default",
       "packageLimit": "Pilih hingga 8 paket"
     }

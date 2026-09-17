@@ -960,6 +960,7 @@
       "terminalOpened": "ターミナルを開きました",
       "provider": "ORG2 Market",
       "multiPackageHelp": "最大 8 個のパッケージと既定のモデルを選択すると、アプリ内でパッケージを切り替えられます",
+      "auxiliaryBilling": "Claude Code のタイトル・メモリ・コンパクション自動呼び出しはデフォルトのパッケージに課金されます。/model で選んだパッケージに従うのはチャット本体のみです",
       "defaultModel": "既定のモデル",
       "packageLimit": "パッケージは最大 8 個まで選択できます"
     }
