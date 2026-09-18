@@ -118,3 +118,61 @@ So the client→proxy→gateway→adapter chain is proven for the official app's
 engine as well as the CLI. What remains unproven is only the last hop: the
 provider quota (ordinary window resets 2026-09-19 08:23Z / 09:22Z) and the
 adapter's missing `gpt-reserve` support.
+
+## 6. Why the adapter blocks the reserve, measured — 2026-09-18 00:24–00:26Z
+
+Three experiments against the acceptance adapter
+(`org2-cpa-cb_lWyBJ00TNVrOFIyw-s4`, the shard holding the gmail Codex
+account). Its config was backed up inside the volume, changed, restarted,
+and restored afterwards; it ends on its original 23-line config and answers
+normally.
+
+**(a) The `oauth-model-alias` config option does not help — refuted twice.**
+The shipped `config.example.yaml` in the running image documents a per-channel
+`oauth-model-alias` with a `codex:` section (`name` = upstream model id,
+`alias` = client-visible id), which looked like a fork-free way in. Both
+directions were tried and both fail:
+
+| config | asked for | answer |
+|---|---|---|
+| `name: gpt-reserve`, `alias: gpt-reserve`, `fork: true` | `gpt-reserve` | `400 unknown provider for model gpt-reserve` |
+| `name: gpt-reserve`, `alias: gpt-5.6-luna-reserve` | `gpt-5.6-luna-reserve` | `400 unknown provider for model gpt-5.6-luna-reserve` |
+
+`/v1/models` was unchanged in both cases. An alias only renames a model the
+registry already knows; it cannot introduce one.
+
+**(b) The registry is remote, and its URL is not configurable.** The adapter
+logs `startup model refresh completed from
+https://raw.githubusercontent.com/router-for-me/models/refs/heads/main/models.json`
+and repeats it every 3 h. Both that URL and the Codex client-models URL are
+hard-coded constants in the binary; no config key or environment override
+exists for either. So `gpt-reserve` becomes routable only when upstream adds
+it to that file, or when the binary is replaced.
+
+**(c) The reactive half of the Cloud #117 fallback cannot fire through an
+adapter at all.** The adapter forwards none of the reserve headers — a 429
+carries only CORS and `retry-after` — and once it has cooled the credential
+it answers its own body rather than the provider's:
+
+```
+429 {"error":{"code":"model_cooldown","last_upstream_error":"usage_limit_reached: …",
+     "message":"All credentials for model gpt-5.6-luna are cooling down via provider codex …",
+     "model":"gpt-5.6-luna","provider":"codex","reset_seconds":115005}}
+```
+
+That body has `error.code`, not `error.type`, so `classifyCodex429` finds no
+signal and the reactive retry correctly returns `none`. The reserve is
+therefore reachable only by pre-emption — telemetry, a live hint, or the
+`rate_limited` provider circuit added in `75e69e6`. Pinned by a test in
+Cloud #117 (`f282a65`).
+
+## 7. The remaining options, narrowed by measurement
+
+| option | state |
+|---|---|
+| `oauth-model-alias` config | **refuted** (a) |
+| point the model registry at our own list | **refuted** — URL is a compiled-in constant (b) |
+| patch/fork CLIProxyAPI's registry, pin our own image | viable; cost is owning a fork of the component that holds sellers' OAuth credentials, and re-pinning five `DEFAULT_CPA_IMAGE` sites |
+| reserve hop via the CPA **management** `api-call` path | **the only path proven to deliver a reserve answer today** — both the 21:33Z and the 00:21Z probes used it. Open: it is the adapter's admin credential on a buyer data path, and streaming is unverified |
+| per-auth `model_aliases` inside the OAuth auth JSON | documented by the image, untested — it writes a seller credential file, so it was not tried unilaterally |
+| wait for router-for-me/CLIProxyAPI#5568 | no maintainer response yet |
