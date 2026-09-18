@@ -1039,6 +1039,7 @@
       "opened": "应用已打开",
       "disconnected": "已恢复应用之前的配置",
       "actionFailed": "无法更新此应用连接",
+      "restoreRequired": "请先恢复此应用的原始设置，然后重新选择套餐并应用连接",
       "workspaceNumber": "服务 {{index}} / {{count}}",
       "openTerminal": "打开终端",
       "terminalOpened": "已打开终端",

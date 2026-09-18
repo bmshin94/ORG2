@@ -14,7 +14,7 @@ const MANAGED_DEPLOYMENT_MODE: &str = "3p";
 pub struct CredentialHelper {
     pub path: PathBuf,
     pub token: String,
-    pub models: Vec<String>,
+    pub models: Vec<super::model_catalog::PickerModel>,
 }
 
 pub fn credential_helper_path() -> PathBuf {
@@ -204,9 +204,7 @@ pub fn validate_model(model: &str) -> Result<(), String> {
 /// Expose the vendor's user-initiated import flow in isolated Market profiles.
 /// This does not enable automatic imports or read the primary App's history.
 /// https://claude.com/docs/third-party/claude-desktop/import
-pub(super) fn enable_history_import(
-    contents: &mut BTreeMap<String, String>,
-) -> Result<(), String> {
+pub(super) fn enable_history_import(contents: &mut BTreeMap<String, String>) -> Result<(), String> {
     let mut profile = object(contents, "profile")?;
     profile["claudeAiImport"] = json!({ "enabled": true });
     contents.insert(
@@ -233,14 +231,23 @@ pub(super) fn generate(
             || !helper.path.is_absolute()
             || helper.models.is_empty()
             || helper.models.len() > 256
-            || !helper.models.contains(&connection.model)
+            || !helper
+                .models
+                .iter()
+                .any(|model| model.id == connection.model)
             || helper.token.len() != 64
             || !helper.token.bytes().all(|byte| byte.is_ascii_hexdigit())
         {
             return Err("Invalid Desktop credential helper configuration".into());
         }
         for model in &helper.models {
-            validate_model(model)?;
+            validate_model(&model.id)?;
+            if model.label.trim().is_empty()
+                || model.label.len() > 512
+                || model.label.chars().any(char::is_control)
+            {
+                return Err("Invalid Desktop model label".into());
+            }
         }
     } else if connection.proxy_token.is_some() {
         return Err("Desktop proxy token requires a credential helper".into());
@@ -307,13 +314,13 @@ pub(super) fn generate(
         );
         profile.insert("inferenceCredentialHelperTtlSec".into(), json!(60));
         let mut models = helper.models.clone();
-        models.sort_by_key(|model| model != &connection.model);
-        models.dedup();
+        models.sort_by_key(|model| model.id != connection.model);
+        models.dedup_by(|a, b| a.id == b.id);
         profile.insert(
             "inferenceModels".into(),
             json!(models
                 .into_iter()
-                .map(|name| json!({"name": name}))
+                .map(|model| json!({"name": model.id, "labelOverride": model.label}))
                 .collect::<Vec<_>>()),
         );
         let helper_contents = if cfg!(windows) {

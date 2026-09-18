@@ -269,12 +269,24 @@ fn proxy_backed_desktop_profile_uses_helper_and_restores_it_atomically() {
     let helper_path = desktop::credential_helper_path();
     let mut value = connection();
     value.api_key.clear();
+    value.model = "claude-sonnet-5-org2-11111111111111111111".into();
     value.desktop_auth_scheme = Some("bearer".into());
     value.base_url = proxy::claude_desktop_proxy_base_url(&proxy::managed_proxy_url(), &token);
     value.desktop_helper = Some(desktop::CredentialHelper {
         path: helper_path.clone(),
         token: token.clone(),
-        models: vec!["claude-opus-5".into(), value.model.clone()],
+        models: vec![
+            super::model_catalog::PickerModel {
+                id: "claude-sonnet-5-org2-22222222222222222222".into(),
+                label: "Overlap · Sonnet 5".into(),
+                native_metadata: None,
+            },
+            super::model_catalog::PickerModel {
+                id: value.model.clone(),
+                label: "Beginner · Sonnet 5".into(),
+                native_metadata: None,
+            },
+        ],
     });
     value.proxy_token = Some(token.clone());
 
@@ -293,6 +305,22 @@ fn proxy_backed_desktop_profile_uses_helper_and_restores_it_atomically() {
     .unwrap();
     let profile: serde_json::Value = serde_json::from_str(&profile).unwrap();
     assert_eq!(profile["inferenceCredentialKind"], "helper-script");
+    assert_eq!(
+        profile["inferenceModels"][0]["name"],
+        "claude-sonnet-5-org2-11111111111111111111"
+    );
+    assert_eq!(
+        profile["inferenceModels"][0]["labelOverride"],
+        "Beginner · Sonnet 5"
+    );
+    assert_eq!(
+        profile["inferenceModels"][1]["name"],
+        "claude-sonnet-5-org2-22222222222222222222"
+    );
+    assert_eq!(
+        profile["inferenceModels"][1]["labelOverride"],
+        "Overlap · Sonnet 5"
+    );
     assert_eq!(profile["inferenceGatewayAuthScheme"], "bearer");
     assert!(profile.get("inferenceGatewayApiKey").is_none());
     assert!(std::fs::read_to_string(&helper_path)

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { rpc } from "@src/api/tauri/rpc";
+import { RpcError } from "@src/api/tauri/rpc/invoke";
 import type { ConnectionHarness } from "@src/api/tauri/rpc/schemas/agentOrgs";
 import Button from "@src/components/Button";
 import Message from "@src/components/Message";
@@ -166,9 +167,18 @@ export default function AppConnectionPage({
       Message.success({
         content: t("harnessConnections.marketApps.connected"),
       });
-    } catch {
+    } catch (error) {
+      // Allowlist the machine code; never display arbitrary native error text.
+      const restoreRequired =
+        error instanceof RpcError &&
+        error.command === "market_connection_configure_catalog" &&
+        error.cause === "native_app_restore_required";
       Message.error({
-        content: t("harnessConnections.marketApps.actionFailed"),
+        content: t(
+          restoreRequired
+            ? "harnessConnections.marketApps.restoreRequired"
+            : "harnessConnections.marketApps.actionFailed"
+        ),
       });
     } finally {
       owner?.dispose();

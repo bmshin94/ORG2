@@ -958,6 +958,7 @@
       "opened": "Uygulama açıldı",
       "disconnected": "Uygulamanın önceki ayarı geri yüklendi",
       "actionFailed": "Bu uygulama bağlantısı güncellenemedi",
+      "restoreRequired": "Önce bu uygulamanın özgün ayarlarını geri yükleyin, ardından paketlerinizi seçip bağlantıyı yeniden uygulayın",
       "workspaceNumber": "Hizmet {{index}} / {{count}}",
       "openTerminal": "Terminali aç",
       "terminalOpened": "Terminal açıldı",

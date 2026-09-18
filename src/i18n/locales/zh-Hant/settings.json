@@ -958,6 +958,7 @@
       "opened": "應用程式已開啟",
       "disconnected": "已還原應用程式先前的設定",
       "actionFailed": "無法更新此應用程式連線",
+      "restoreRequired": "請先還原此應用程式的原始設定，然後重新選擇方案並套用連線",
       "workspaceNumber": "服務 {{index}} / {{count}}",
       "openTerminal": "開啟終端機",
       "terminalOpened": "已開啟終端機",

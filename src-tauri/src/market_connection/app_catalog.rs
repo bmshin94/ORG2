@@ -26,6 +26,47 @@ pub(super) struct Catalog {
     pub models: Vec<CatalogModel>,
 }
 
+/// A display label never participates in routing; the stable alias remains the ID.
+pub(super) fn picker_label(package: &str, model: &str, native_label: Option<&str>) -> String {
+    fn shortened(value: &str, limit: usize) -> String {
+        let value = value.trim();
+        if value.chars().count() <= limit {
+            value.into()
+        } else {
+            value
+                .chars()
+                .take(limit - 1)
+                .chain(std::iter::once('…'))
+                .collect()
+        }
+    }
+    let friendly = ["sonnet", "opus", "haiku", "fable"]
+        .into_iter()
+        .find_map(|family| {
+            let version = model.strip_prefix(&format!("claude-{family}-"))?;
+            let version = version.split("-20").next()?;
+            if version.is_empty()
+                || !version
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || b"-.".contains(&b))
+            {
+                return None;
+            }
+            let mut name = family.to_owned();
+            name[..1].make_ascii_uppercase();
+            Some(format!("{name} {}", version.replace('-', ".")))
+        });
+    let model_label = native_label
+        .filter(|label| !label.trim().is_empty())
+        .or(friendly.as_deref())
+        .unwrap_or(model);
+    format!(
+        "{} · {}",
+        shortened(package, 48),
+        shortened(model_label, 64)
+    )
+}
+
 pub(super) fn alias(selection: &Selection) -> Result<String, String> {
     let model = selection.model.as_deref().ok_or("Market model missing")?;
     // Session IDs deliberately do not change the native picker ID on reapply.
@@ -242,6 +283,38 @@ mod tests {
             .is_err());
         assert!(Catalog::parse(&key, "claude_code").is_err());
     }
+    #[test]
+    fn picker_labels_are_readable_bounded_and_do_not_change_routing() {
+        assert_eq!(
+            picker_label("Coding for beginner", "claude-sonnet-5", None),
+            "Coding for beginner · Sonnet 5"
+        );
+        assert_eq!(
+            picker_label("Overlap", "claude-fable-5-1", None),
+            "Overlap · Fable 5.1"
+        );
+        assert_eq!(
+            picker_label("Codex package", "gpt-5.6-luna", Some("GPT-5.6 Luna")),
+            "Codex package · GPT-5.6 Luna"
+        );
+        assert_eq!(
+            picker_label("Custom", "unknown-model", None),
+            "Custom · unknown-model"
+        );
+        let long = picker_label(&"套餐😀".repeat(40), &"模😀".repeat(80), None);
+        assert!(long.len() < 512);
+        assert!(long.contains("… · "));
+        assert!(long.ends_with('…'));
+        // Existing v1 catalogs remain readable, and relabeling preserves the route.
+        let mut c = catalog();
+        let id = c.models[0].id.clone();
+        let selection = c.models[0].selection.clone();
+        c.models[0].label = picker_label("Renamed package", "gpt-shared", None);
+        let parsed = Catalog::parse(&c.key().unwrap(), "codex").unwrap();
+        assert_eq!(parsed.models[0].id, id);
+        assert_eq!(parsed.models[0].selection, selection);
+    }
+
     #[test]
     fn aliases_are_stable_across_sessions_and_do_not_contain_credentials() {
         assert_eq!(

@@ -958,6 +958,7 @@
       "opened": "Otwarto aplikację",
       "disconnected": "Przywrócono poprzednią konfigurację aplikacji",
       "actionFailed": "Nie udało się zaktualizować tego połączenia",
+      "restoreRequired": "Przywróć oryginalne ustawienia tej aplikacji, następnie wybierz pakiety i ponownie zastosuj połączenie",
       "workspaceNumber": "Usługa {{index}} z {{count}}",
       "openTerminal": "Otwórz terminal",
       "terminalOpened": "Terminal otwarty",

@@ -1049,14 +1049,14 @@ pub(crate) async fn enable_dynamic_desktop<
 >(
     key: String,
     model: String,
-    models: Vec<String>,
+    models: Vec<agent_cli::managed_config::model_catalog::PickerModel>,
     expected_hashes: std::collections::BTreeMap<String, Option<String>>,
     native_app: Option<agent_cli::managed_config::native_app::NativeAppProfile>,
     authorization: impl std::future::Future<Output = Result<G, String>>,
 ) -> Result<agent_cli::managed_config::CliConfigManagedStatus, String> {
     use agent_cli::managed_config::{desktop::CredentialHelper, DirectConnection};
 
-    if model.is_empty() || model.len() > 256 || !models.iter().any(|entry| entry == &model) {
+    if model.is_empty() || model.len() > 256 || !models.iter().any(|entry| entry.id == model) {
         return Err("Unsupported Desktop selection".into());
     }
     let source =

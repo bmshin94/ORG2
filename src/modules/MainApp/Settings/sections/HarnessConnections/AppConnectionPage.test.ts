@@ -3,6 +3,7 @@ import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { RpcError } from "@src/api/tauri/rpc/invoke";
 import Message from "@src/components/Message";
 import { signedInStore } from "@src/features/MarketConnect/identity.test-utils";
 import { org2CloudAuthAtom } from "@src/features/Org2Cloud/org2CloudAuthAtom";
@@ -395,4 +396,31 @@ it("blocks a Direct Claude launch when the overlay changed externally", async ()
   expect(launch.disabled).toBe(true);
   await act(async () => launch.click());
   expect(openLocal).not.toHaveBeenCalled();
+});
+
+it.each([
+  ["native_app_restore_required", "restoreRequired"],
+  ["native_app_restore_required secret-fixture", "actionFailed"],
+  ["backend failed with secret-fixture", "actionFailed"],
+])("shows safe migration guidance for native error %s", async (code, key) => {
+  connected = true;
+  configure.mockRejectedValueOnce(
+    new RpcError("market_connection_configure_catalog", code, code)
+  );
+  await render("claude_desktop");
+  await act(async () => button("common:actions.edit").click());
+  const provider = [...container.querySelectorAll("button")].find((item) =>
+    item.textContent?.startsWith("harnessConnections.marketApps.provider")
+  )!;
+  await act(async () => provider.click());
+  await act(async () => button("harnessConnections.apply").click());
+  expect(configure).toHaveBeenCalledOnce();
+  expect(Message.error).toHaveBeenCalledWith({
+    content: `harnessConnections.marketApps.${key}`,
+  });
+  expect(Message.success).not.toHaveBeenCalled();
+  // A rejected migration preserves the existing connection until explicit Restore.
+  expect(restore).not.toHaveBeenCalled();
+  expect(reload).not.toHaveBeenCalled();
+  expect(button("harnessConnections.restore").disabled).toBe(false);
 });

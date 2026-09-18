@@ -231,6 +231,32 @@ export function appendQueuedUserEvents(
       // reads "pending"; overlay the queue verdict so the bubble shows the
       // error and its retry instead of sending forever.
       const existing = next[representedIndex];
+      const nativeUserEcho =
+        existing?.source === "user" &&
+        existing.result?.["backendPersisted"] === true &&
+        existing.result?.["deliveryStatus"] === undefined;
+      if (message.deliveryError && nativeUserEcho) {
+        // Native history may replace the optimistic row before the model
+        // fails. Its completed user echo proves prompt persistence, not a
+        // successful response or retirement of the durable failure owner.
+        // Restore that owner's retry projection at the same position, without
+        // rewriting native history or creating another dispatch authority.
+        if (next === events) next = [...events];
+        next[representedIndex] = createSyntheticUserEvent(
+          sessionId,
+          message.displayContent,
+          {
+            id: `queued-user-${message.turnIntentId}`,
+            createdAt: message.createdAt,
+            imageDataUrls: message.imageDataUrls,
+            turnIntentId: message.turnIntentId,
+            deliveryStatus: "failed",
+            deliveryError: message.deliveryError,
+            queueMessageId: message.id,
+          }
+        );
+        continue;
+      }
       if (
         !message.deliveryError ||
         !existing ||

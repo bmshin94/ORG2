@@ -254,7 +254,8 @@ pub(super) fn apply_connection_unlocked(
     if let Some(manifest) = &existing_manifest {
         if manifest.mode != CliConfigMode::Default {
             if manifest.native_app.as_ref() != native_app {
-                return Err("Restore the current connection before switching between CLI/native configuration and an isolated official App. No primary configuration was changed.".into());
+                // Stable IPC code; the UI supplies localized Restore instructions.
+                return Err("native_app_restore_required".into());
             }
             for target in &manifest.target_files {
                 if !fallback_targets.iter().any(|current| {

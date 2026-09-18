@@ -958,6 +958,7 @@
       "opened": "App geöffnet",
       "disconnected": "Die vorherige App-Konfiguration wurde wiederhergestellt",
       "actionFailed": "Diese App-Verbindung konnte nicht aktualisiert werden",
+      "restoreRequired": "Stelle zuerst die ursprünglichen Einstellungen dieser App wieder her, wähle dann deine Pakete aus und wende die Verbindung erneut an",
       "workspaceNumber": "Dienst {{index}} von {{count}}",
       "openTerminal": "Terminal öffnen",
       "terminalOpened": "Terminal geöffnet",

@@ -1039,6 +1039,7 @@
       "opened": "Aplikasi dibuka",
       "disconnected": "Pengaturan aplikasi sebelumnya telah dipulihkan",
       "actionFailed": "Tidak dapat memperbarui koneksi aplikasi ini",
+      "restoreRequired": "Pulihkan pengaturan asli aplikasi ini, lalu pilih paket Anda dan terapkan kembali koneksi",
       "workspaceNumber": "Layanan {{index}} dari {{count}}",
       "openTerminal": "Buka terminal",
       "terminalOpened": "Terminal dibuka",

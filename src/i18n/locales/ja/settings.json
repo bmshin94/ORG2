@@ -958,6 +958,7 @@
       "opened": "アプリを開きました",
       "disconnected": "以前のアプリ設定を復元しました",
       "actionFailed": "このアプリ接続を更新できませんでした",
+      "restoreRequired": "このアプリの元の設定を復元してから、パッケージを選び直して接続を適用してください",
       "workspaceNumber": "サービス {{index}} / {{count}}",
       "openTerminal": "ターミナルを開く",
       "terminalOpened": "ターミナルを開きました",

@@ -1039,6 +1039,7 @@
       "opened": "App opened",
       "disconnected": "The app’s previous setup was restored",
       "actionFailed": "Could not update this app connection",
+      "restoreRequired": "Restore the original setup for this app, then select your packages and apply the connection again",
       "workspaceNumber": "Service {{index}} of {{count}}",
       "openTerminal": "Open terminal",
       "terminalOpened": "Terminal opened",

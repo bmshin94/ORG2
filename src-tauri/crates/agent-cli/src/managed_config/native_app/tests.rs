@@ -186,7 +186,7 @@ fn legacy_active_and_reverse_cli_switch_require_restore_without_touching_primary
         .collect::<Vec<_>>();
     assert!(!backups.is_empty());
     let profile = NativeAppProfile::new("codex", "https://cloud.example", "alice").unwrap();
-    assert!(apply(&profile).unwrap_err().contains("Restore"));
+    assert_eq!(apply(&profile).unwrap_err(), "native_app_restore_required");
     assert_eq!(std::fs::read(&native).unwrap(), before);
     assert_eq!(
         std::fs::read(manifest::manifest_path("codex")).unwrap(),
@@ -197,15 +197,17 @@ fn legacy_active_and_reverse_cli_switch_require_restore_without_touching_primary
     for (path, bytes) in &backups {
         assert_eq!(&std::fs::read(path).unwrap(), bytes);
     }
-    assert!(config::enable_orgii_managed(
-        "codex",
-        Some("local-key".into()),
-        Some("openai".into()),
-        Some("model".into()),
-        false
-    )
-    .unwrap_err()
-    .contains("Restore"));
+    assert_eq!(
+        config::enable_orgii_managed(
+            "codex",
+            Some("local-key".into()),
+            Some("openai".into()),
+            Some("model".into()),
+            false
+        )
+        .unwrap_err(),
+        "native_app_restore_required"
+    );
     assert_eq!(
         std::fs::read_to_string(&native).unwrap(),
         "model = 'primary'\n"
@@ -248,7 +250,14 @@ fn claude_helper_runtime_and_restore_stay_isolated_and_preserve_runtime_preferen
         desktop_helper: Some(config::desktop::CredentialHelper {
             path: profile.helper(),
             token: token.clone(),
-            models: vec!["claude-sonnet-4-6".into(), "claude-opus-4-6".into()],
+            models: ["claude-sonnet-4-6", "claude-opus-4-6"]
+                .into_iter()
+                .map(|model| config::model_catalog::PickerModel {
+                    id: model.into(),
+                    label: format!("Package · {model}"),
+                    native_metadata: None,
+                })
+                .collect(),
         }),
         proxy_token: Some(token),
     };
@@ -271,7 +280,10 @@ fn claude_helper_runtime_and_restore_stay_isolated_and_preserve_runtime_preferen
         profile.helper().to_str()
     );
     assert_eq!(value["inferenceModels"].as_array().unwrap().len(), 2);
-    assert_eq!(value["claudeAiImport"], serde_json::json!({"enabled": true}));
+    assert_eq!(
+        value["claudeAiImport"],
+        serde_json::json!({"enabled": true})
+    );
     write(
         &profile.target("desktop").unwrap(),
         r#"{"deploymentMode":"3p","theme":"light"}"#,

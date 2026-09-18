@@ -285,13 +285,16 @@ pub async fn market_connection_configure_profile(
         )?;
         let native_app = lease.native_app(&agent)?;
         let status = if agent == "claude_desktop" {
-            let models = entries
+            let entry = entries
                 .iter()
                 .find(|entry| {
                     entry.workspace_id == parsed.workspace_id
                         && entry.entitlement_id == parsed.entitlement_id
                 })
-                .and_then(|entry| entry.models_by_agent.get("claude"))
+                .ok_or("No Claude models available")?;
+            let models = entry
+                .models_by_agent
+                .get("claude")
                 .ok_or("No Claude models available")?
                 .iter()
                 .filter(|candidate| {
@@ -305,7 +308,13 @@ pub async fn market_connection_configure_profile(
                     )
                     .is_ok()
                 })
-                .cloned()
+                .map(
+                    |model| agent_cli::managed_config::model_catalog::PickerModel {
+                        id: model.clone(),
+                        label: app_catalog::picker_label(&entry.service_name, model, None),
+                        native_metadata: None,
+                    },
+                )
                 .collect();
             crate::cli_managed_proxy::enable_dynamic_desktop(
                 selection.clone(),

@@ -18,6 +18,8 @@ import type {
   QueuedConversationDispatch,
   QueuedConversationDispatchResolution,
 } from "@src/engines/SessionCore/conversations/queuedConversationContract";
+import type { SessionEvent } from "@src/engines/SessionCore/core/types";
+import { appendQueuedUserEvents } from "@src/engines/SessionCore/derived/chatEvents";
 import {
   type QueuedMessage,
   messageQueueAtom,
@@ -1014,7 +1016,7 @@ describe("useEditUserMessage resend projection", () => {
     }
   );
 
-  it("admits only one retry when a queue-only failed bubble is clicked twice", async () => {
+  it("admits only one retry when a restored native-history failure is clicked twice", async () => {
     const queueStore = createStore();
     realQueueStore.current = queueStore;
     storeSetSpy.mockImplementation(
@@ -1044,19 +1046,38 @@ describe("useEditUserMessage resend projection", () => {
     };
     queueStore.set(messageQueueAtom, [original]);
     updateByIdSpy.mockResolvedValue(false);
-    const failed = {
-      event: {
-        id: "queued-user-original-intent",
-        displayText: original.displayContent,
-        displayStatus: "failed",
-        result: {
-          syntheticUserInput: true,
-          deliveryStatus: "failed",
-          queueMessageId: original.id,
-          turnIntentId: original.turnIntentId,
-        },
+    const nativeEcho: SessionEvent = {
+      id: "native-original-intent",
+      chunk_id: null,
+      sessionId: original.sessionId,
+      source: "user",
+      functionName: "user_message",
+      uiCanonical: "user_message",
+      actionType: "raw",
+      args: {},
+      displayVariant: "message",
+      activityStatus: "agent",
+      displayText: original.displayContent,
+      displayStatus: "completed",
+      createdAt: original.createdAt,
+      result: {
+        backendPersisted: true,
+        turnIntentId: original.turnIntentId,
+        message: { content: original.displayContent, role: "user" },
       },
-      chunk_id: "queued-user-original-intent",
+    };
+    const [projectedFailure] = appendQueuedUserEvents(
+      [nativeEcho],
+      original.sessionId,
+      queueStore.get(messageQueueAtom)
+    );
+    expect(projectedFailure?.displayStatus).toBe("failed");
+    expect(queueStore.get(messageQueueAtom)).toEqual([original]);
+    expect(upsertSpy).not.toHaveBeenCalled();
+    expect(submitUserIntentSpy).not.toHaveBeenCalled();
+    const failed = {
+      event: projectedFailure,
+      chunk_id: projectedFailure?.id,
     } as unknown as OptimizedChatItem;
 
     await act(async () => {

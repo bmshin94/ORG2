@@ -958,6 +958,7 @@
       "opened": "Aplicación abierta",
       "disconnected": "Se restauró la configuración anterior de la aplicación",
       "actionFailed": "No se pudo actualizar esta conexión",
+      "restoreRequired": "Restaura la configuración original de esta app, luego selecciona tus paquetes y vuelve a aplicar la conexión",
       "workspaceNumber": "Servicio {{index}} de {{count}}",
       "openTerminal": "Abrir terminal",
       "terminalOpened": "Terminal abierta",

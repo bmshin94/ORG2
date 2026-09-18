@@ -958,6 +958,7 @@
       "opened": "Đã mở ứng dụng",
       "disconnected": "Đã khôi phục cấu hình trước của ứng dụng",
       "actionFailed": "Không thể cập nhật kết nối ứng dụng này",
+      "restoreRequired": "Khôi phục thiết lập gốc của ứng dụng này, sau đó chọn các gói và áp dụng lại kết nối",
       "workspaceNumber": "Dịch vụ {{index}} / {{count}}",
       "openTerminal": "Mở terminal",
       "terminalOpened": "Đã mở terminal",

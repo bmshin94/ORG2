@@ -2,7 +2,7 @@
 //! mutation; commit native picker, proxy selection and backups together.
 use super::ConfigureCatalogRequest;
 use super::{
-    app_catalog::{alias, Catalog, CatalogModel},
+    app_catalog::{alias, picker_label, Catalog, CatalogModel},
     source, ConfiguredProfile,
 };
 use agent_cli::managed_config::model_catalog::{ModelCatalog, PickerModel};
@@ -169,7 +169,14 @@ pub(super) async fn configure(
             } else {
                 None
             };
-            let label = format!("{} · {model}", entry.service_name);
+            let label = picker_label(
+                &entry.service_name,
+                model,
+                native_metadata
+                    .as_ref()
+                    .and_then(|entry| entry.get("display_name"))
+                    .and_then(serde_json::Value::as_str),
+            );
             picker.models.push(PickerModel {
                 id: id.clone(),
                 label: label.clone(),
@@ -212,7 +219,7 @@ pub(super) async fn configure(
         crate::cli_managed_proxy::enable_dynamic_desktop(
             selection.clone(),
             catalog.default_model,
-            catalog.models.into_iter().map(|model| model.id).collect(),
+            picker.models,
             expected_hashes,
             native_app,
             lease.operation(),
