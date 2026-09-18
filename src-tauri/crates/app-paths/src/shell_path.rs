@@ -40,14 +40,13 @@ pub fn augment_path_from_shell() {
         // plain login as fallback. Each probe is wrapped in a timeout so a
         // misbehaving rc file (one that blocks on a prompt / network call)
         // can't hang app startup forever.
-        // Both probes run CONCURRENTLY and the interactive one is preferred
-        // if it answers inside the same budget the serial version allowed.
-        // Serially, the fallback only ran after the interactive probe had
-        // already spent the whole timeout, so a slow ~/.zshrc (nvm's auto-use
-        // spawns node: measured ~3.1 s from a GUI process here, ~0.45 s from a
-        // terminal) silently lost the race during bootstrap and the app came
-        // up with a login-only PATH — no nvm, no keg-only node. Racing them
-        // costs no extra worst-case startup time and removes that cliff.
+        // Both probes run CONCURRENTLY, and the interactive one — the only
+        // one that sources ~/.zshrc, i.e. nvm, pyenv and keg-only Homebrew —
+        // wins whenever it answers at all. Serially it was capped at 5 s and
+        // the fallback could not start until it gave up; an interactive zsh
+        // costs ~3 s from a GUI process here against ~0.45 s from a terminal,
+        // and when it exceeded the cap during bootstrap the app came up with
+        // a login-only PATH and no way to tell. See PATH_PROBE_BUDGET.
         let shell_path_str = run_shell_path_probes(&shell);
 
         if shell_path_str.is_none() {
@@ -108,10 +107,18 @@ pub fn augment_path_from_shell() {
     }
 }
 
-/// How long BOTH probes together may take. Unchanged from the serial version,
-/// so the worst case startup cost is the same as before.
+/// How long BOTH probes together may take.
+///
+/// Serially this was 5 s EACH — the login-only fallback could not even start
+/// until the interactive probe had given up, so the real worst case was ~10 s
+/// and the interactive probe never got more than 5 s. Running them together
+/// banks the fallback's answer immediately, which is what makes it safe to be
+/// more patient with the probe that actually sees `~/.zshrc`: 8 s here is
+/// strictly less than the old worst case while giving an interactive zsh that
+/// costs ~3 s from a GUI process (nvm's auto-use spawns node) the headroom it
+/// needs under bootstrap load. Nothing waits on this once either probe wins.
 #[cfg(unix)]
-const PATH_PROBE_BUDGET: Duration = Duration::from_secs(5);
+const PATH_PROBE_BUDGET: Duration = Duration::from_secs(8);
 
 /// What each probe did, kept for the diagnostic line emitted once tracing is
 /// up (`augment_path_from_shell` runs before the log file exists).
