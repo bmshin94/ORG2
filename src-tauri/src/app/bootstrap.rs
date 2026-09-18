@@ -252,6 +252,12 @@ pub(crate) fn bootstrap(identifier: &str) {
             "Tracing initialized — log file: {}/orgii.log",
             log_dir.display()
         );
+        // The login-shell PATH probes run before this point, so their outcome
+        // has nowhere to go until now. Replaying it here is what turns "the
+        // app cannot see my CLI" into a one-line answer about which probe won.
+        for line in app_paths::shell_path_probe_diagnostics() {
+            tracing::info!("[app_paths] PATH probe: {line}");
+        }
     }
 
     // Panic hook: ensure any panic — even one inside an FFI callback like
