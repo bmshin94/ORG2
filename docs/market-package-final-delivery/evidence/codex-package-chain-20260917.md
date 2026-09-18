@@ -78,3 +78,43 @@ gap is only the adapter's model registry.
   ordinary window exhausted and no adapter reserve hop it could only show the
   same 503.
 - Resend-fix re-verification (row 12) on the private build is still pending.
+
+## 5. Official Codex app (ChatGPT.app) — 2026-09-17 23:55Z
+
+Launched the prepared isolated wrapper (`launchers/Codex Package Acceptance.app`:
+`CODEX_HOME` = the acceptance external home, `--user-data-dir=<acceptance>/codex-ui`).
+It started as its own process (pid 74987) and left the user's own Codex
+(pid 45009, its own data dir) untouched.
+
+**The GUI could not be driven from here**: both processes share the bundle id
+`com.openai.codex`, so the window tools resolve to whichever process the
+window list returns — the user's. Driving it would have meant acting on the
+user's live session, so the GUI instance was stopped again (`kill 74987`,
+user's instance verified alive afterwards). A GUI pass needs either the
+user at the keyboard or their instance closed.
+
+**What was verified instead, headlessly**: the app's OWN engine —
+`/Applications/ChatGPT.app/Contents/Resources/codex`, `codex-cli
+0.154.0-alpha.6.2`, the binary the GUI drives through `codex app-server` —
+run against the same `CODEX_HOME`:
+
+```
+model: gpt-5.6-luna-org2-0c9fd82057897a798011
+provider: orgii
+```
+
+so the app's engine reads ORG2's generated `config.toml` and
+`org2-model-catalog.json` and routes to `http://127.0.0.1:17976/cli/codex/<token>/v1`.
+The call reached the Market gateway (`pr_2e7f56d8`), which logged
+`route.refused capacity_degraded rate_limited` → `adapter.reserve_preempt
+source=circuit` → `adapter.reserve_unusable reserve_status=400` and answered
+`503 model_temporarily_unavailable`.
+
+That 503 (rather than the adapter's raw 400 relayed as
+`upstream_request_failed`) is commit `016055d` of Cloud PR #117 behaving as
+designed, observed live.
+
+So the client→proxy→gateway→adapter chain is proven for the official app's
+engine as well as the CLI. What remains unproven is only the last hop: the
+provider quota (ordinary window resets 2026-09-19 08:23Z / 09:22Z) and the
+adapter's missing `gpt-reserve` support.
