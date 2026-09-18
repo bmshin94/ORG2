@@ -201,6 +201,22 @@ pub fn validate_model(model: &str) -> Result<(), String> {
     }
 }
 
+/// Expose the vendor's user-initiated import flow in isolated Market profiles.
+/// This does not enable automatic imports or read the primary App's history.
+/// https://claude.com/docs/third-party/claude-desktop/import
+pub(super) fn enable_history_import(
+    contents: &mut BTreeMap<String, String>,
+) -> Result<(), String> {
+    let mut profile = object(contents, "profile")?;
+    profile["claudeAiImport"] = json!({ "enabled": true });
+    contents.insert(
+        "profile".into(),
+        serde_json::to_string_pretty(&profile)
+            .map_err(|_| "Cannot serialize Desktop history import settings")?,
+    );
+    Ok(())
+}
+
 pub(super) fn generate(
     contents: &BTreeMap<String, String>,
     connection: &DirectConnection,

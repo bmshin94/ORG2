@@ -61,6 +61,7 @@ fn native_schema_preserves_other_profiles_without_enabling_unrelated_permissions
     assert_eq!(profile["inferenceModels"][0]["name"], "claude-sonnet-5");
     assert!(profile.get("coworkEgressAllowedHosts").is_none());
     assert!(profile.get("disableDeploymentModeChooser").is_none());
+    assert!(profile.get("claudeAiImport").is_none());
     let config: serde_json::Value = serde_json::from_str(&generated["desktop"]).unwrap();
     assert!(config["mcpServers"].get("keep").is_some());
     let catalog: serde_json::Value = serde_json::from_str(&generated["catalog"]).unwrap();

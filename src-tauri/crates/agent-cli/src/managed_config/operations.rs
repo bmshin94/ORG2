@@ -395,6 +395,9 @@ pub(super) fn apply_connection_unlocked(
         )?
     };
 
+    if agent_name == super::desktop::TARGET && native_app.is_some() {
+        super::desktop::enable_history_import(&mut managed_contents)?;
+    }
     let catalog_path = if agent_name == "codex" {
         native_app
             .map(|profile| profile.target(super::model_catalog::TARGET_ID))

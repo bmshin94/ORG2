@@ -271,6 +271,7 @@ fn claude_helper_runtime_and_restore_stay_isolated_and_preserve_runtime_preferen
         profile.helper().to_str()
     );
     assert_eq!(value["inferenceModels"].as_array().unwrap().len(), 2);
+    assert_eq!(value["claudeAiImport"], serde_json::json!({"enabled": true}));
     write(
         &profile.target("desktop").unwrap(),
         r#"{"deploymentMode":"3p","theme":"light"}"#,
