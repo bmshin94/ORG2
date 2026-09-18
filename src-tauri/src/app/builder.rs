@@ -42,6 +42,21 @@ pub(crate) fn run() {
         context
     };
 
+    // Keep this FD alive through application.run; duplicates must leave before
+    // bootstrap opens databases or reconciles persisted work.
+    #[cfg(target_os = "macos")]
+    let _instance_guard = match crate::single_instance_gate::prepare(&context.config().identifier) {
+        Ok(crate::single_instance_gate::Admission::Primary(guard)) => guard,
+        Ok(crate::single_instance_gate::Admission::Forwarded(pid)) => {
+            crate::single_instance_focus::activate_process(pid);
+            return;
+        }
+        Err(error) => {
+            eprintln!("Could not enter the application instance: {error}");
+            std::process::exit(1);
+        }
+    };
+
     bootstrap::bootstrap(&context.config().identifier);
 
     let builder = plugins::configure();

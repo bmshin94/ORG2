@@ -62,6 +62,8 @@ mod runtime_instance;
 pub(crate) mod setup;
 #[cfg(target_os = "macos")]
 mod single_instance_focus;
+#[cfg(target_os = "macos")]
+mod single_instance_gate;
 pub mod usage_diagnostics;
 
 #[cfg(test)]

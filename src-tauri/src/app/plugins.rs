@@ -19,6 +19,11 @@ pub(crate) fn configure() -> tauri::Builder<tauri::Wry> {
     // `onOpenUrl` listener remains the single owner of invite routing.
     #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+        // The macOS ownership probe sends no argv. It must not recreate a
+        // window before the application setup hook has initialized its state.
+        if argv.iter().all(String::is_empty) {
+            return;
+        }
         // Never log argv: deep-link query/fragment values can contain invite
         // codes, share capabilities, or OAuth tokens.
         tracing::info!(
@@ -43,6 +48,16 @@ pub(crate) fn configure() -> tauri::Builder<tauri::Wry> {
             );
         }
     }));
+
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(
+        tauri::plugin::Builder::<_, ()>::new("single-instance-owner")
+            .setup(|app, _| {
+                crate::single_instance_gate::verify_listener(&app.config().identifier)?;
+                Ok(())
+            })
+            .build(),
+    );
 
     // E2E WebDriver automation — only when built with `--features webdriver` (debug/test only).
     #[cfg(all(debug_assertions, feature = "webdriver"))]

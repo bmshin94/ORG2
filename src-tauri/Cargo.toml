@@ -533,6 +533,8 @@ windows = { version = "0.61", features = [
 ] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+fs2 = "0.4" # OS-backed lifetime lock for pre-bootstrap singleton admission
+socket2 = "0.6" # Bounded local IPC connect before the async runtime exists
 objc2 = { workspace = true }
 objc2-foundation = { workspace = true }
 objc2-app-kit = { workspace = true }
