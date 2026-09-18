@@ -400,6 +400,11 @@ pub(crate) async fn verify_installed_version(agent: &str) -> Result<(), String> 
     Ok(())
 }
 
+/// Verify the version of the exact Claude bundle selected by the isolated launcher.
+pub(crate) fn verify_claude_desktop_bundle_version(version: &str) -> Result<(), String> {
+    desktop::validate_version(version)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -439,9 +444,4 @@ mod tests {
         assert!(require_receipt(&connection, Some(&token)).is_err());
         receipts.lock().unwrap().remove(&token);
     }
-}
-
-/// Verify the version of the exact Claude bundle selected by the isolated launcher.
-pub(crate) fn verify_claude_desktop_bundle_version(version: &str) -> Result<(), String> {
-    desktop::validate_version(version)
 }
