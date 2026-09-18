@@ -927,7 +927,7 @@
     "applied": "Đã lưu cấu hình — hãy bắt đầu phiên công cụ mới",
     "restore": "Khôi phục thiết lập ban đầu",
     "disconnect": "Ngắt kết nối",
-    "overlayHelp": "ORG2 giữ cấu hình Claude Code trong một tệp riêng ({{path}}) và không bao giờ sửa ~/.claude/settings.json. \"Mở terminal\" khởi động Claude Code với tệp đó; ở terminal khác hãy chạy claude --settings với cùng đường dẫn. Cài đặt, đăng nhập và lịch sử hội thoại của bạn được giữ nguyên.",
+    "overlayHelp": "Cấu hình kết nối được lưu riêng tại {{path}}. \"Mở terminal\" khởi động Claude Code với cấu hình này và lịch sử hội thoại hiện có. Hook theo dõi phiên được điều khiển riêng",
     "restored": "Đã khôi phục thiết lập ban đầu — hãy bắt đầu phiên công cụ mới",
     "refresh": "Làm mới",
     "refreshed": "Đã làm mới kết nối công cụ",

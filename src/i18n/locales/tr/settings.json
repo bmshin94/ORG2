@@ -927,7 +927,7 @@
     "applied": "Yapılandırma kaydedildi — yeni bir araç oturumu başlatın",
     "restore": "Özgün kurulumu geri yükle",
     "disconnect": "Bağlantıyı kes",
-    "overlayHelp": "ORG2, Claude Code ayarlarını ayrı bir dosyada ({{path}}) tutar ve ~/.claude/settings.json dosyasını asla düzenlemez. \"Terminali aç\" Claude Code'u bu dosyayla başlatır; başka bir terminalde aynı yolla claude --settings çalıştırın. Kendi ayarlarınız, oturumunuz ve konuşma geçmişiniz olduğu gibi kalır.",
+    "overlayHelp": "Bağlantı ayarları {{path}} içinde ayrı saklanır. \"Terminali aç\", Claude Code’u bu ayarlarla ve mevcut konuşma geçmişiyle başlatır. Oturum izleme hook’ları ayrı kontrol edilir",
     "restored": "Özgün kurulum geri yüklendi — yeni bir araç oturumu başlatın",
     "refresh": "Yenile",
     "refreshed": "Araç bağlantıları yenilendi",

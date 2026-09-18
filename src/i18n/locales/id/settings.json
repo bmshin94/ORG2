@@ -1008,7 +1008,7 @@
     "applied": "Konfigurasi disimpan — mulai sesi harness baru untuk menggunakannya",
     "restore": "Pulihkan pengaturan asli",
     "disconnect": "Putuskan",
-    "overlayHelp": "ORG2 menyimpan pengaturan Claude Code-nya di berkas terpisah ({{path}}) dan tidak pernah mengubah ~/.claude/settings.json. \"Buka terminal\" menjalankan Claude Code dengan berkas itu; di terminal lain jalankan claude --settings dengan jalur yang sama. Pengaturan, login, dan riwayat percakapan Anda tetap sama.",
+    "overlayHelp": "Pengaturan koneksi disimpan terpisah di {{path}}. \"Buka terminal\" menjalankan Claude Code dengan pengaturan ini dan riwayat percakapan yang ada. Hook pelacakan sesi dikendalikan secara terpisah",
     "restored": "Pengaturan asli dipulihkan — mulai sesi harness baru",
     "refresh": "Segarkan",
     "refreshed": "Koneksi harness disegarkan",

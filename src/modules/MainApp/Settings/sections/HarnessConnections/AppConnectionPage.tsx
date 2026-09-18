@@ -182,11 +182,21 @@ export default function AppConnectionPage({
     setBusy("open");
     let owner: ReturnType<typeof captureMarketOwner> | undefined;
     try {
-      const profile = appliedMarketProfiles[0];
-      if (!profile) throw new Error("market_identity_mismatch");
-      owner = captureMarketOwner(profile.connection.identity_user_id);
-      await openConfiguredMarketClient(target, selection, model);
-      owner.assertCurrent();
+      if (marketManaged) {
+        const profile = appliedMarketProfiles[0];
+        if (!profile) throw new Error("market_identity_mismatch");
+        owner = captureMarketOwner(profile.connection.identity_user_id);
+        await openConfiguredMarketClient(target, selection, model);
+        owner.assertCurrent();
+      } else if (target === "claude_code") {
+        await rpc.agentOrgs.connections.openClient({
+          agentName: target,
+          keyId: selection,
+          model,
+        });
+      } else {
+        throw new Error("unsupported_client");
+      }
       Message.success({
         content: t(
           target === "claude_code"
@@ -287,14 +297,17 @@ export default function AppConnectionPage({
                 configured ? "common:actions.edit" : "common:actions.configure"
               )}
             </Button>
-            {marketManaged && (
+            {(marketManaged ||
+              (target === "claude_code" &&
+                configured &&
+                state.view?.config.overlay)) && (
               <Button
                 variant="secondary"
                 loading={busy === "open"}
                 disabled={
                   busy !== null ||
                   unavailable ||
-                  appliedMarketProfiles.length === 0
+                  (marketManaged && appliedMarketProfiles.length === 0)
                 }
                 onClick={() => void openClient()}
               >

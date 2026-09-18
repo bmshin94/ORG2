@@ -415,3 +415,21 @@ fn claude_code_overlay_is_regenerated_from_scratch_on_every_apply() {
     assert!(second.get("availableModels").is_none());
     assert_eq!(second["model"], "plain-model");
 }
+
+#[test]
+fn direct_launch_rejects_rotated_credentials_and_external_overlay_edits() {
+    let _lock = TEST_ENV_LOCK.get_or_init(|| Mutex::new(())).lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let _home = OrgiiHomeGuard::set(&temp.path().join("orgii"));
+    let _external = ExternalHome::set(temp.path());
+    let applied = enable_direct("claude_code", connection("original-key"), None).unwrap();
+    verify_claude_launch_connection(&connection("original-key")).unwrap();
+    assert!(verify_claude_launch_connection(&connection("rotated-key")).is_err());
+    let settings = &applied.target_files[0].target_path;
+    let before = std::fs::read(settings).unwrap();
+    // Failed validation must not silently rewrite credentials.
+    assert_eq!(std::fs::read(settings).unwrap(), before);
+    std::fs::write(settings, "{}").unwrap();
+    assert!(verify_claude_launch_connection(&connection("original-key")).is_err());
+    assert_eq!(std::fs::read_to_string(settings).unwrap(), "{}");
+}

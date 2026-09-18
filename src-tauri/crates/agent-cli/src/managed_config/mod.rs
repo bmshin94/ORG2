@@ -18,7 +18,7 @@ mod dto;
 pub mod model_catalog;
 pub mod provider_profiles;
 mod target_lock;
-pub use direct::DirectConnection;
+pub use direct::{verify_claude_launch_connection, DirectConnection};
 mod file_io;
 mod generators;
 pub mod launch;

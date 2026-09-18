@@ -927,7 +927,7 @@
     "applied": "Konfiguration gespeichert – eine neue Werkzeugsitzung starten",
     "restore": "Ursprüngliche Einrichtung wiederherstellen",
     "disconnect": "Trennen",
-    "overlayHelp": "ORG2 hält seine Claude-Code-Einstellungen in einer separaten Datei ({{path}}) und ändert ~/.claude/settings.json nie. „Terminal öffnen“ startet Claude Code mit dieser Datei; in einem anderen Terminal claude --settings mit demselben Pfad ausführen. Eigene Einstellungen, Anmeldung und Gesprächsverlauf bleiben unverändert.",
+    "overlayHelp": "Verbindungseinstellungen werden separat in {{path}} gespeichert. „Terminal öffnen“ startet Claude Code mit diesen Einstellungen und dem bestehenden Gesprächsverlauf. Hooks zur Sitzungsverfolgung werden separat gesteuert",
     "restored": "Ursprüngliche Einrichtung wiederhergestellt – eine neue Werkzeugsitzung starten",
     "refresh": "Aktualisieren",
     "refreshed": "Werkzeugverbindungen aktualisiert",

@@ -192,3 +192,39 @@ fn codex(
     // auth.json, the OS credential store, other providers and profiles remain untouched.
     Ok(config.to_string())
 }
+
+/// Verify a previously applied Claude overlay against the currently resolved
+/// credential/profile, without writing configuration or exposing its secrets.
+pub fn verify_claude_launch_connection(connection: &DirectConnection) -> Result<(), String> {
+    let _guard = super::config_operation_guard()?;
+    let _target_lock = super::target_lock::lock_targets("claude_code")?;
+    let manifest = super::manifest::read_manifest("claude_code")?
+        .ok_or("Claude Code connection is missing")?;
+    if manifest.mode != CliConfigMode::Direct
+        || manifest.selected_key_id.as_deref() != Some(&connection.key_id)
+        || manifest.selected_model.as_deref() != Some(&connection.model)
+        || manifest.provider_profile != connection.profile
+    {
+        return Err("Selected client configuration changed".into());
+    }
+    let status = super::operations::status_for_unlocked("claude_code")?;
+    if status.conflict || !status.overlay {
+        return Err("Selected client configuration changed".into());
+    }
+    let settings = status
+        .target_files
+        .iter()
+        .find(|target| target.id == "settings")
+        .ok_or("Claude Code settings are missing")?;
+    let raw = std::fs::read_to_string(&settings.target_path)
+        .map_err(|_| "Could not read Claude Code settings")?;
+    let refreshed = claude(&raw, connection)?;
+    let old: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|_| "Invalid Claude Code settings")?;
+    let current: serde_json::Value =
+        serde_json::from_str(&refreshed).map_err(|_| "Invalid Claude Code settings")?;
+    if old != current {
+        return Err("Connection credentials or profile changed; apply the connection again".into());
+    }
+    Ok(())
+}

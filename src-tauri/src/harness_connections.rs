@@ -1,5 +1,7 @@
 //! Shared Settings/CLI-detail connection commands. No work starts on an idle timer.
 mod desktop;
+pub(crate) mod external_client;
+pub use external_client::*;
 mod probe;
 mod profiles;
 use agent_cli::managed_config::provider_profiles::ClaudeProviderProfile;

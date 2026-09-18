@@ -927,7 +927,7 @@
     "applied": "설정을 저장했습니다. 새 도구 세션을 시작하세요",
     "restore": "원래 설정 복원",
     "disconnect": "연결 해제",
-    "overlayHelp": "ORG2는 Claude Code 설정을 별도 파일({{path}})에 보관하며 ~/.claude/settings.json은 수정하지 않습니다. \"터미널 열기\"는 그 파일로 Claude Code를 시작합니다. 다른 터미널에서는 같은 경로로 claude --settings를 실행하세요. 사용자 설정, 로그인, 대화 기록은 그대로 유지됩니다.",
+    "overlayHelp": "연결 설정은 {{path}}에 별도로 저장됩니다. 터미널 열기는 이 설정과 기존 대화 기록으로 Claude Code를 시작합니다. 세션 추적 훅은 별도 설정으로 관리됩니다",
     "restored": "원래 설정을 복원했습니다. 새 도구 세션을 시작하세요",
     "refresh": "새로 고침",
     "refreshed": "도구 연결을 새로 고쳤습니다",

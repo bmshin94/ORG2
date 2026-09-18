@@ -16,6 +16,15 @@ vi.mock("./HarnessConnectionEditor", () => ({ default: () => null }));
 const configure = vi.fn();
 const restore = vi.fn();
 const open = vi.fn();
+const openLocal = vi.fn();
+let direct = false;
+vi.mock("@src/api/tauri/rpc", () => ({
+  rpc: {
+    agentOrgs: {
+      connections: { openClient: (...args: unknown[]) => openLocal(...args) },
+    },
+  },
+}));
 const reload = vi.fn();
 const refresh = vi.fn();
 const refreshProfiles = vi.fn();
@@ -125,11 +134,15 @@ vi.mock("./useHarnessConnection", () => ({
       installed,
       config: {
         supported: true,
-        mode: connected ? "orgii_managed" : "default",
+        mode: direct ? "direct" : connected ? "orgii_managed" : "default",
         conflict,
         overlay,
-        selectedKeyId: connected ? appliedSelection("ent_second") : null,
-        selectedModel: connected ? "claude-b" : null,
+        selectedKeyId: direct
+          ? "key-a"
+          : connected
+            ? appliedSelection("ent_second")
+            : null,
+        selectedModel: direct ? "model-a" : connected ? "claude-b" : null,
         targetFiles: overlay
           ? [
               {
@@ -161,6 +174,8 @@ beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   vi.clearAllMocks();
   connected = false;
+  direct = false;
+  openLocal.mockResolvedValue(null);
   profilesError = null;
   conflict = false;
   overlay = false;
@@ -352,4 +367,32 @@ it("does not announce a stale native open after Cloud logout", async () => {
   });
   expect(Message.success).not.toHaveBeenCalled();
   expect(Message.error).toHaveBeenCalledOnce();
+});
+
+it("opens a Direct Claude overlay without depending on a Market login or grant", async () => {
+  getInstrumentedStore().set(org2CloudAuthAtom, null);
+  direct = true;
+  overlay = true;
+  profilesError = "Market unavailable";
+  await render("claude_code");
+  const launch = button("harnessConnections.marketApps.openTerminal");
+  expect(launch.disabled).toBe(false);
+  await act(async () => launch.click());
+  expect(openLocal).toHaveBeenCalledWith({
+    agentName: "claude_code",
+    keyId: "key-a",
+    model: "model-a",
+  });
+  expect(open).not.toHaveBeenCalled();
+});
+
+it("blocks a Direct Claude launch when the overlay changed externally", async () => {
+  direct = true;
+  overlay = true;
+  conflict = true;
+  await render("claude_code");
+  const launch = button("harnessConnections.marketApps.openTerminal");
+  expect(launch.disabled).toBe(true);
+  await act(async () => launch.click());
+  expect(openLocal).not.toHaveBeenCalled();
 });
