@@ -27,6 +27,7 @@ import type { OptimizedChatItem } from "../../chatItemPipeline/types";
 import { useEditUserMessage } from "../useEditUserMessage";
 
 const {
+  askNativeDialogSpy,
   checkSnapshotChangesSpy,
   durableHydrationRows,
   evictSessionSpy,
@@ -46,6 +47,7 @@ const {
   storeSessionId,
   truncateBeforeIdSpy,
 } = vi.hoisted(() => ({
+  askNativeDialogSpy: vi.fn(async () => true),
   checkSnapshotChangesSpy: vi.fn(async () => false),
   durableHydrationRows: { current: [] as Array<Record<string, unknown>> },
   evictSessionSpy: vi.fn(async () => undefined),
@@ -177,6 +179,10 @@ vi.mock("@src/store/ui/todoAtom", () => ({
   clearTodosForSessionAtom: {},
 }));
 
+vi.mock("@src/util/dialogs/nativeDialog", () => ({
+  askNativeDialogSafely: askNativeDialogSpy,
+}));
+
 vi.mock("@src/util/platform/tauri/init", () => ({
   invokeTauri: invokeTauriSpy,
 }));
@@ -243,6 +249,8 @@ describe("useEditUserMessage resend projection", () => {
   });
 
   beforeEach(() => {
+    askNativeDialogSpy.mockReset();
+    askNativeDialogSpy.mockResolvedValue(true);
     checkSnapshotChangesSpy.mockClear();
     durableHydrationRows.current = [];
     evictSessionSpy.mockClear();
@@ -363,6 +371,7 @@ describe("useEditUserMessage resend projection", () => {
     await act(async () => {
       await editUserMessage?.(failed, "retry this exact request");
     });
+    expect(askNativeDialogSpy).not.toHaveBeenCalled();
 
     expect(submitUserIntentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1081,7 +1090,7 @@ describe("useEditUserMessage resend projection", () => {
     expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
   });
 
-  it("resends a landed execution-tail row through the canonical router without rewinding the root", async () => {
+  it("confirms appending a landed execution-tail row without rewinding or reusing its old identity", async () => {
     surfaceSessionId.current = "cliagent-root";
     storeSessionId.current = "cliagent-root";
     const canonicalRetry = vi.fn().mockResolvedValue(true);
@@ -1136,11 +1145,15 @@ describe("useEditUserMessage resend projection", () => {
     expect(canonicalRetry).toHaveBeenCalledWith(
       expect.objectContaining({
         displayText: "run the failing tail again",
-        // Unedited resend = the same user submission. Carrying its turn
-        // identity is what lets the transcript collapse the retried copy
-        // instead of keeping the failed turn and its error as context.
-        turnIntentId: "turn-intent-landed",
+        turnIntentId: expect.any(String),
       })
+    );
+    expect(askNativeDialogSpy).toHaveBeenCalledWith(
+      "landedMessageEdit.body",
+      expect.objectContaining({ okLabel: "landedMessageEdit.sendNew" })
+    );
+    expect(canonicalRetry.mock.calls[0]?.[0].turnIntentId).not.toBe(
+      "turn-intent-landed"
     );
     expect(submitUserIntentSpy).not.toHaveBeenCalled();
     expect(invokeTauriSpy).not.toHaveBeenCalledWith(
@@ -1194,7 +1207,8 @@ describe("useEditUserMessage resend projection", () => {
     expect(payload.displayText).toBe("different text now");
     // An edited resend is a NEW submission: reusing the old identity would
     // collapse it into the turn it is meant to replace.
-    expect(payload.turnIntentId).toBeUndefined();
+    expect(payload.turnIntentId).toEqual(expect.any(String));
+    expect(payload.turnIntentId).not.toBe("turn-intent-original");
     expect(invokeTauriSpy).not.toHaveBeenCalledWith(
       "cli_agent_truncate_after_chunk",
       expect.anything()
@@ -1244,6 +1258,103 @@ describe("useEditUserMessage resend projection", () => {
     expect(invokeTauriSpy).not.toHaveBeenCalled();
     expect(evictSessionSpy).not.toHaveBeenCalled();
     expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
+  });
+
+  it.each(["cancel", "dialog error", "surface switch", "unmount"])(
+    "does not submit or mutate an older successful child turn after %s",
+    async (outcome) => {
+      const canonicalRetry = vi.fn().mockResolvedValue(true);
+      failedUserIntentRetryForTest = canonicalRetry;
+      const landed = {
+        event: {
+          id: "runlanded-old-success",
+          source: "user",
+          displayText: "earlier successful prompt",
+          displayStatus: "completed",
+          result: { turnIntentId: "old-success-identity" },
+        },
+        chunk_id: "runlanded-old-success",
+      } as unknown as OptimizedChatItem;
+      let resolveDialog!: (confirmed: boolean) => void;
+      if (outcome === "cancel") {
+        askNativeDialogSpy.mockResolvedValue(false);
+      } else if (outcome === "dialog error") {
+        askNativeDialogSpy.mockRejectedValue(new Error("dialog unavailable"));
+      } else {
+        askNativeDialogSpy.mockImplementation(
+          () =>
+            new Promise<boolean>((resolve) => {
+              resolveDialog = resolve;
+            })
+        );
+      }
+      await act(async () => {
+        const pending = editUserMessage?.(landed, "edited earlier prompt");
+        if (outcome === "surface switch") {
+          storeSessionId.current = "cliagent-other";
+          resolveDialog(true);
+        } else if (outcome === "unmount") {
+          root.unmount();
+          resolveDialog(true);
+        }
+        await pending;
+      });
+      expect(askNativeDialogSpy).toHaveBeenCalledOnce();
+      expect(canonicalRetry).not.toHaveBeenCalled();
+      expect(submitUserIntentSpy).not.toHaveBeenCalled();
+      expect(invokeTauriSpy).not.toHaveBeenCalled();
+      expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
+      expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+      expect(evictSessionSpy).not.toHaveBeenCalled();
+      expect(storeSetSpy).not.toHaveBeenCalled();
+    }
+  );
+
+  it("cancels an outstanding landed edit when the mounted surface changes", async () => {
+    surfaceSessionId.current = "cliagent-old-root";
+    act(() =>
+      root.render(
+        createElement(Harness, {
+          onReady: (fn: EditUserMessageFn) => {
+            editUserMessage = fn;
+          },
+        })
+      )
+    );
+    const canonicalRetry = vi.fn().mockResolvedValue(true);
+    failedUserIntentRetryForTest = canonicalRetry;
+    let resolveDialog!: (confirmed: boolean) => void;
+    askNativeDialogSpy.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveDialog = resolve;
+        })
+    );
+    const landed = {
+      event: { id: "runlanded-old", displayText: "old text", source: "user" },
+      chunk_id: "runlanded-old",
+    } as unknown as OptimizedChatItem;
+    let pending: Promise<void> | undefined;
+    act(() => {
+      pending = editUserMessage?.(landed, "new text");
+    });
+    surfaceSessionId.current = "cliagent-new-root";
+    act(() =>
+      root.render(
+        createElement(Harness, {
+          onReady: (fn: EditUserMessageFn) => {
+            editUserMessage = fn;
+          },
+        })
+      )
+    );
+    await act(async () => {
+      resolveDialog(true);
+      await pending;
+    });
+    expect(canonicalRetry).not.toHaveBeenCalled();
+    expect(submitUserIntentSpy).not.toHaveBeenCalled();
+    expect(invokeTauriSpy).not.toHaveBeenCalled();
   });
 
   it("reloads the rewound cli session after evicting it so the anchor is not left empty", async () => {

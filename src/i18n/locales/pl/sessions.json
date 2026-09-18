@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Wysłać jako nową wiadomość?",
+    "body": "Ta wiadomość należy do sesji wykonawczej. Edycja tutaj nie pozwala cofnąć rozmowy. Wysłać ten tekst jako nową wiadomość na końcu? Istniejące wiadomości i zmiany w plikach zostaną zachowane.",
+    "sendNew": "Wyślij nową wiadomość"
+  },
   "tray": {
     "markAllRead": "Oznacz wszystkie jako przeczytane",
     "showKanban": "Pokaż Kanban",

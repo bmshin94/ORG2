@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Kirim sebagai pesan baru?",
+    "body": "Pesan ini milik sesi eksekusi. Mengeditnya di sini tidak dapat memundurkan percakapan. Kirim teks ini sebagai pesan baru di akhir? Pesan dan perubahan berkas yang ada akan tetap disimpan.",
+    "sendNew": "Kirim pesan baru"
+  },
   "tray": {
     "markAllRead": "Tandai semua sudah dibaca",
     "showKanban": "Tampilkan Kanban",

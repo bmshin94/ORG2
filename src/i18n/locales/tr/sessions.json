@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Yeni mesaj olarak gönderilsin mi?",
+    "body": "Bu mesaj bir yürütme oturumuna ait. Burada düzenlemek konuşmayı geri alamaz. Bunun yerine bu metin sona yeni bir mesaj olarak gönderilsin mi? Mevcut mesajlar ve dosya değişiklikleri korunacak.",
+    "sendNew": "Yeni mesaj gönder"
+  },
   "tray": {
     "markAllRead": "Tümünü okundu olarak işaretle",
     "showKanban": "Kanban’ı göster",

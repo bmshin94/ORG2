@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Als neue Nachricht senden?",
+    "body": "Diese Nachricht gehört zu einer Ausführungssitzung. Durch Bearbeiten an dieser Stelle lässt sich die Unterhaltung nicht zurücksetzen. Diesen Text stattdessen als neue Nachricht am Ende senden? Vorhandene Nachrichten und Dateiänderungen bleiben erhalten.",
+    "sendNew": "Neue Nachricht senden"
+  },
   "tray": {
     "markAllRead": "Alle als gelesen markieren",
     "showKanban": "Kanban anzeigen",

@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Envoyer comme nouveau message ?",
+    "body": "Ce message appartient à une session d’exécution. Le modifier ici ne permet pas de revenir en arrière dans la conversation. Envoyer ce texte comme nouveau message à la fin ? Les messages et modifications de fichiers existants seront conservés.",
+    "sendNew": "Envoyer un nouveau message"
+  },
   "tray": {
     "markAllRead": "Tout marquer comme lu",
     "showKanban": "Afficher Kanban",

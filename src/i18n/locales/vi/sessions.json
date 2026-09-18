@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Gửi dưới dạng tin nhắn mới?",
+    "body": "Tin nhắn này thuộc một phiên thực thi. Chỉnh sửa tại đây không thể tua lại cuộc trò chuyện. Thay vào đó, gửi nội dung này dưới dạng tin nhắn mới ở cuối? Các tin nhắn và thay đổi tệp hiện có sẽ được giữ nguyên.",
+    "sendNew": "Gửi tin nhắn mới"
+  },
   "tray": {
     "markAllRead": "Đánh dấu tất cả là đã đọc",
     "showKanban": "Hiển thị Kanban",

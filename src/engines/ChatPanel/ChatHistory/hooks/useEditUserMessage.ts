@@ -60,6 +60,7 @@ import {
   messageQueueHydratedAtom,
 } from "@src/store/ui/messageQueueAtom";
 import { clearTodosForSessionAtom } from "@src/store/ui/todoAtom";
+import { askNativeDialogSafely } from "@src/util/dialogs/nativeDialog";
 import { invokeTauri } from "@src/util/platform/tauri/init";
 import {
   isAgentSession,
@@ -101,6 +102,15 @@ export function useEditUserMessage(
       store.get(sessionIdAtom),
     [store, surfaceSessionId]
   );
+  const currentSessionResolver = useRef<
+    (() => string | null | undefined) | null
+  >(resolveCurrentSessionId);
+  useEffect(() => {
+    currentSessionResolver.current = resolveCurrentSessionId;
+    return () => {
+      currentSessionResolver.current = null;
+    };
+  }, [resolveCurrentSessionId]);
   const submitUserIntent = useUserIntentSubmit({
     getSessionId: resolveCurrentSessionId,
   });
@@ -124,13 +134,11 @@ export function useEditUserMessage(
       imageDataUrls?: string[]
     ) => {
       const initiatedSessionId = resolveCurrentSessionId();
-      const isStillOnInitiatingSession = (): boolean => {
-        if (!initiatedSessionId) return false;
-        if (surfaceSessionId) return surfaceSessionId === initiatedSessionId;
-        const activeSessionId = store.get(activeSessionIdAtom);
-        if (activeSessionId) return activeSessionId === initiatedSessionId;
-        return store.get(sessionIdAtom) === initiatedSessionId;
-      };
+      const isStillOnInitiatingSession = (): boolean =>
+        Boolean(
+          initiatedSessionId &&
+          currentSessionResolver.current?.() === initiatedSessionId
+        );
 
       const dbEventId = chatItem.event?.id ?? null;
       const eventId = dbEventId ?? chatItem.chunk_id;
@@ -302,24 +310,12 @@ export function useEditUserMessage(
         return;
       }
 
-      // A landed execution-tail row is a child Session's user turn projected
-      // onto the canonical root (`runlanded-<childEventId>`). The root never
-      // ran it, so rewinding the root (kill runner, revert files, clear resume
-      // state) would destroy unrelated context and still run the resend on the
-      // wrong Session with no durable-queue runner. Re-admit it through the
-      // canonical router instead so it carries `conversationDispatch`, runs on
-      // an execution child, and registers its runner for the surface.
-      //
-      // The row carries no "this turn failed" flag — a turn the child ran and
-      // answered with `API Error: 502` still lands as `displayStatus:
-      // "completed"`, because the DELIVERY completed; the failure is the agent
-      // row after it. So this branch cannot distinguish resending a failed
-      // tail from editing an older child turn, and both are re-admitted as a
-      // new turn. KNOWN LIMITATION: editing an older child row therefore
-      // appends instead of rewinding. That is deliberate until a child-scoped
-      // rewind exists — the path this replaced truncated the ROOT by timestamp
-      // with `revertFiles: true`, i.e. it reverted the root session's working
-      // tree for an edit made on a child's row.
+      // Child turns are projected onto this root; their delivery status does
+      // not establish whether the provider succeeded. There is no child-scoped
+      // rewind contract here. Preserve every existing turn and require explicit
+      // consent to append, rather than presenting an old successful edit as a
+      // retry or rewinding the unrelated root. Proven queue failures above keep
+      // their existing retry owner and do not need this confirmation.
       if (
         initiatedSessionId &&
         eventId.startsWith(LOCAL_EXECUTION_TAIL_EVENT_PREFIX)
@@ -331,15 +327,21 @@ export function useEditUserMessage(
           allowCanvasInterception:
             !resendImages && !isCliSession(initiatedSessionId),
         });
-        // An unedited resend is the SAME user submission, so carry its turn
-        // identity: that is what lets the transcript collapse the retried copy
-        // instead of keeping both it and the failed reply as context forever.
-        // An edited resend is a new submission and must mint a fresh one.
-        const resendTurnIntentId =
-          chatItem.event && newText === (chatItem.event.displayText ?? "")
-            ? (turnIntentIdOf(chatItem.event) ?? undefined)
-            : undefined;
         try {
+          const confirmed = await askNativeDialogSafely(
+            t("landedMessageEdit.body"),
+            {
+              title: t("landedMessageEdit.title"),
+              kind: "info",
+              okLabel: t("landedMessageEdit.sendNew"),
+              cancelLabel: t("common:actions.cancel"),
+            }
+          );
+          if (!confirmed || !isStillOnInitiatingSession()) return;
+          // This is an explicitly approved NEW submission, even when its text
+          // is unchanged. Reusing the original identity can collapse a valid
+          // historical turn rather than preserving the history we promised.
+          const resendTurnIntentId = mintTurnIntentId();
           const handled = await onFailedUserIntentRetry?.({
             displayText: projection.displayContent,
             agentContent: projection.agentContent,
@@ -510,7 +512,6 @@ export function useEditUserMessage(
       setPendingPlanApprovals,
       clearTodosForSession,
       resolveCurrentSessionId,
-      surfaceSessionId,
       submitUserIntent,
       t,
       store,

@@ -1,4 +1,9 @@
 {
+  "landedMessageEdit": {
+    "title": "Send as a new message?",
+    "body": "This message belongs to an execution session. Editing it here cannot rewind the conversation. Send this text as a new message at the end instead? Existing messages and file changes will be kept.",
+    "sendNew": "Send new message"
+  },
   "tray": {
     "markAllRead": "Mark all as read",
     "showKanban": "Show Kanban",
