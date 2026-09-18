@@ -309,6 +309,17 @@ export function useEditUserMessage(
       // wrong Session with no durable-queue runner. Re-admit it through the
       // canonical router instead so it carries `conversationDispatch`, runs on
       // an execution child, and registers its runner for the surface.
+      //
+      // The row carries no "this turn failed" flag — a turn the child ran and
+      // answered with `API Error: 502` still lands as `displayStatus:
+      // "completed"`, because the DELIVERY completed; the failure is the agent
+      // row after it. So this branch cannot distinguish resending a failed
+      // tail from editing an older child turn, and both are re-admitted as a
+      // new turn. KNOWN LIMITATION: editing an older child row therefore
+      // appends instead of rewinding. That is deliberate until a child-scoped
+      // rewind exists — the path this replaced truncated the ROOT by timestamp
+      // with `revertFiles: true`, i.e. it reverted the root session's working
+      // tree for an edit made on a child's row.
       if (
         initiatedSessionId &&
         eventId.startsWith(LOCAL_EXECUTION_TAIL_EVENT_PREFIX)
@@ -320,11 +331,20 @@ export function useEditUserMessage(
           allowCanvasInterception:
             !resendImages && !isCliSession(initiatedSessionId),
         });
+        // An unedited resend is the SAME user submission, so carry its turn
+        // identity: that is what lets the transcript collapse the retried copy
+        // instead of keeping both it and the failed reply as context forever.
+        // An edited resend is a new submission and must mint a fresh one.
+        const resendTurnIntentId =
+          chatItem.event && newText === (chatItem.event.displayText ?? "")
+            ? (turnIntentIdOf(chatItem.event) ?? undefined)
+            : undefined;
         try {
           const handled = await onFailedUserIntentRetry?.({
             displayText: projection.displayContent,
             agentContent: projection.agentContent,
             imageDataUrls: resendImages,
+            turnIntentId: resendTurnIntentId,
           });
           if (!handled) {
             await submitUserIntent({
@@ -333,6 +353,7 @@ export function useEditUserMessage(
               agentContent: projection.agentContent,
               imageDataUrls: resendImages,
               source: "dispatch",
+              turnIntentId: resendTurnIntentId,
             });
           }
         } catch (error) {

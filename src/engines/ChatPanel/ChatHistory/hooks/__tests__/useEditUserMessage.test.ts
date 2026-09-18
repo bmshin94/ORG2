@@ -1134,7 +1134,13 @@ describe("useEditUserMessage resend projection", () => {
 
     expect(canonicalRetry).toHaveBeenCalledOnce();
     expect(canonicalRetry).toHaveBeenCalledWith(
-      expect.objectContaining({ displayText: "run the failing tail again" })
+      expect.objectContaining({
+        displayText: "run the failing tail again",
+        // Unedited resend = the same user submission. Carrying its turn
+        // identity is what lets the transcript collapse the retried copy
+        // instead of keeping the failed turn and its error as context.
+        turnIntentId: "turn-intent-landed",
+      })
     );
     expect(submitUserIntentSpy).not.toHaveBeenCalled();
     expect(invokeTauriSpy).not.toHaveBeenCalledWith(
@@ -1145,6 +1151,55 @@ describe("useEditUserMessage resend projection", () => {
     expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
     expect(checkSnapshotChangesSpy).not.toHaveBeenCalled();
     expect(removeByIdPrefixSpy).not.toHaveBeenCalled();
+  });
+
+  it("mints a fresh turn identity when a landed tail row is resent with edited text", async () => {
+    surfaceSessionId.current = "cliagent-root";
+    storeSessionId.current = "cliagent-root";
+    const canonicalRetry = vi.fn().mockResolvedValue(true);
+    failedUserIntentRetryForTest = canonicalRetry;
+    act(() =>
+      root.render(
+        createElement(Harness, {
+          onReady: (fn: EditUserMessageFn) => {
+            editUserMessage = fn;
+          },
+        })
+      )
+    );
+    const landed = {
+      event: {
+        id: "runlanded-child-user-3",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        source: "user",
+        displayText: "the original text",
+        displayStatus: "completed",
+        sessionId: "cliagent-root",
+        result: {
+          deliveryStatus: "completed",
+          turnIntentId: "turn-intent-original",
+        },
+      },
+      chunk_id: "runlanded-child-user-3",
+    } as unknown as OptimizedChatItem;
+
+    await act(async () => {
+      await editUserMessage?.(landed, "different text now");
+    });
+
+    expect(canonicalRetry).toHaveBeenCalledOnce();
+    const [payload] = canonicalRetry.mock.calls[0] as [
+      { displayText: string; turnIntentId?: string },
+    ];
+    expect(payload.displayText).toBe("different text now");
+    // An edited resend is a NEW submission: reusing the old identity would
+    // collapse it into the turn it is meant to replace.
+    expect(payload.turnIntentId).toBeUndefined();
+    expect(invokeTauriSpy).not.toHaveBeenCalledWith(
+      "cli_agent_truncate_after_chunk",
+      expect.anything()
+    );
+    expect(truncateBeforeIdSpy).not.toHaveBeenCalled();
   });
 
   it("falls back to the direct dispatcher for a landed tail row when the router declines", async () => {
