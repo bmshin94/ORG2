@@ -944,6 +944,7 @@
     "desktopRestored": "已還原先前的桌面設定，請完全結束並重新開啟 Claude Desktop",
     "advancedDescription": "自訂 API 連線和一次性憑證遷移",
     "marketApps": {
+      "isolatedStorage": "此官方 App 使用獨立設定和對話儲存，不會變更主 App 或 CLI 的設定。舊對話不會自動匯入",
       "workspaceHelp": "为当前 App 选择套餐和模型。各 App 独立保存选择，切换 ORG2 聊天来源不会修改 App。",
       "loading": "正在加载官方套餐…",
       "loadFailed": "无法加载官方套餐",

@@ -1025,6 +1025,7 @@
     "desktopRestored": "Previous Desktop configuration restored — fully quit and reopen Claude Desktop",
     "advancedDescription": "Custom API connections and one-time credential migration",
     "marketApps": {
+      "isolatedStorage": "This official App uses separate settings and conversation storage. Your main App and CLI keep their settings. Earlier conversations are not imported automatically",
       "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
       "loading": "Loading official packages…",
       "loadFailed": "Official packages could not be loaded",

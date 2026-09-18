@@ -23,6 +23,7 @@ mod file_io;
 mod generators;
 pub mod launch;
 mod manifest;
+pub mod native_app;
 mod operations;
 mod proxy;
 mod registry;
@@ -163,7 +164,48 @@ pub fn enable_orgii_managed_catalog(
         Some(model),
         false,
         None,
-        Some(catalog),
+        operations::AppOptions {
+            catalog: Some(catalog),
+            native_app: None,
+        },
+    )
+}
+
+/// Market official-App boundary. Generic CLI/Direct entry points never select
+/// this destination. An active legacy/native connection must be restored first.
+pub fn enable_native_app(
+    profile: &native_app::NativeAppProfile,
+    key: String,
+    provider: String,
+    model: String,
+    catalog: Option<&model_catalog::ModelCatalog>,
+    direct: Option<&DirectConnection>,
+    expected: &std::collections::BTreeMap<String, Option<String>>,
+) -> Result<CliConfigManagedStatus, String> {
+    let agent = profile.agent();
+    profile.validate(agent)?;
+    if agent == "claude_desktop"
+        && direct
+            .and_then(|value| value.desktop_helper.as_ref())
+            .is_none_or(|helper| helper.path != profile.helper())
+    {
+        return Err("Native App credential helper does not match its profile".into());
+    }
+    let _guard = config_operation_guard()?;
+    let _target_lock = target_lock::lock_app_targets(agent, Some(profile))?;
+    recover_pending_transaction_unlocked(agent)?;
+    verify_expected_targets(agent, Some(expected))?;
+    operations::apply_connection_unlocked(
+        agent,
+        Some(key),
+        Some(provider),
+        Some(model),
+        false,
+        direct,
+        operations::AppOptions {
+            catalog,
+            native_app: Some(profile),
+        },
     )
 }
 
@@ -386,7 +428,7 @@ fn enable_direct_inner(
         Some(connection.model.clone()),
         force,
         Some(&connection),
-        None,
+        operations::AppOptions::default(),
     )
 }
 

@@ -953,6 +953,7 @@ pub(crate) async fn enable_dynamic_managed<
     key: String,
     model: String,
     expected_hashes: std::collections::BTreeMap<String, Option<String>>,
+    native_app: Option<agent_cli::managed_config::native_app::NativeAppProfile>,
     authorization: impl std::future::Future<Output = Result<G, String>>,
 ) -> Result<agent_cli::managed_config::CliConfigManagedStatus, String> {
     if !matches!(agent.as_str(), "claude_code" | "codex") || model.is_empty() || model.len() > 256 {
@@ -970,6 +971,17 @@ pub(crate) async fn enable_dynamic_managed<
         }
         let context =
             resolve_proxy_context_for_selection(&agent, Some(&key), Some(&model), String::new())?;
+        if let Some(profile) = native_app {
+            return agent_cli::managed_config::enable_native_app(
+                &profile,
+                key,
+                context.provider,
+                model,
+                None,
+                None,
+                &expected_hashes,
+            );
+        }
         agent_cli::managed_config::enable_orgii_managed_checked(
             &agent,
             Some(key),
@@ -992,6 +1004,7 @@ pub(crate) async fn enable_dynamic_catalog<
     model: String,
     catalog: agent_cli::managed_config::model_catalog::ModelCatalog,
     expected_hashes: std::collections::BTreeMap<String, Option<String>>,
+    native_app: Option<agent_cli::managed_config::native_app::NativeAppProfile>,
     authorization: impl std::future::Future<Output = Result<G, String>>,
 ) -> Result<agent_cli::managed_config::CliConfigManagedStatus, String> {
     let source =
@@ -1006,6 +1019,17 @@ pub(crate) async fn enable_dynamic_catalog<
         }
         let context =
             resolve_proxy_context_for_selection(&agent, Some(&key), Some(&model), String::new())?;
+        if let Some(profile) = native_app {
+            return agent_cli::managed_config::enable_native_app(
+                &profile,
+                key,
+                context.provider,
+                model,
+                Some(&catalog),
+                None,
+                &expected_hashes,
+            );
+        }
         agent_cli::managed_config::enable_orgii_managed_catalog(
             &agent,
             key,
@@ -1027,6 +1051,7 @@ pub(crate) async fn enable_dynamic_desktop<
     model: String,
     models: Vec<String>,
     expected_hashes: std::collections::BTreeMap<String, Option<String>>,
+    native_app: Option<agent_cli::managed_config::native_app::NativeAppProfile>,
     authorization: impl std::future::Future<Output = Result<G, String>>,
 ) -> Result<agent_cli::managed_config::CliConfigManagedStatus, String> {
     use agent_cli::managed_config::{desktop::CredentialHelper, DirectConnection};
@@ -1045,29 +1070,35 @@ pub(crate) async fn enable_dynamic_desktop<
             return Err(proxy_unavailable_message());
         }
         let token = agent_cli::managed_config::generate_proxy_token();
-        let helper_path = agent_cli::managed_config::desktop::credential_helper_path();
+        let profile = native_app.ok_or("Official Claude App requires an isolated profile")?;
+        let helper_path = profile.helper();
         let base_url = agent_cli::managed_config::claude_desktop_proxy_base_url(
             &agent_cli::managed_config::managed_proxy_url(),
             &token,
         );
-        let status = agent_cli::managed_config::enable_direct(
-            "claude_desktop",
-            DirectConnection {
-                profile: None,
-                key_id: key,
-                provider: "market".into(),
-                model,
-                base_url,
-                api_key: String::new(),
-                desktop_auth_scheme: Some("bearer".into()),
-                desktop_helper: Some(CredentialHelper {
-                    path: helper_path.clone(),
-                    token: token.clone(),
-                    models,
-                }),
-                proxy_token: Some(token),
-            },
-            Some(&expected_hashes),
+        let connection = DirectConnection {
+            profile: None,
+            key_id: key,
+            provider: "market".into(),
+            model,
+            base_url,
+            api_key: String::new(),
+            desktop_auth_scheme: Some("bearer".into()),
+            desktop_helper: Some(CredentialHelper {
+                path: helper_path.clone(),
+                token: token.clone(),
+                models,
+            }),
+            proxy_token: Some(token),
+        };
+        let status = agent_cli::managed_config::enable_native_app(
+            &profile,
+            connection.key_id.clone(),
+            connection.provider.clone(),
+            connection.model.clone(),
+            None,
+            Some(&connection),
+            &expected_hashes,
         )?;
         #[cfg(unix)]
         {

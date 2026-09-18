@@ -944,6 +944,7 @@
     "desktopRestored": "Предыдущие настройки восстановлены — полностью закройте и снова откройте Claude Desktop",
     "advancedDescription": "Пользовательские API-подключения и одноразовый импорт учетных данных",
     "marketApps": {
+      "isolatedStorage": "Это официальное приложение использует отдельные настройки и хранилище разговоров. Настройки основного приложения и CLI сохраняются. Предыдущие разговоры не импортируются автоматически",
       "workspaceHelp": "Choose a package and model for this app. Each app keeps its own selection; changing an ORG2 chat source does not update apps.",
       "loading": "Loading official packages…",
       "loadFailed": "Official packages could not be loaded",

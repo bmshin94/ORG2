@@ -1,28 +1,16 @@
 //! Open an external client only after its configuration still points at the
 //! requested Market workspace. Claude Code is launched with the ORG2-owned
-//! overlay settings file; Codex and Claude Desktop use their own configuration
-//! files. CLI clients talk to the local managed proxy, so ORG2 must remain
+//! overlay settings file; Codex and Claude Desktop use an explicit isolated
+//! configuration and Electron store. CLI clients talk to the local managed proxy, so ORG2 must remain
 //! running while they work.
 use agent_cli::managed_config::{self, CliConfigMode};
-
-fn native_app(agent: &str) -> Option<(&'static str, Option<&'static str>, &'static str)> {
-    match agent {
-        "claude_desktop" => Some((
-            "com.anthropic.claudefordesktop",
-            Some("claude://code/new"),
-            "Claude Desktop",
-        )),
-        "codex" => Some(("com.openai.codex", None, "Codex")),
-        _ => None,
-    }
-}
 
 pub async fn open(agent: String, key: String, model: String) -> Result<(), String> {
     if !cfg!(target_os = "macos") {
         return Err("Opening Market clients is not available on this platform yet".into());
     }
     let lease = super::owner::require()?;
-    crate::harness_connections::verify_installed_version(&agent).await?;
+    super::native_app_launch::verify_installed(&agent).await?;
     if key.starts_with("market-app:") {
         let catalog = super::app_catalog::Catalog::parse(&key, &agent)?;
         catalog.resolve(&model)?;
@@ -49,24 +37,24 @@ pub async fn open(agent: String, key: String, model: String) -> Result<(), Strin
         return Err("Selected client configuration changed".into());
     }
 
+    let native_app = lease.native_app(&agent)?;
+    if let Some(profile) = &native_app {
+        profile.validate_launch(&status)?;
+    }
     let barrier = super::source::operation_barrier(&lease).await?;
     tokio::task::spawn_blocking(move || {
         let _barrier = barrier;
         lease.check()?;
-        if let Some((bundle_id, deep_link, display_name)) = native_app(&agent) {
-            let mut command = std::process::Command::new("/usr/bin/open");
-            command.args(["-b", bundle_id]);
-            if let Some(value) = deep_link {
-                command.arg(value);
-            }
-            let status = command
-                .status()
-                .map_err(|_| format!("Could not open {display_name}"))?;
-            return if status.success() {
-                Ok(())
-            } else {
-                Err(format!("Could not open {display_name}"))
-            };
+        if let Some(profile) = native_app {
+            // Re-read ownership under the current owner barrier immediately
+            // before dispatch; a stale status cannot launch another profile.
+            return agent_cli::managed_config::native_app::with_launch(
+                &agent,
+                &profile,
+                &key,
+                &model,
+                || super::native_app_launch::open(&agent, &profile, || lease.check()),
+            );
         }
         if agent != "claude_code" {
             return Err("Unsupported Market client".into());
@@ -75,25 +63,4 @@ pub async fn open(agent: String, key: String, model: String) -> Result<(), Strin
     })
     .await
     .map_err(|_| "Could not launch client")?
-}
-
-#[cfg(test)]
-mod tests {
-    use super::native_app;
-    #[test]
-    fn opens_cli_in_terminal_and_desktop_clients_as_native_apps() {
-        assert_eq!(native_app("claude_code"), None);
-        assert_eq!(
-            native_app("claude_desktop"),
-            Some((
-                "com.anthropic.claudefordesktop",
-                Some("claude://code/new"),
-                "Claude Desktop"
-            ))
-        );
-        assert_eq!(
-            native_app("codex"),
-            Some(("com.openai.codex", None, "Codex"))
-        );
-    }
 }

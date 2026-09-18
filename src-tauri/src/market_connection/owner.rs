@@ -230,6 +230,18 @@ impl crate::dynamic_credentials::OperationAuthorization for Operation {
     }
 }
 impl Lease {
+    pub(super) fn native_app(
+        &self,
+        agent: &str,
+    ) -> Result<Option<agent_cli::managed_config::native_app::NativeAppProfile>, String> {
+        self.check()?;
+        if !matches!(agent, "codex" | "claude_desktop") {
+            return Ok(None);
+        }
+        agent_cli::managed_config::native_app::NativeAppProfile::new(agent, OFFICIAL, self.user())
+            .map(Some)
+    }
+
     pub(super) async fn operation(self) -> Result<Operation, String> {
         let barrier = super::source::operation_barrier(&self).await?;
         Ok(Operation {

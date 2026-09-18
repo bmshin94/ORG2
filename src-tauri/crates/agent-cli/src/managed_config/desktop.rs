@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use std::{collections::BTreeMap, path::PathBuf};
 
 pub const TARGET: &str = "claude_desktop";
-const PROFILE_ID: &str = "01704638-8000-4000-8000-000000000002";
+pub(super) const PROFILE_ID: &str = "01704638-8000-4000-8000-000000000002";
 const MANAGED_DEPLOYMENT_MODE: &str = "3p";
 
 pub struct CredentialHelper {
@@ -65,9 +65,12 @@ pub(super) fn targets() -> Result<Vec<(&'static str, String, PathBuf)>, String> 
 
 pub(super) fn owns_runtime_mode(target: &CliConfigTargetFileManifest) -> bool {
     target.id == "desktop"
-        && std::path::Path::new(&target.target_path)
+        && (std::path::Path::new(&target.target_path)
             == app_paths::external_history_data_local_dir()
                 .join("Claude-3p/claude_desktop_config.json")
+            || super::native_app::is_desktop_runtime_path(std::path::Path::new(
+                &target.target_path,
+            )))
 }
 
 fn runtime_object(bytes: &[u8]) -> Result<serde_json::Map<String, Value>, String> {

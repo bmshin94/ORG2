@@ -281,6 +281,14 @@ export const CliConfigTargetFileStatusSchema = z.object({
 });
 
 export const CliConfigManagedStatusSchema = z.object({
+  nativeApp: z
+    .object({
+      version: z.literal(1),
+      agent: z.enum(["codex", "claude_desktop"]),
+      scope: z.string(),
+    })
+    .nullable()
+    .optional(),
   agentName: z.string(),
   supported: z.boolean(),
   mode: CliConfigModeSchema,

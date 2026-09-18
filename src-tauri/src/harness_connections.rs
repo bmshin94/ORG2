@@ -440,3 +440,8 @@ mod tests {
         receipts.lock().unwrap().remove(&token);
     }
 }
+
+/// Verify the version of the exact Claude bundle selected by the isolated launcher.
+pub(crate) fn verify_claude_desktop_bundle_version(version: &str) -> Result<(), String> {
+    desktop::validate_version(version)
+}

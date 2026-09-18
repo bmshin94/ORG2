@@ -66,6 +66,7 @@ pub(super) fn test_manifest(
     targets: Vec<CliConfigTargetFileManifest>,
 ) -> CliConfigProfileManifest {
     CliConfigProfileManifest {
+        native_app: None,
         native_model_catalog: false,
         provider_profile: None,
         agent: agent_name.to_string(),

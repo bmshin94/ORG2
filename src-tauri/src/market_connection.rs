@@ -8,6 +8,8 @@ mod configure_catalog;
 #[cfg(feature = "market-connect")]
 mod external_client;
 #[cfg(feature = "market-connect")]
+mod native_app_launch;
+#[cfg(feature = "market-connect")]
 mod native_provider;
 #[cfg(feature = "market-connect")]
 mod owner;
@@ -257,7 +259,7 @@ pub async fn market_connection_configure_profile(
         validate_external_profile_request(&target, &agent, &model)?;
         let lease = owner::require()?;
         lease.matches(&identity_user_id)?;
-        crate::harness_connections::verify_installed_version(&agent).await?;
+        native_app_launch::verify_installed(&agent).await?;
         let selection = source::prepare_session(
             market_connect::ConnectionMetadata {
                 identity_user_id,
@@ -281,6 +283,7 @@ pub async fn market_connection_configure_profile(
             &model,
             now,
         )?;
+        let native_app = lease.native_app(&agent)?;
         let status = if agent == "claude_desktop" {
             let models = entries
                 .iter()
@@ -309,6 +312,7 @@ pub async fn market_connection_configure_profile(
                 model,
                 models,
                 expected_hashes,
+                native_app,
                 lease.operation(),
             )
             .await?
@@ -318,6 +322,7 @@ pub async fn market_connection_configure_profile(
                 selection.clone(),
                 model,
                 expected_hashes,
+                native_app,
                 lease.operation(),
             )
             .await?

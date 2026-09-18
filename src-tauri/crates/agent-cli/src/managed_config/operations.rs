@@ -13,9 +13,7 @@ use super::dto::{
 };
 use super::file_io::{file_hash, now_stamp, sha256_bytes, write_sensitive_file_atomic};
 use super::generators::generate_managed_configs;
-use super::manifest::{
-    agent_manifest_targets, read_manifest, targets_with_fallbacks, write_manifest,
-};
+use super::manifest::{read_manifest, targets_with_fallbacks, write_manifest};
 use super::proxy::{generate_proxy_token, managed_proxy_url};
 use super::registry::{supported_agent, unavailable_agent_message};
 use super::snapshot::{ensure_default_backup_from_snapshot, read_target_snapshots, TargetMutation};
@@ -34,6 +32,7 @@ fn clear_connection_metadata(manifest: &mut CliConfigProfileManifest) {
 pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedStatus, String> {
     if !supported_agent(agent_name) {
         return Ok(CliConfigManagedStatus {
+            native_app: None,
             agent_name: agent_name.to_string(),
             supported: false,
             mode: CliConfigMode::Default,
@@ -68,7 +67,13 @@ pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedSt
             write_manifest(value)?;
         }
     }
-    let fallback_targets = agent_manifest_targets(agent_name)?;
+    let fallback_targets = super::manifest::app_targets(
+        agent_name,
+        manifest
+            .as_ref()
+            .filter(|value| value.mode != CliConfigMode::Default)
+            .and_then(|value| value.native_app.as_ref()),
+    )?;
     let (mode, selected_key_id, selected_provider, selected_model, proxy_url, targets) =
         if let Some(manifest) = &manifest {
             (
@@ -77,7 +82,11 @@ pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedSt
                 manifest.selected_provider.clone(),
                 manifest.selected_model.clone(),
                 manifest.proxy_url.clone(),
-                targets_with_fallbacks(Some(manifest), &fallback_targets),
+                if manifest.mode == CliConfigMode::Default && manifest.native_app.is_some() {
+                    fallback_targets.clone()
+                } else {
+                    targets_with_fallbacks(Some(manifest), &fallback_targets)
+                },
             )
         } else {
             (
@@ -146,6 +155,10 @@ pub(super) fn status_for_unlocked(agent_name: &str) -> Result<CliConfigManagedSt
     let overlay = all_overlay && !target_files.is_empty();
 
     Ok(CliConfigManagedStatus {
+        native_app: manifest
+            .as_ref()
+            .filter(|value| value.mode != CliConfigMode::Default)
+            .and_then(|value| value.native_app.clone()),
         agent_name: agent_name.to_string(),
         supported: true,
         mode,
@@ -194,7 +207,21 @@ pub(super) fn enable_agent_orgii_managed_unlocked(
     model: Option<String>,
     force: bool,
 ) -> Result<CliConfigManagedStatus, String> {
-    apply_connection_unlocked(agent_name, key_id, provider, model, force, None, None)
+    apply_connection_unlocked(
+        agent_name,
+        key_id,
+        provider,
+        model,
+        force,
+        None,
+        AppOptions::default(),
+    )
+}
+
+#[derive(Default)]
+pub(super) struct AppOptions<'a> {
+    pub catalog: Option<&'a super::model_catalog::ModelCatalog>,
+    pub native_app: Option<&'a super::native_app::NativeAppProfile>,
 }
 
 pub(super) fn apply_connection_unlocked(
@@ -204,8 +231,12 @@ pub(super) fn apply_connection_unlocked(
     model: Option<String>,
     force: bool,
     direct: Option<&super::direct::DirectConnection>,
-    catalog: Option<&super::model_catalog::ModelCatalog>,
+    options: AppOptions<'_>,
 ) -> Result<CliConfigManagedStatus, String> {
+    let AppOptions {
+        catalog,
+        native_app,
+    } = options;
     if agent_name == super::desktop::TARGET {
         if direct.is_none() {
             return Err("Claude Desktop currently supports direct connections only".into());
@@ -218,10 +249,13 @@ pub(super) fn apply_connection_unlocked(
         }
         super::provider_profiles::require_saved_unlocked(profile)?;
     }
-    let fallback_targets = agent_manifest_targets(agent_name)?;
+    let fallback_targets = super::manifest::app_targets(agent_name, native_app)?;
     let existing_manifest = read_manifest(agent_name)?;
     if let Some(manifest) = &existing_manifest {
         if manifest.mode != CliConfigMode::Default {
+            if manifest.native_app.as_ref() != native_app {
+                return Err("Restore the current connection before switching between CLI/native configuration and an isolated official App. No primary configuration was changed.".into());
+            }
             for target in &manifest.target_files {
                 if !fallback_targets.iter().any(|current| {
                     current.id == target.id && current.target_path == target.target_path
@@ -361,12 +395,26 @@ pub(super) fn apply_connection_unlocked(
         )?
     };
 
-    super::model_catalog::apply(agent_name, &mut managed_contents, catalog, model.as_deref())?;
+    let catalog_path = if agent_name == "codex" {
+        native_app
+            .map(|profile| profile.target(super::model_catalog::TARGET_ID))
+            .transpose()?
+    } else {
+        None
+    };
+    super::model_catalog::apply_at(
+        agent_name,
+        &mut managed_contents,
+        catalog,
+        model.as_deref(),
+        catalog_path.as_deref(),
+    )?;
     let now = now_stamp();
     let refresh_default_backup = existing_manifest
         .as_ref()
         .is_none_or(|manifest| manifest.mode == CliConfigMode::Default);
     let mut manifest = existing_manifest.unwrap_or_else(|| CliConfigProfileManifest {
+        native_app: None,
         native_model_catalog: false,
         provider_profile: None,
         agent: agent_name.to_string(),
@@ -381,6 +429,7 @@ pub(super) fn apply_connection_unlocked(
         updated_at: now.clone(),
     });
 
+    manifest.native_app = native_app.cloned();
     let mut managed_targets = Vec::new();
     let mut mutations = BTreeMap::new();
     for target in targets {

@@ -22,11 +22,22 @@ pub(super) fn path() -> Result<PathBuf, String> {
     )
 }
 
+#[cfg(test)]
 pub(super) fn apply(
     agent: &str,
     files: &mut BTreeMap<String, String>,
     catalog: Option<&ModelCatalog>,
     selected: Option<&str>,
+) -> Result<(), String> {
+    apply_at(agent, files, catalog, selected, None)
+}
+
+pub(super) fn apply_at(
+    agent: &str,
+    files: &mut BTreeMap<String, String>,
+    catalog: Option<&ModelCatalog>,
+    selected: Option<&str>,
+    destination: Option<&std::path::Path>,
 ) -> Result<(), String> {
     if let Some(catalog) = catalog {
         let mut ids = HashSet::new();
@@ -60,7 +71,12 @@ pub(super) fn apply(
             let mut config: toml::Value =
                 toml::from_str(text).map_err(|_| "Invalid Codex config")?;
             let root = config.as_table_mut().ok_or("Invalid Codex config")?;
-            let catalog_path = path()?.to_string_lossy().into_owned();
+            let catalog_path = destination
+                .map(PathBuf::from)
+                .map(Ok)
+                .unwrap_or_else(path)?
+                .to_string_lossy()
+                .into_owned();
             if let Some(catalog) = catalog {
                 let mut models = Vec::new();
                 for model in &catalog.models {

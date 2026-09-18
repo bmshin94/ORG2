@@ -65,7 +65,7 @@ pub(super) async fn configure(
         &agent,
         &default_model,
     )?;
-    crate::harness_connections::verify_installed_version(&agent).await?;
+    super::native_app_launch::verify_installed(&agent).await?;
     if agent == "claude_code" {
         use integrations::cli_binary_resolver::{
             probe_cli_binary_version, resolve_cli_binary_for_registry_name,
@@ -207,12 +207,14 @@ pub(super) async fn configure(
     }
     let selection = catalog.key()?;
     // Validate all entries before requesting any credential or editing config.
+    let native_app = lease.native_app(&agent)?;
     let status = if agent == "claude_desktop" {
         crate::cli_managed_proxy::enable_dynamic_desktop(
             selection.clone(),
             catalog.default_model,
             catalog.models.into_iter().map(|model| model.id).collect(),
             expected_hashes,
+            native_app,
             lease.operation(),
         )
         .await?
@@ -223,6 +225,7 @@ pub(super) async fn configure(
             catalog.default_model,
             picker,
             expected_hashes,
+            native_app,
             lease.operation(),
         )
         .await?
